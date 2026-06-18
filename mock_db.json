@@ -1,0 +1,2160 @@
+{
+  "users": [
+    {
+      "id": "admin-uuid",
+      "email": "admin@meatcity.com",
+      "password": "password123",
+      "full_name": "Aejaz Qureshi",
+      "phone": "7977630912",
+      "user_type": "admin",
+      "status": "active",
+      "shop_address": "Turbhe Sector 20 A/2 Shop No 2, Navi Mumbai",
+      "created_at": "2026-06-08T22:56:00Z"
+    },
+    {
+      "id": "b2c-demo-uuid",
+      "email": "customer@gmail.com",
+      "password": "password123",
+      "full_name": "Rahul Sharma",
+      "phone": "9876543210",
+      "user_type": "b2c",
+      "status": "active",
+      "created_at": "2026-06-08T22:57:00Z"
+    },
+    {
+      "id": "b2b-demo-uuid",
+      "email": "b2b@meatcity.com",
+      "password": "password123",
+      "full_name": "Mohsin Khan",
+      "phone": "8887776665",
+      "user_type": "b2b",
+      "status": "active",
+      "business_name": "Spice & Curry",
+      "gst_number": "27AAAAA0000A1Z1",
+      "fssai_license": "12345678901234",
+      "shop_address": "Vashi, Sector 17, Shop 5, Navi Mumbai",
+      "created_at": "2026-06-08T22:58:00Z",
+      "credit_limit": 50000,
+      "credit_used": 0,
+      "credit_available": 50000,
+      "outstanding_balance": 0,
+      "payment_due_date": "2026-07-16",
+      "last_payment_date": "2026-06-03",
+      "ledger": []
+    },
+    {
+      "id": "usr-vuk4xpwf7",
+      "created_at": "2026-06-08T17:49:23.633Z",
+      "email": "salim@gmail.com",
+      "password": "123456",
+      "full_name": "salim",
+      "phone": "9594332989",
+      "user_type": "b2c",
+      "status": "active",
+      "business_name": "",
+      "gst_number": "",
+      "fssai_license": "",
+      "shop_address": "",
+      "referral_code": ""
+    },
+    {
+      "id": "usr-4813exriz",
+      "created_at": "2026-06-08T17:53:25.948Z",
+      "email": "kadir@gmail.com",
+      "password": "123456",
+      "full_name": "kadir qureshi",
+      "phone": "1234567891",
+      "user_type": "b2b",
+      "status": "active",
+      "business_name": "kadeer hotel",
+      "gst_number": "",
+      "fssai_license": "",
+      "shop_address": "naka",
+      "referral_code": "",
+      "credit_limit": 5000,
+      "credit_used": 0,
+      "credit_available": 5000,
+      "outstanding_balance": 0,
+      "payment_due_date": "2026-07-16",
+      "ledger": [
+        {
+          "date": "2026-06-16T17:32:59.078Z",
+          "description": "Order #ORD-793862",
+          "debit": 500,
+          "credit": 0,
+          "balance": 500
+        },
+        {
+          "date": "2026-06-16T17:35:25.745Z",
+          "description": "Online Payment",
+          "debit": 0,
+          "credit": 500,
+          "balance": 0
+        },
+        {
+          "date": "2026-06-16T00:00:00.000Z",
+          "description": "Cash Payment - Received",
+          "debit": 0,
+          "credit": 500,
+          "balance": 0
+        },
+        {
+          "date": "2026-06-16T17:41:10.991Z",
+          "description": "Order #ORD-128995",
+          "debit": 500,
+          "credit": 0,
+          "balance": 500
+        },
+        {
+          "date": "2026-06-16T18:05:16.972Z",
+          "description": "Online Payment",
+          "debit": 0,
+          "credit": 500,
+          "balance": 0
+        },
+        {
+          "date": "2026-06-16T18:35:32.089Z",
+          "description": "Order #ORD-447986",
+          "debit": 220,
+          "credit": 0,
+          "balance": 220
+        },
+        {
+          "date": "2026-06-16T18:35:47.468Z",
+          "description": "Online Payment",
+          "debit": 0,
+          "credit": 220,
+          "balance": 0
+        },
+        {
+          "date": "2026-06-16T18:36:10.636Z",
+          "description": "Order #ORD-174006",
+          "debit": 220,
+          "credit": 0,
+          "balance": 220
+        },
+        {
+          "date": "2026-06-16T18:36:34.434Z",
+          "description": "Online Payment",
+          "debit": 0,
+          "credit": 220,
+          "balance": 0
+        },
+        {
+          "date": "2026-06-16T18:43:41.719Z",
+          "description": "Order #ORD-863819",
+          "debit": 220,
+          "credit": 0,
+          "balance": 220
+        },
+        {
+          "date": "2026-06-16T18:44:35.181Z",
+          "description": "Online Payment (Approved) - Ref: repay-RZUERI2R2",
+          "debit": 0,
+          "credit": 220,
+          "balance": 0
+        },
+        {
+          "date": "2026-06-17T05:35:48.961Z",
+          "description": "Order #ORD-498883",
+          "debit": 500,
+          "credit": 0,
+          "balance": 500
+        },
+        {
+          "date": "2026-06-17T05:42:17.196Z",
+          "description": "Online Payment (Approved) - Ref: repay-OMR757G7K",
+          "debit": 0,
+          "credit": 500,
+          "balance": 0
+        },
+        {
+          "date": "2026-06-17T05:53:52.460Z",
+          "description": "Order #ORD-413962",
+          "debit": 500,
+          "credit": 0,
+          "balance": 500
+        },
+        {
+          "date": "2026-06-17T05:55:18.784Z",
+          "description": "Online Payment (Approved) - Ref: repay-M88C5K9U3",
+          "debit": 0,
+          "credit": 500,
+          "balance": 0
+        },
+        {
+          "date": "2026-06-17T05:55:27.494Z",
+          "description": "Online Payment (Approved) - Ref: repay-XYCUWZ8GW",
+          "debit": 0,
+          "credit": 500,
+          "balance": 0
+        },
+        {
+          "date": "2026-06-17T06:46:41.699Z",
+          "description": "Order #ORD-520711",
+          "debit": 500,
+          "credit": 0,
+          "balance": 500
+        },
+        {
+          "date": "2026-06-17T00:00:00.000Z",
+          "description": "Cash Payment - Collection request processed: Ref req-585991",
+          "debit": 0,
+          "credit": 500,
+          "balance": 0
+        },
+        {
+          "date": "2026-06-17T00:00:00.000Z",
+          "description": "Cash Payment - Collection request processed: Ref req-647876",
+          "debit": 0,
+          "credit": 500,
+          "balance": 0
+        },
+        {
+          "date": "2026-06-17T07:48:12.634Z",
+          "description": "Online Payment (Approved) - Ref: 123456789012",
+          "debit": 0,
+          "credit": 780,
+          "balance": 0
+        },
+        {
+          "date": "2026-06-17T07:51:37.032Z",
+          "description": "Order #ORD-886354",
+          "debit": 1,
+          "credit": 0,
+          "balance": 1
+        },
+        {
+          "date": "2026-06-17T07:57:02.004Z",
+          "description": "Online Payment (Approved) - Ref: 653439839567",
+          "debit": 0,
+          "credit": 1,
+          "balance": 0
+        }
+      ],
+      "last_payment_date": "2026-06-17"
+    },
+    {
+      "id": "dp001",
+      "name": "Rashid Khan",
+      "full_name": "Rashid Khan",
+      "mobile": "9876543210",
+      "phone": "9876543210",
+      "email": "rashid@meatcity.com",
+      "password": "password123",
+      "role": "delivery_partner",
+      "user_type": "delivery_partner",
+      "status": "active",
+      "created_at": "2026-06-09T13:00:00Z"
+    },
+    {
+      "id": "dp-xtzmmb9gp",
+      "created_at": "2026-06-09T08:09:21.267Z",
+      "name": "salim",
+      "full_name": "salim",
+      "email": "salimqureshi313@gmail.com",
+      "mobile": "9594332989",
+      "phone": "9594332989",
+      "password": "12345678",
+      "status": "active",
+      "user_type": "delivery_partner",
+      "role": "delivery_partner"
+    },
+    {
+      "id": "usr-28hlfd4hx",
+      "created_at": "2026-06-09T08:20:36.791Z",
+      "email": "aejazq36@gmail.com",
+      "password": "123456",
+      "full_name": "Aejaz qureshi",
+      "phone": "7841949432",
+      "user_type": "b2c",
+      "status": "active",
+      "business_name": "",
+      "gst_number": "",
+      "fssai_license": "",
+      "shop_address": "",
+      "referral_code": ""
+    },
+    {
+      "id": "dp-o0ciu2cwj",
+      "created_at": "2026-06-17T15:47:23.850Z",
+      "name": "Test Delivery Guy",
+      "full_name": "Test Delivery Guy",
+      "email": "delivery_test_oddy9@meatcity.com",
+      "mobile": "9876542732",
+      "phone": "9876542732",
+      "password": "testpassword123",
+      "status": "active",
+      "user_type": "delivery_partner",
+      "role": "delivery_partner"
+    }
+  ],
+  "products": [
+    {
+      "id": "prod-1",
+      "name": "Chicken Curry Cut",
+      "description": "Fresh, halal, skinless chicken cut into curry-sized pieces. Juicy & tender.",
+      "category": "Chicken",
+      "price_b2c": 260,
+      "price_b2b": 220,
+      "unit": "kg",
+      "stock": 50,
+      "is_available": true,
+      "image_url": "https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=500&auto=format&fit=crop&q=60"
+    },
+    {
+      "id": "prod-2",
+      "name": "Chicken Breast Boneless",
+      "description": "Tender and juicy boneless chicken breast. Cleaned and trimmed of fat.",
+      "category": "Chicken",
+      "price_b2c": 320,
+      "price_b2b": 280,
+      "unit": "kg",
+      "stock": 40,
+      "is_available": true,
+      "image_url": "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=500&auto=format&fit=crop&q=60"
+    },
+    {
+      "id": "prod-3",
+      "name": "Fresh Mutton Curry Cut",
+      "description": "Premium quality tender halal goat meat, cut perfectly for curries and stews.",
+      "category": "Mutton",
+      "price_b2c": 850,
+      "price_b2b": 780,
+      "unit": "kg",
+      "stock": 30,
+      "is_available": true,
+      "image_url": "https://images.unsplash.com/photo-1514516345957-556ca7d90a29?w=500&auto=format&fit=crop&q=60"
+    },
+    {
+      "id": "prod-4",
+      "name": "Mutton Minced (Keema)",
+      "description": "Finely minced fresh halal mutton, perfect for kebab preparations and keema curry.",
+      "category": "Mutton",
+      "price_b2c": 900,
+      "price_b2b": 820,
+      "unit": "kg",
+      "stock": 25,
+      "is_available": true,
+      "image_url": "https://images.unsplash.com/photo-1588168333986-5078647aa981?w=500&auto=format&fit=crop&q=60"
+    },
+    {
+      "id": "prod-5",
+      "name": "Premium Pomfret Medium",
+      "description": "Freshly caught pomfret fish, clean gutted and ready to fry or grill.",
+      "category": "Seafood",
+      "price_b2c": 750,
+      "price_b2b": 680,
+      "unit": "kg",
+      "stock": 15,
+      "is_available": true,
+      "image_url": "https://images.unsplash.com/photo-1534604973900-c43ab4c2e0ab?w=500&auto=format&fit=crop&q=60"
+    },
+    {
+      "id": "prod-6",
+      "name": "Fresh Farm Eggs (Pack of 12)",
+      "description": "High-protein, farm fresh brown eggs. Carefully sorted and safely packed.",
+      "category": "Eggs",
+      "price_b2c": 110,
+      "price_b2b": 95,
+      "unit": "pack",
+      "stock": 100,
+      "is_available": true,
+      "image_url": "https://images.unsplash.com/photo-1506976785307-8732e854ad03?w=500&auto=format&fit=crop&q=60"
+    },
+    {
+      "id": "prod-7",
+      "name": "Chicken Tikka Marinade",
+      "description": "Halal chicken cubes marinated in premium curd and hot spices. Ready to grill.",
+      "category": "Ready To Cook",
+      "price_b2c": 290,
+      "price_b2b": 250,
+      "unit": "pack",
+      "stock": 35,
+      "is_available": true,
+      "image_url": "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=500&auto=format&fit=crop&q=60"
+    },
+    {
+      "id": "prod-wq838neqs",
+      "created_at": "2026-06-17T07:49:05.592Z",
+      "name": "test",
+      "description": "for upi test",
+      "category": "Chicken",
+      "price_b2c": 1,
+      "price_b2b": 1,
+      "unit": "kg",
+      "image_url": "",
+      "stock": 10,
+      "is_available": true
+    }
+  ],
+  "categories": [
+    "Chicken",
+    "Mutton",
+    "Seafood",
+    "Eggs",
+    "Ready To Cook"
+  ],
+  "orders": [
+    {
+      "id": "ORD-152447",
+      "created_at": "2026-06-08T17:50:33.597Z",
+      "user_id": "usr-vuk4xpwf7",
+      "customer_name": "salim",
+      "customer_phone": "9594332989",
+      "delivery_address": "Turbhe, Sector 20, Navi Mumbai",
+      "subtotal": 260,
+      "discount": 0,
+      "delivery_fee": 40,
+      "total": 300,
+      "payment_method": "COD",
+      "payment_status": "Pending",
+      "status": "Cancelled",
+      "items": [
+        {
+          "product_id": "prod-1",
+          "name": "Chicken Curry Cut",
+          "quantity": 1,
+          "price": 260
+        }
+      ]
+    },
+    {
+      "id": "ORD-576603",
+      "created_at": "2026-06-08T18:52:48.768Z",
+      "user_id": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "customer_phone": "1234567891",
+      "delivery_address": "naka",
+      "subtotal": 440,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 440,
+      "payment_method": "COD",
+      "payment_status": "Pending",
+      "status": "Delivered",
+      "items": [
+        {
+          "product_id": "prod-1",
+          "name": "Chicken Curry Cut",
+          "quantity": 2,
+          "price": 220
+        }
+      ]
+    },
+    {
+      "id": "ORD-382035",
+      "created_at": "2026-06-08T18:54:57.150Z",
+      "user_id": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "customer_phone": "1234567891",
+      "delivery_address": "naka",
+      "subtotal": 780,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 780,
+      "payment_method": "COD",
+      "payment_status": "Pending",
+      "status": "Delivered",
+      "items": [
+        {
+          "product_id": "prod-3",
+          "name": "Fresh Mutton Curry Cut",
+          "quantity": 1,
+          "price": 780
+        }
+      ]
+    },
+    {
+      "id": "ORD-194586",
+      "created_at": "2026-06-08T19:42:50.498Z",
+      "user_id": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "customer_phone": "1234567891",
+      "delivery_address": "naka",
+      "subtotal": 1100,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 1100,
+      "payment_method": "CashCollection",
+      "payment_status": "Pending",
+      "status": "Delivered",
+      "items": [
+        {
+          "product_id": "prod-1",
+          "name": "Chicken Curry Cut",
+          "quantity": 5,
+          "price": 220
+        }
+      ]
+    },
+    {
+      "id": "ORD-158784",
+      "created_at": "2026-06-08T19:47:59.222Z",
+      "user_id": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "customer_phone": "1234567891",
+      "delivery_address": "naka",
+      "subtotal": 1000,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 1000,
+      "payment_method": "Pay Later (Credit)",
+      "payment_status": "Pending",
+      "status": "Delivered",
+      "items": [
+        {
+          "product_id": "prod-3",
+          "name": "Fresh Mutton Curry Cut",
+          "quantity": 1,
+          "price": 780
+        },
+        {
+          "product_id": "prod-1",
+          "name": "Chicken Curry Cut",
+          "quantity": 1,
+          "price": 220
+        }
+      ]
+    },
+    {
+      "id": "ORD-676627",
+      "created_at": "2026-06-08T20:07:29.460Z",
+      "user_id": "usr-4813exriz",
+      "customer_name": "salim",
+      "customer_phone": "9594332989",
+      "delivery_address": "Turbhe, Sector 20, Navi Mumbai",
+      "subtotal": 4780,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 4780,
+      "payment_method": "Pay Later (Credit)",
+      "payment_status": "Pending",
+      "status": "Cancelled",
+      "items": [
+        {
+          "product_id": "prod-1",
+          "name": "Chicken Curry Cut",
+          "quantity": 7,
+          "price": 220
+        },
+        {
+          "product_id": "prod-3",
+          "name": "Fresh Mutton Curry Cut",
+          "quantity": 1,
+          "price": 780
+        },
+        {
+          "product_id": "prod-4",
+          "name": "Mutton Minced (Keema)",
+          "quantity": 3,
+          "price": 820
+        }
+      ]
+    },
+    {
+      "id": "ORD-691970",
+      "created_at": "2026-06-08T20:26:30.649Z",
+      "user_id": "usr-4813exriz",
+      "customer_id": "usr-4813exriz",
+      "created_by": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "business_name": "kadeer hotel",
+      "customer_phone": "1234567891",
+      "role": "b2b",
+      "user_role": "b2b",
+      "delivery_address": "naka",
+      "subtotal": 4680,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 4680,
+      "payment_method": "Pay Later (Credit)",
+      "payment_status": "Pending",
+      "payment_ref": "",
+      "status": "Delivered",
+      "items": [
+        {
+          "product_id": "prod-3",
+          "name": "Fresh Mutton Curry Cut",
+          "quantity": 6,
+          "price": 780
+        }
+      ]
+    },
+    {
+      "id": "ORD-800883",
+      "created_at": "2026-06-08T20:27:06.365Z",
+      "user_id": "usr-4813exriz",
+      "customer_id": "usr-4813exriz",
+      "created_by": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "business_name": "kadeer hotel",
+      "customer_phone": "1234567891",
+      "role": "b2b",
+      "user_role": "b2b",
+      "delivery_address": "naka",
+      "subtotal": 440,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 440,
+      "payment_method": "Pay Later (Credit)",
+      "payment_status": "Pending",
+      "payment_ref": "",
+      "status": "Delivered",
+      "items": [
+        {
+          "product_id": "prod-1",
+          "name": "Chicken Curry Cut",
+          "quantity": 2,
+          "price": 220
+        }
+      ]
+    },
+    {
+      "id": "ORD-700353",
+      "created_at": "2026-06-08T20:30:41.117Z",
+      "user_id": "usr-4813exriz",
+      "customer_id": "usr-4813exriz",
+      "created_by": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "business_name": "kadeer hotel",
+      "customer_phone": "1234567891",
+      "role": "b2b",
+      "user_role": "b2b",
+      "delivery_address": "naka",
+      "subtotal": 780,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 780,
+      "payment_method": "Pay Later (Credit)",
+      "payment_status": "Pending",
+      "payment_ref": "",
+      "status": "Delivered",
+      "items": [
+        {
+          "product_id": "prod-3",
+          "name": "Fresh Mutton Curry Cut",
+          "quantity": 1,
+          "price": 780
+        }
+      ]
+    },
+    {
+      "id": "ORD-780057",
+      "created_at": "2026-06-08T20:32:23.328Z",
+      "user_id": "usr-4813exriz",
+      "customer_id": "usr-4813exriz",
+      "created_by": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "business_name": "kadeer hotel",
+      "customer_phone": "1234567891",
+      "role": "b2b",
+      "user_role": "b2b",
+      "delivery_address": "naka",
+      "subtotal": 780,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 780,
+      "payment_method": "Pay Later (Credit)",
+      "payment_status": "Pending",
+      "payment_ref": "",
+      "status": "Delivered",
+      "items": [
+        {
+          "product_id": "prod-3",
+          "name": "Fresh Mutton Curry Cut",
+          "quantity": 1,
+          "price": 780
+        }
+      ]
+    },
+    {
+      "id": "ORD-271125",
+      "created_at": "2026-06-08T20:36:39.848Z",
+      "user_id": "usr-4813exriz",
+      "customer_id": "usr-4813exriz",
+      "created_by": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "business_name": "kadeer hotel",
+      "customer_phone": "1234567891",
+      "role": "b2b",
+      "user_role": "b2b",
+      "delivery_address": "naka",
+      "subtotal": 280,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 280,
+      "payment_method": "UPI",
+      "payment_status": "Payment Rejected",
+      "payment_ref": "1234567891234",
+      "status": "Delivered",
+      "items": [
+        {
+          "product_id": "prod-2",
+          "name": "Chicken Breast Boneless",
+          "quantity": 1,
+          "price": 280
+        }
+      ]
+    },
+    {
+      "id": "ORD-845992",
+      "created_at": "2026-06-09T06:49:02.735Z",
+      "user_id": "usr-4813exriz",
+      "customer_id": "usr-4813exriz",
+      "created_by": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "business_name": "kadeer hotel",
+      "customer_phone": "1234567891",
+      "role": "b2b",
+      "user_role": "b2b",
+      "delivery_address": "naka",
+      "subtotal": 500,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 500,
+      "payment_method": "Pay Later (Credit)",
+      "payment_status": "Pending",
+      "payment_ref": "",
+      "status": "Delivered",
+      "items": [
+        {
+          "product_id": "prod-1",
+          "name": "Chicken Curry Cut",
+          "quantity": 1,
+          "price": 220
+        },
+        {
+          "product_id": "prod-2",
+          "name": "Chicken Breast Boneless",
+          "quantity": 1,
+          "price": 280
+        }
+      ]
+    },
+    {
+      "id": "ORD-584532",
+      "created_at": "2026-06-09T06:58:10.413Z",
+      "user_id": "usr-4813exriz",
+      "customer_id": "usr-4813exriz",
+      "created_by": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "business_name": "kadeer hotel",
+      "customer_phone": "1234567891",
+      "role": "b2b",
+      "user_role": "b2b",
+      "delivery_address": "naka",
+      "subtotal": 220,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 220,
+      "payment_method": "UPI",
+      "payment_status": "Paid",
+      "payment_ref": "123456",
+      "status": "Delivered",
+      "items": [
+        {
+          "product_id": "prod-1",
+          "name": "Chicken Curry Cut",
+          "quantity": 1,
+          "price": 220
+        }
+      ]
+    },
+    {
+      "id": "ORD-177391",
+      "created_at": "2026-06-09T07:43:33.891Z",
+      "order_id": "ORD-177391",
+      "user_id": "usr-4813exriz",
+      "customer_id": "usr-4813exriz",
+      "created_by": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "business_name": "kadeer hotel",
+      "customer_phone": "1234567891",
+      "role": "b2b",
+      "user_role": "b2b",
+      "delivery_address": "naka",
+      "subtotal": 500,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 500,
+      "grand_total": 500,
+      "payment_method": "UPI",
+      "payment_status": "Paid",
+      "payment_ref": "12321233",
+      "status": "Delivered",
+      "items": [
+        {
+          "product_id": "prod-1",
+          "name": "Chicken Curry Cut",
+          "product_name": "Chicken Curry Cut",
+          "quantity": 1,
+          "qty": 1,
+          "price": 220,
+          "unit_price": 220,
+          "total": 220
+        },
+        {
+          "product_id": "prod-2",
+          "name": "Chicken Breast Boneless",
+          "product_name": "Chicken Breast Boneless",
+          "quantity": 1,
+          "qty": 1,
+          "price": 280,
+          "unit_price": 280,
+          "total": 280
+        }
+      ]
+    },
+    {
+      "id": "ORD-787250",
+      "created_at": "2026-06-09T08:09:49.316Z",
+      "order_id": "ORD-787250",
+      "user_id": "usr-4813exriz",
+      "customer_id": "usr-4813exriz",
+      "created_by": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "business_name": "kadeer hotel",
+      "customer_phone": "1234567891",
+      "role": "b2b",
+      "user_role": "b2b",
+      "delivery_address": "naka",
+      "subtotal": 220,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 220,
+      "grand_total": 220,
+      "payment_method": "Pay Later (Credit)",
+      "payment_status": "Paid",
+      "payment_ref": "",
+      "status": "Delivered",
+      "items": [
+        {
+          "product_id": "prod-1",
+          "name": "Chicken Curry Cut",
+          "product_name": "Chicken Curry Cut",
+          "quantity": 1,
+          "qty": 1,
+          "price": 220,
+          "unit_price": 220,
+          "total": 220
+        }
+      ],
+      "delivery_partner_id": "dp-xtzmmb9gp",
+      "delivery_partner_name": "salim",
+      "delivery_status": "delivered",
+      "delivery_otp": "8349"
+    },
+    {
+      "id": "ORD-222785",
+      "created_at": "2026-06-09T08:20:57.775Z",
+      "order_id": "ORD-222785",
+      "user_id": "usr-28hlfd4hx",
+      "customer_id": "usr-28hlfd4hx",
+      "created_by": "usr-28hlfd4hx",
+      "customer_name": "Aejaz qureshi",
+      "business_name": "",
+      "customer_phone": "7841949432",
+      "role": "b2c",
+      "user_role": "b2c",
+      "delivery_address": "Turbhe, Sector 20, Navi Mumbai",
+      "subtotal": 580,
+      "discount": 0,
+      "delivery_fee": 40,
+      "total": 620,
+      "grand_total": 620,
+      "payment_method": "COD",
+      "payment_status": "Paid",
+      "payment_ref": "",
+      "status": "Delivered",
+      "items": [
+        {
+          "product_id": "prod-1",
+          "name": "Chicken Curry Cut",
+          "product_name": "Chicken Curry Cut",
+          "quantity": 1,
+          "qty": 1,
+          "price": 260,
+          "unit_price": 260,
+          "total": 260
+        },
+        {
+          "product_id": "prod-2",
+          "name": "Chicken Breast Boneless",
+          "product_name": "Chicken Breast Boneless",
+          "quantity": 1,
+          "qty": 1,
+          "price": 320,
+          "unit_price": 320,
+          "total": 320
+        }
+      ],
+      "delivery_partner_id": "dp-xtzmmb9gp",
+      "delivery_partner_name": "salim",
+      "delivery_status": "delivered",
+      "delivery_otp": "8069"
+    },
+    {
+      "id": "ORD-859909",
+      "created_at": "2026-06-09T18:29:39.903Z",
+      "order_id": "ORD-859909",
+      "user_id": "usr-4813exriz",
+      "customer_id": "usr-4813exriz",
+      "created_by": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "business_name": "kadeer hotel",
+      "customer_phone": "1234567891",
+      "role": "b2b",
+      "user_role": "b2b",
+      "delivery_address": "naka",
+      "subtotal": 220,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 220,
+      "grand_total": 220,
+      "payment_method": "UPI",
+      "payment_status": "Paid",
+      "payment_ref": "1232",
+      "status": "Delivered",
+      "items": [
+        {
+          "product_id": "prod-1",
+          "name": "Chicken Curry Cut",
+          "product_name": "Chicken Curry Cut",
+          "quantity": 1,
+          "qty": 1,
+          "price": 220,
+          "unit_price": 220,
+          "total": 220
+        }
+      ],
+      "delivery_partner_id": "dp-xtzmmb9gp",
+      "delivery_partner_name": "salim",
+      "delivery_status": "assigned",
+      "delivery_otp": "4101"
+    },
+    {
+      "id": "ORD-433620",
+      "created_at": "2026-06-09T19:13:30.558Z",
+      "order_id": "ORD-433620",
+      "user_id": "usr-4813exriz",
+      "customer_id": "usr-4813exriz",
+      "created_by": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "business_name": "kadeer hotel",
+      "customer_phone": "1234567891",
+      "role": "b2b",
+      "user_role": "b2b",
+      "delivery_address": "naka",
+      "subtotal": 440,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 440,
+      "grand_total": 440,
+      "payment_method": "Pay Later (Credit)",
+      "payment_status": "Pending",
+      "payment_ref": "",
+      "status": "Delivered",
+      "items": [
+        {
+          "product_id": "prod-1",
+          "name": "Chicken Curry Cut",
+          "product_name": "Chicken Curry Cut",
+          "quantity": 2,
+          "qty": 2,
+          "price": 220,
+          "unit_price": 220,
+          "total": 440
+        }
+      ]
+    },
+    {
+      "id": "ORD-614802",
+      "created_at": "2026-06-13T08:58:10.627Z",
+      "order_id": "ORD-614802",
+      "user_id": "usr-4813exriz",
+      "customer_id": "usr-4813exriz",
+      "created_by": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "business_name": "kadeer hotel",
+      "customer_phone": "1234567891",
+      "role": "b2b",
+      "user_role": "b2b",
+      "delivery_address": "naka",
+      "subtotal": 220,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 220,
+      "grand_total": 220,
+      "payment_method": "UPI",
+      "payment_status": "Paid",
+      "payment_ref": "123456",
+      "status": "Delivered",
+      "items": [
+        {
+          "product_id": "prod-1",
+          "name": "Chicken Curry Cut",
+          "product_name": "Chicken Curry Cut",
+          "quantity": 1,
+          "qty": 1,
+          "price": 220,
+          "unit_price": 220,
+          "total": 220
+        }
+      ],
+      "delivery_partner_id": "dp-xtzmmb9gp",
+      "delivery_partner_name": "salim",
+      "delivery_status": "assigned",
+      "delivery_otp": "1810"
+    },
+    {
+      "id": "ORD-793862",
+      "created_at": "2026-06-16T17:32:59.161Z",
+      "order_id": "ORD-793862",
+      "user_id": "usr-4813exriz",
+      "customer_id": "usr-4813exriz",
+      "created_by": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "business_name": "kadeer hotel",
+      "customer_phone": "1234567891",
+      "role": "b2b",
+      "user_role": "b2b",
+      "delivery_address": "naka",
+      "subtotal": 500,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 500,
+      "grand_total": 500,
+      "payment_method": "Pay Later (Credit)",
+      "payment_status": "Pending",
+      "payment_ref": "",
+      "status": "Delivered",
+      "items": [
+        {
+          "product_id": "prod-1",
+          "name": "Chicken Curry Cut",
+          "product_name": "Chicken Curry Cut",
+          "quantity": 1,
+          "qty": 1,
+          "price": 220,
+          "unit_price": 220,
+          "total": 220
+        },
+        {
+          "product_id": "prod-2",
+          "name": "Chicken Breast Boneless",
+          "product_name": "Chicken Breast Boneless",
+          "quantity": 1,
+          "qty": 1,
+          "price": 280,
+          "unit_price": 280,
+          "total": 280
+        }
+      ],
+      "delivery_partner_id": "dp-xtzmmb9gp",
+      "delivery_partner_name": "salim",
+      "delivery_status": "assigned",
+      "delivery_otp": "6406"
+    },
+    {
+      "id": "ORD-128995",
+      "created_at": "2026-06-16T17:41:11.066Z",
+      "order_id": "ORD-128995",
+      "user_id": "usr-4813exriz",
+      "customer_id": "usr-4813exriz",
+      "created_by": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "business_name": "kadeer hotel",
+      "customer_phone": "1234567891",
+      "role": "b2b",
+      "user_role": "b2b",
+      "delivery_address": "naka",
+      "subtotal": 500,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 500,
+      "grand_total": 500,
+      "payment_method": "Pay Later (Credit)",
+      "payment_status": "Pending",
+      "payment_ref": "",
+      "status": "Delivered",
+      "items": [
+        {
+          "product_id": "prod-1",
+          "name": "Chicken Curry Cut",
+          "product_name": "Chicken Curry Cut",
+          "quantity": 1,
+          "qty": 1,
+          "price": 220,
+          "unit_price": 220,
+          "total": 220
+        },
+        {
+          "product_id": "prod-2",
+          "name": "Chicken Breast Boneless",
+          "product_name": "Chicken Breast Boneless",
+          "quantity": 1,
+          "qty": 1,
+          "price": 280,
+          "unit_price": 280,
+          "total": 280
+        }
+      ],
+      "delivery_partner_id": "dp-xtzmmb9gp",
+      "delivery_partner_name": "salim",
+      "delivery_status": "assigned",
+      "delivery_otp": "3091"
+    },
+    {
+      "id": "ORD-447986",
+      "created_at": "2026-06-16T18:35:32.168Z",
+      "order_id": "ORD-447986",
+      "user_id": "usr-4813exriz",
+      "customer_id": "usr-4813exriz",
+      "created_by": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "business_name": "kadeer hotel",
+      "customer_phone": "1234567891",
+      "role": "b2b",
+      "user_role": "b2b",
+      "delivery_address": "naka",
+      "subtotal": 220,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 220,
+      "grand_total": 220,
+      "payment_method": "Pay Later (Credit)",
+      "payment_status": "Pending",
+      "payment_ref": "",
+      "status": "Delivered",
+      "items": [
+        {
+          "product_id": "prod-1",
+          "name": "Chicken Curry Cut",
+          "product_name": "Chicken Curry Cut",
+          "quantity": 1,
+          "qty": 1,
+          "price": 220,
+          "unit_price": 220,
+          "total": 220
+        }
+      ]
+    },
+    {
+      "id": "ORD-174006",
+      "created_at": "2026-06-16T18:36:10.714Z",
+      "order_id": "ORD-174006",
+      "user_id": "usr-4813exriz",
+      "customer_id": "usr-4813exriz",
+      "created_by": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "business_name": "kadeer hotel",
+      "customer_phone": "1234567891",
+      "role": "b2b",
+      "user_role": "b2b",
+      "delivery_address": "naka",
+      "subtotal": 220,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 220,
+      "grand_total": 220,
+      "payment_method": "Pay Later (Credit)",
+      "payment_status": "Pending",
+      "payment_ref": "",
+      "status": "Delivered",
+      "items": [
+        {
+          "product_id": "prod-1",
+          "name": "Chicken Curry Cut",
+          "product_name": "Chicken Curry Cut",
+          "quantity": 1,
+          "qty": 1,
+          "price": 220,
+          "unit_price": 220,
+          "total": 220
+        }
+      ],
+      "delivery_partner_id": "dp-xtzmmb9gp",
+      "delivery_partner_name": "salim",
+      "delivery_status": "assigned",
+      "delivery_otp": "7925"
+    },
+    {
+      "id": "ORD-863819",
+      "created_at": "2026-06-16T18:43:41.798Z",
+      "order_id": "ORD-863819",
+      "user_id": "usr-4813exriz",
+      "customer_id": "usr-4813exriz",
+      "created_by": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "business_name": "kadeer hotel",
+      "customer_phone": "1234567891",
+      "role": "b2b",
+      "user_role": "b2b",
+      "delivery_address": "naka",
+      "subtotal": 220,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 220,
+      "grand_total": 220,
+      "payment_method": "Pay Later (Credit)",
+      "payment_status": "Pending",
+      "payment_ref": "",
+      "status": "Cancelled",
+      "items": [
+        {
+          "product_id": "prod-1",
+          "name": "Chicken Curry Cut",
+          "product_name": "Chicken Curry Cut",
+          "quantity": 1,
+          "qty": 1,
+          "price": 220,
+          "unit_price": 220,
+          "total": 220
+        }
+      ]
+    },
+    {
+      "id": "ORD-498883",
+      "created_at": "2026-06-17T05:35:49.487Z",
+      "order_id": "ORD-498883",
+      "user_id": "usr-4813exriz",
+      "customer_id": "usr-4813exriz",
+      "created_by": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "business_name": "kadeer hotel",
+      "customer_phone": "1234567891",
+      "role": "b2b",
+      "user_role": "b2b",
+      "delivery_address": "naka",
+      "subtotal": 500,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 500,
+      "grand_total": 500,
+      "payment_method": "Pay Later (Credit)",
+      "payment_status": "Pending",
+      "payment_ref": "",
+      "status": "Delivered",
+      "items": [
+        {
+          "product_id": "prod-1",
+          "name": "Chicken Curry Cut",
+          "product_name": "Chicken Curry Cut",
+          "quantity": 1,
+          "qty": 1,
+          "price": 220,
+          "unit_price": 220,
+          "total": 220
+        },
+        {
+          "product_id": "prod-2",
+          "name": "Chicken Breast Boneless",
+          "product_name": "Chicken Breast Boneless",
+          "quantity": 1,
+          "qty": 1,
+          "price": 280,
+          "unit_price": 280,
+          "total": 280
+        }
+      ],
+      "delivery_partner_id": "dp-xtzmmb9gp",
+      "delivery_partner_name": "salim",
+      "delivery_status": "assigned",
+      "delivery_otp": "1165"
+    },
+    {
+      "id": "ORD-413962",
+      "created_at": "2026-06-17T05:53:53.087Z",
+      "order_id": "ORD-413962",
+      "user_id": "usr-4813exriz",
+      "customer_id": "usr-4813exriz",
+      "created_by": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "business_name": "kadeer hotel",
+      "customer_phone": "1234567891",
+      "role": "b2b",
+      "user_role": "b2b",
+      "delivery_address": "naka",
+      "subtotal": 500,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 500,
+      "grand_total": 500,
+      "payment_method": "Pay Later (Credit)",
+      "payment_status": "Pending",
+      "payment_ref": "",
+      "status": "Delivered",
+      "items": [
+        {
+          "product_id": "prod-1",
+          "name": "Chicken Curry Cut",
+          "product_name": "Chicken Curry Cut",
+          "quantity": 1,
+          "qty": 1,
+          "price": 220,
+          "unit_price": 220,
+          "total": 220
+        },
+        {
+          "product_id": "prod-2",
+          "name": "Chicken Breast Boneless",
+          "product_name": "Chicken Breast Boneless",
+          "quantity": 1,
+          "qty": 1,
+          "price": 280,
+          "unit_price": 280,
+          "total": 280
+        }
+      ],
+      "delivery_partner_id": "dp-xtzmmb9gp",
+      "delivery_partner_name": "salim",
+      "delivery_status": "assigned",
+      "delivery_otp": "6294"
+    },
+    {
+      "id": "ORD-520711",
+      "created_at": "2026-06-17T06:46:42.614Z",
+      "order_id": "ORD-520711",
+      "user_id": "usr-4813exriz",
+      "customer_id": "usr-4813exriz",
+      "created_by": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "business_name": "kadeer hotel",
+      "customer_phone": "1234567891",
+      "role": "b2b",
+      "user_role": "b2b",
+      "delivery_address": "naka",
+      "subtotal": 500,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 500,
+      "grand_total": 500,
+      "payment_method": "Pay Later (Credit)",
+      "payment_status": "Pending",
+      "payment_ref": "",
+      "status": "Delivered",
+      "items": [
+        {
+          "product_id": "prod-1",
+          "name": "Chicken Curry Cut",
+          "product_name": "Chicken Curry Cut",
+          "quantity": 1,
+          "qty": 1,
+          "price": 220,
+          "unit_price": 220,
+          "total": 220
+        },
+        {
+          "product_id": "prod-2",
+          "name": "Chicken Breast Boneless",
+          "product_name": "Chicken Breast Boneless",
+          "quantity": 1,
+          "qty": 1,
+          "price": 280,
+          "unit_price": 280,
+          "total": 280
+        }
+      ],
+      "delivery_partner_id": "dp-xtzmmb9gp",
+      "delivery_partner_name": "salim",
+      "delivery_status": "assigned",
+      "delivery_otp": "6737"
+    },
+    {
+      "id": "ORD-886354",
+      "created_at": "2026-06-17T07:51:37.106Z",
+      "order_id": "ORD-886354",
+      "user_id": "usr-4813exriz",
+      "customer_id": "usr-4813exriz",
+      "created_by": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "business_name": "kadeer hotel",
+      "customer_phone": "1234567891",
+      "role": "b2b",
+      "user_role": "b2b",
+      "delivery_address": "naka",
+      "subtotal": 1,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 1,
+      "grand_total": 1,
+      "payment_method": "Pay Later (Credit)",
+      "payment_status": "Pending",
+      "payment_ref": "",
+      "status": "Delivered",
+      "items": [
+        {
+          "product_id": "prod-wq838neqs",
+          "name": "test",
+          "product_name": "test",
+          "quantity": 1,
+          "qty": 1,
+          "price": 1,
+          "unit_price": 1,
+          "total": 1
+        }
+      ],
+      "delivery_partner_id": "dp-xtzmmb9gp",
+      "delivery_partner_name": "salim",
+      "delivery_status": "assigned",
+      "delivery_otp": "9445"
+    }
+  ],
+  "coupons": [
+    {
+      "code": "MEAT10",
+      "discount_percent": 10,
+      "min_order": 500
+    },
+    {
+      "code": "WELCOME20",
+      "discount_percent": 20,
+      "min_order": 1000
+    }
+  ],
+  "wishlists": [],
+  "addresses": [],
+  "cash_collection_requests": [
+    {
+      "id": "req-493215",
+      "created_at": "2026-06-08T20:29:34.564Z",
+      "user_id": "usr-4813exriz",
+      "business_name": "kadeer hotel",
+      "customer_name": "kadir qureshi",
+      "customer_phone": "1234567891",
+      "amount": 440,
+      "preferred_date": "2026-06-08",
+      "remarks": "",
+      "status": "Processed"
+    },
+    {
+      "id": "req-289082",
+      "created_at": "2026-06-09T19:13:14.516Z",
+      "user_id": "usr-4813exriz",
+      "business_name": "kadeer hotel",
+      "customer_name": "kadir qureshi",
+      "customer_phone": "1234567891",
+      "amount": 160,
+      "preferred_date": "2026-06-09",
+      "remarks": "",
+      "status": "Processed"
+    },
+    {
+      "id": "req-161562",
+      "created_at": "2026-06-13T08:01:32.324Z",
+      "user_id": "usr-4813exriz",
+      "business_name": "kadeer hotel",
+      "customer_name": "kadir qureshi",
+      "customer_phone": "1234567891",
+      "amount": 60,
+      "preferred_date": "2026-06-13",
+      "remarks": "nothing",
+      "status": "Processed"
+    },
+    {
+      "id": "req-647876",
+      "created_at": "2026-06-17T06:47:23.614Z",
+      "user_id": "usr-4813exriz",
+      "business_name": "kadeer hotel",
+      "customer_name": "kadir qureshi",
+      "customer_phone": "1234567891",
+      "amount": 500,
+      "preferred_date": "2026-06-17",
+      "remarks": "Collect it now",
+      "status": "Processed"
+    },
+    {
+      "id": "req-585991",
+      "created_at": "2026-06-17T06:47:25.583Z",
+      "user_id": "usr-4813exriz",
+      "business_name": "kadeer hotel",
+      "customer_name": "kadir qureshi",
+      "customer_phone": "1234567891",
+      "amount": 500,
+      "preferred_date": "2026-06-17",
+      "remarks": "Collect it now",
+      "status": "Processed"
+    }
+  ],
+  "notifications": [
+    {
+      "id": "uuid-ibqnxhb7p-mq6z59g4",
+      "created_at": "2026-06-09T18:29:39.988Z",
+      "user_id": "usr-4813exriz",
+      "title": "Order Placed successfully 🎉",
+      "message": "Your order ORD-859909 for ₹220 has been placed. Payment method: UPI.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-7sv6o24ab-mq6z59hl",
+      "created_at": "2026-06-09T18:29:40.041Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Order Received 📦",
+      "message": "Order ORD-859909 placed by kadir qureshi for ₹220.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-grayq29pz-mq6z69n0",
+      "created_at": "2026-06-09T18:30:26.892Z",
+      "user_id": "usr-4813exriz",
+      "title": "Payment Paid 💳",
+      "message": "Your payment of ₹220 for Order ORD-859909 has been paid.",
+      "type": "payment_verification"
+    },
+    {
+      "id": "uuid-opqriy9p6-mq6z6i1l",
+      "created_at": "2026-06-09T18:30:37.785Z",
+      "user_id": "dp-xtzmmb9gp",
+      "title": "New Delivery Assigned 🛵",
+      "message": "You have been assigned Order ORD-859909 for delivery to kadir qureshi.",
+      "type": "delivery_assigned"
+    },
+    {
+      "id": "uuid-iswv4vyfw-mq6z6i2s",
+      "created_at": "2026-06-09T18:30:37.828Z",
+      "user_id": "usr-4813exriz",
+      "title": "Delivery Partner Assigned 🛵",
+      "message": "Your order ORD-859909 has been assigned to salim (OTP: 4101).",
+      "type": "delivery_assigned"
+    },
+    {
+      "id": "uuid-yf0hx7p01-mq70pn99",
+      "created_at": "2026-06-09T19:13:30.621Z",
+      "user_id": "usr-4813exriz",
+      "title": "Order Placed successfully 🎉",
+      "message": "Your order ORD-433620 for ₹440 has been placed. Payment method: Pay Later (Credit).",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-dvr2s255h-mq70pnbk",
+      "created_at": "2026-06-09T19:13:30.704Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Order Received 📦",
+      "message": "Order ORD-433620 placed by kadir qureshi for ₹440.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-yqq25achu-mqc4hqc3",
+      "created_at": "2026-06-13T08:58:10.707Z",
+      "user_id": "usr-4813exriz",
+      "title": "Order Placed successfully 🎉",
+      "message": "Your order ORD-614802 for ₹220 has been placed. Payment method: UPI.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-n3cshknpa-mqc4hqeh",
+      "created_at": "2026-06-13T08:58:10.793Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Order Received 📦",
+      "message": "Order ORD-614802 placed by kadir qureshi for ₹220.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-yagss3put-mqc4iaat",
+      "created_at": "2026-06-13T08:58:36.581Z",
+      "user_id": "usr-4813exriz",
+      "title": "Payment Paid 💳",
+      "message": "Your payment of ₹220 for Order ORD-614802 has been paid.",
+      "type": "payment_verification"
+    },
+    {
+      "id": "uuid-apw5hqiwt-mqc4ih58",
+      "created_at": "2026-06-13T08:58:45.452Z",
+      "user_id": "dp-xtzmmb9gp",
+      "title": "New Delivery Assigned 🛵",
+      "message": "You have been assigned Order ORD-614802 for delivery to kadir qureshi.",
+      "type": "delivery_assigned"
+    },
+    {
+      "id": "uuid-aqesjrfjs-mqc4ih6l",
+      "created_at": "2026-06-13T08:58:45.501Z",
+      "user_id": "usr-4813exriz",
+      "title": "Delivery Partner Assigned 🛵",
+      "message": "Your order ORD-614802 has been assigned to salim (OTP: 1810).",
+      "type": "delivery_assigned"
+    },
+    {
+      "id": "uuid-eqfqojga9-mqgx447z",
+      "created_at": "2026-06-16T17:30:29.087Z",
+      "user_id": "b2b-demo-uuid",
+      "title": "B2B Account Approved 🤝",
+      "message": "Your B2B retail partner account has been approved. Credit limit set to ₹50,000.",
+      "type": "b2b_approval"
+    },
+    {
+      "id": "uuid-2lm1v7pzt-mqgx4c2t",
+      "created_at": "2026-06-16T17:30:39.269Z",
+      "user_id": "usr-4813exriz",
+      "title": "B2B Account Approved 🤝",
+      "message": "Your B2B retail partner account has been approved. Credit limit set to ₹50,000.",
+      "type": "b2b_approval"
+    },
+    {
+      "id": "uuid-yspv3hffi-mqgx7c22",
+      "created_at": "2026-06-16T17:32:59.210Z",
+      "user_id": "usr-4813exriz",
+      "title": "Order Placed successfully 🎉",
+      "message": "Your order ORD-793862 for ₹500 has been placed. Payment method: Pay Later (Credit).",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-3e057f2ha-mqgx7c3g",
+      "created_at": "2026-06-16T17:32:59.260Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Order Received 📦",
+      "message": "Order ORD-793862 placed by kadir qureshi for ₹500.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-23yc7bd7u-mqgx9ztw",
+      "created_at": "2026-06-16T17:35:03.332Z",
+      "user_id": "dp-xtzmmb9gp",
+      "title": "New Delivery Assigned 🛵",
+      "message": "You have been assigned Order ORD-793862 for delivery to kadir qureshi.",
+      "type": "delivery_assigned"
+    },
+    {
+      "id": "uuid-x5b5ifrgq-mqgx9zvc",
+      "created_at": "2026-06-16T17:35:03.384Z",
+      "user_id": "usr-4813exriz",
+      "title": "Delivery Partner Assigned 🛵",
+      "message": "Your order ORD-793862 has been assigned to salim (OTP: 6406).",
+      "type": "delivery_assigned"
+    },
+    {
+      "id": "uuid-qkl44zojh-mqgxhvm1",
+      "created_at": "2026-06-16T17:41:11.113Z",
+      "user_id": "usr-4813exriz",
+      "title": "Order Placed successfully 🎉",
+      "message": "Your order ORD-128995 for ₹500 has been placed. Payment method: Pay Later (Credit).",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-mu1llhzo5-mqgxhvnd",
+      "created_at": "2026-06-16T17:41:11.161Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Order Received 📦",
+      "message": "Order ORD-128995 placed by kadir qureshi for ₹500.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-1c3cpu9rk-mqgxxq7n",
+      "created_at": "2026-06-16T17:53:30.611Z",
+      "user_id": "dp-xtzmmb9gp",
+      "title": "New Delivery Assigned 🛵",
+      "message": "You have been assigned Order ORD-128995 for delivery to kadir qureshi.",
+      "type": "delivery_assigned"
+    },
+    {
+      "id": "uuid-evxrcii8s-mqgxxq8k",
+      "created_at": "2026-06-16T17:53:30.644Z",
+      "user_id": "usr-4813exriz",
+      "title": "Delivery Partner Assigned 🛵",
+      "message": "Your order ORD-128995 has been assigned to salim (OTP: 3091).",
+      "type": "delivery_assigned"
+    },
+    {
+      "id": "uuid-1zfo03k0q-mqgzfrwb",
+      "created_at": "2026-06-16T18:35:32.219Z",
+      "user_id": "usr-4813exriz",
+      "title": "Order Placed successfully 🎉",
+      "message": "Your order ORD-447986 for ₹220 has been placed. Payment method: Pay Later (Credit).",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-jlh50xp3d-mqgzfrxv",
+      "created_at": "2026-06-16T18:35:32.275Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Order Received 📦",
+      "message": "Order ORD-447986 placed by kadir qureshi for ₹220.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-xaa31jju7-mqgzgln4",
+      "created_at": "2026-06-16T18:36:10.768Z",
+      "user_id": "usr-4813exriz",
+      "title": "Order Placed successfully 🎉",
+      "message": "Your order ORD-174006 for ₹220 has been placed. Payment method: Pay Later (Credit).",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-pnrculd6t-mqgzglog",
+      "created_at": "2026-06-16T18:36:10.816Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Order Received 📦",
+      "message": "Order ORD-174006 placed by kadir qureshi for ₹220.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-0zo6hjvoz-mqgzpjcw",
+      "created_at": "2026-06-16T18:43:07.712Z",
+      "user_id": "dp-xtzmmb9gp",
+      "title": "New Delivery Assigned 🛵",
+      "message": "You have been assigned Order ORD-174006 for delivery to kadir qureshi.",
+      "type": "delivery_assigned"
+    },
+    {
+      "id": "uuid-elue9djow-mqgzpjdz",
+      "created_at": "2026-06-16T18:43:07.751Z",
+      "user_id": "usr-4813exriz",
+      "title": "Delivery Partner Assigned 🛵",
+      "message": "Your order ORD-174006 has been assigned to salim (OTP: 7925).",
+      "type": "delivery_assigned"
+    },
+    {
+      "id": "uuid-bjvqy29j9-mqgzq9p3",
+      "created_at": "2026-06-16T18:43:41.847Z",
+      "user_id": "usr-4813exriz",
+      "title": "Order Placed successfully 🎉",
+      "message": "Your order ORD-863819 for ₹220 has been placed. Payment method: Pay Later (Credit).",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-mllhz3b53-mqgzq9qe",
+      "created_at": "2026-06-16T18:43:41.894Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Order Received 📦",
+      "message": "Order ORD-863819 placed by kadir qureshi for ₹220.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-4jnwyik8r-mqgzqis4",
+      "created_at": "2026-06-16T18:43:53.620Z",
+      "user_id": "usr-4813exriz",
+      "title": "Payment Submitted (Pending) ⏳",
+      "message": "Your online repayment of ₹220 is pending admin approval.",
+      "type": "payment_repayment"
+    },
+    {
+      "id": "uuid-3ucxnx8tn-mqgzqity",
+      "created_at": "2026-06-16T18:43:53.686Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Payment Pending Approval 💰",
+      "message": "A B2B customer (kadeer hotel) has submitted a payment of ₹220 for approval.",
+      "type": "payment_approval"
+    },
+    {
+      "id": "uuid-hr7wmayqm-mqgzrexh",
+      "created_at": "2026-06-16T18:44:35.285Z",
+      "user_id": "usr-4813exriz",
+      "title": "Repayment Approved 👍",
+      "message": "Your online payment of ₹220 has been approved. Available credit updated to ₹500.",
+      "type": "payment_repayment"
+    },
+    {
+      "id": "uuid-v03bhkhl9-mqhn0wws",
+      "created_at": "2026-06-17T05:35:49.660Z",
+      "user_id": "usr-4813exriz",
+      "title": "Order Placed successfully 🎉",
+      "message": "Your order ORD-498883 for ₹500 has been placed. Payment method: Pay Later (Credit).",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-3dejb5tqg-mqhn0wys",
+      "created_at": "2026-06-17T05:35:49.732Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Order Received 📦",
+      "message": "Order ORD-498883 placed by kadir qureshi for ₹500.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-s1avdpp79-mqhn24el",
+      "created_at": "2026-06-17T05:36:46.029Z",
+      "user_id": "dp-xtzmmb9gp",
+      "title": "New Delivery Assigned 🛵",
+      "message": "You have been assigned Order ORD-498883 for delivery to kadir qureshi.",
+      "type": "delivery_assigned"
+    },
+    {
+      "id": "uuid-4w1nutxj8-mqhn24fo",
+      "created_at": "2026-06-17T05:36:46.068Z",
+      "user_id": "usr-4813exriz",
+      "title": "Delivery Partner Assigned 🛵",
+      "message": "Your order ORD-498883 has been assigned to salim (OTP: 1165).",
+      "type": "delivery_assigned"
+    },
+    {
+      "id": "uuid-08o78q9so-mqhn3nja",
+      "created_at": "2026-06-17T05:37:57.478Z",
+      "user_id": "usr-4813exriz",
+      "title": "Payment Submitted (Pending) ⏳",
+      "message": "Your online repayment of ₹500 is pending admin approval.",
+      "type": "payment_repayment"
+    },
+    {
+      "id": "uuid-n6ib37odw-mqhn3nm7",
+      "created_at": "2026-06-17T05:37:57.583Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Payment Pending Approval 💰",
+      "message": "A B2B customer (kadeer hotel) has submitted a payment of ₹500 for approval.",
+      "type": "payment_approval"
+    },
+    {
+      "id": "uuid-a292urh36-mqhn3ypm",
+      "created_at": "2026-06-17T05:38:11.962Z",
+      "user_id": "usr-4813exriz",
+      "title": "Payment Submitted (Pending) ⏳",
+      "message": "Your online repayment of ₹500 is pending admin approval.",
+      "type": "payment_repayment"
+    },
+    {
+      "id": "uuid-fq5x2m88g-mqhn3ys6",
+      "created_at": "2026-06-17T05:38:12.054Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Payment Pending Approval 💰",
+      "message": "A B2B customer (kadeer hotel) has submitted a payment of ₹500 for approval.",
+      "type": "payment_approval"
+    },
+    {
+      "id": "uuid-b383455sz-mqhn7993",
+      "created_at": "2026-06-17T05:40:45.591Z",
+      "user_id": "usr-4813exriz",
+      "title": "Payment Submitted (Pending) ⏳",
+      "message": "Your online repayment of ₹500 is pending admin approval.",
+      "type": "payment_repayment"
+    },
+    {
+      "id": "uuid-0bjrer8t2-mqhn79at",
+      "created_at": "2026-06-17T05:40:45.653Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Payment Pending Approval 💰",
+      "message": "A B2B customer (kadeer hotel) has submitted a payment of ₹500 for approval.",
+      "type": "payment_approval"
+    },
+    {
+      "id": "uuid-tx90undqu-mqhn7lek",
+      "created_at": "2026-06-17T05:41:01.340Z",
+      "user_id": "usr-4813exriz",
+      "title": "Payment Submitted (Pending) ⏳",
+      "message": "Your online repayment of ₹500 is pending admin approval.",
+      "type": "payment_repayment"
+    },
+    {
+      "id": "uuid-4t7s81a08-mqhn7lik",
+      "created_at": "2026-06-17T05:41:01.484Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Payment Pending Approval 💰",
+      "message": "A B2B customer (kadeer hotel) has submitted a payment of ₹500 for approval.",
+      "type": "payment_approval"
+    },
+    {
+      "id": "uuid-glr01rf4w-mqhn90s6",
+      "created_at": "2026-06-17T05:42:07.926Z",
+      "user_id": "usr-4813exriz",
+      "title": "Repayment Rejected ❌",
+      "message": "Your online payment of ₹500 was rejected. Please contact the administrator.",
+      "type": "payment_repayment"
+    },
+    {
+      "id": "uuid-drj9kvh7y-mqhn942d",
+      "created_at": "2026-06-17T05:42:12.181Z",
+      "user_id": "usr-4813exriz",
+      "title": "Repayment Rejected ❌",
+      "message": "Your online payment of ₹500 was rejected. Please contact the administrator.",
+      "type": "payment_repayment"
+    },
+    {
+      "id": "uuid-bgkobrg3s-mqhn96ra",
+      "created_at": "2026-06-17T05:42:15.670Z",
+      "user_id": "usr-4813exriz",
+      "title": "Repayment Rejected ❌",
+      "message": "Your online payment of ₹500 was rejected. Please contact the administrator.",
+      "type": "payment_repayment"
+    },
+    {
+      "id": "uuid-83yb5vlm2-mqhn980p",
+      "created_at": "2026-06-17T05:42:17.305Z",
+      "user_id": "usr-4813exriz",
+      "title": "Repayment Approved 👍",
+      "message": "Your online payment of ₹500 has been approved. Available credit updated to ₹500.",
+      "type": "payment_repayment"
+    },
+    {
+      "id": "uuid-riss0u4ra-mqhno4zj",
+      "created_at": "2026-06-17T05:53:53.215Z",
+      "user_id": "usr-4813exriz",
+      "title": "Order Placed successfully 🎉",
+      "message": "Your order ORD-413962 for ₹500 has been placed. Payment method: Pay Later (Credit).",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-84gx841cx-mqhno5ha",
+      "created_at": "2026-06-17T05:53:53.854Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Order Received 📦",
+      "message": "Order ORD-413962 placed by kadir qureshi for ₹500.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-7jnitrcb9-mqhnogz0",
+      "created_at": "2026-06-17T05:54:08.748Z",
+      "user_id": "usr-4813exriz",
+      "title": "Payment Submitted (Pending) ⏳",
+      "message": "Your online repayment of ₹500 is pending admin approval.",
+      "type": "payment_repayment"
+    },
+    {
+      "id": "uuid-0r5i76a87-mqhnoh0r",
+      "created_at": "2026-06-17T05:54:08.811Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Payment Pending Approval 💰",
+      "message": "A B2B customer (kadeer hotel) has submitted a payment of ₹500 for approval.",
+      "type": "payment_approval"
+    },
+    {
+      "id": "uuid-tu5ngr2fk-mqhnoqoj",
+      "created_at": "2026-06-17T05:54:21.331Z",
+      "user_id": "usr-4813exriz",
+      "title": "Payment Submitted (Pending) ⏳",
+      "message": "Your online repayment of ₹500 is pending admin approval.",
+      "type": "payment_repayment"
+    },
+    {
+      "id": "uuid-4glxhy7ya-mqhnoqqb",
+      "created_at": "2026-06-17T05:54:21.395Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Payment Pending Approval 💰",
+      "message": "A B2B customer (kadeer hotel) has submitted a payment of ₹500 for approval.",
+      "type": "payment_approval"
+    },
+    {
+      "id": "uuid-q3ymw5mqc-mqhnpz3a",
+      "created_at": "2026-06-17T05:55:18.886Z",
+      "user_id": "usr-4813exriz",
+      "title": "Repayment Approved 👍",
+      "message": "Your online payment of ₹500 has been approved. Available credit updated to ₹500.",
+      "type": "payment_repayment"
+    },
+    {
+      "id": "uuid-bl234nqup-mqhnq5v4",
+      "created_at": "2026-06-17T05:55:27.664Z",
+      "user_id": "usr-4813exriz",
+      "title": "Repayment Approved 👍",
+      "message": "Your online payment of ₹500 has been approved. Available credit updated to ₹500.",
+      "type": "payment_repayment"
+    },
+    {
+      "id": "uuid-9yf7g90hm-mqhnqile",
+      "created_at": "2026-06-17T05:55:44.162Z",
+      "user_id": "dp-xtzmmb9gp",
+      "title": "New Delivery Assigned 🛵",
+      "message": "You have been assigned Order ORD-413962 for delivery to kadir qureshi.",
+      "type": "delivery_assigned"
+    },
+    {
+      "id": "uuid-pc3b5mb5q-mqhnqimf",
+      "created_at": "2026-06-17T05:55:44.199Z",
+      "user_id": "usr-4813exriz",
+      "title": "Delivery Partner Assigned 🛵",
+      "message": "Your order ORD-413962 has been assigned to salim (OTP: 6294).",
+      "type": "delivery_assigned"
+    },
+    {
+      "id": "uuid-gcy5frlxl-mqhpk2kh",
+      "created_at": "2026-06-17T06:46:42.689Z",
+      "user_id": "usr-4813exriz",
+      "title": "Order Placed successfully 🎉",
+      "message": "Your order ORD-520711 for ₹500 has been placed. Payment method: Pay Later (Credit).",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-gl993mfu7-mqhpk2n2",
+      "created_at": "2026-06-17T06:46:42.782Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Order Received 📦",
+      "message": "Order ORD-520711 placed by kadir qureshi for ₹500.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-22ms11kbf-mqhpo2lw",
+      "created_at": "2026-06-17T06:49:49.364Z",
+      "user_id": "dp-xtzmmb9gp",
+      "title": "New Delivery Assigned 🛵",
+      "message": "You have been assigned Order ORD-520711 for delivery to kadir qureshi.",
+      "type": "delivery_assigned"
+    },
+    {
+      "id": "uuid-m8mrt4lrb-mqhpo2mz",
+      "created_at": "2026-06-17T06:49:49.403Z",
+      "user_id": "usr-4813exriz",
+      "title": "Delivery Partner Assigned 🛵",
+      "message": "Your order ORD-520711 has been assigned to salim (OTP: 6737).",
+      "type": "delivery_assigned"
+    },
+    {
+      "id": "uuid-rdqjbs0lx-mqhrqdz4",
+      "created_at": "2026-06-17T07:47:36.640Z",
+      "user_id": "usr-4813exriz",
+      "title": "Payment Submitted (Pending) ⏳",
+      "message": "Your online UPI repayment of ₹780 is pending admin approval.",
+      "type": "payment_repayment"
+    },
+    {
+      "id": "uuid-inv1c6oab-mqhrqeph",
+      "created_at": "2026-06-17T07:47:37.589Z",
+      "user_id": "d7b7b125-1234-5678-abcd-123456789abc",
+      "title": "New Payment Pending Approval 💰",
+      "message": "A B2B customer (kadeer hotel) has submitted a UPI payment of ₹780 for approval.",
+      "type": "payment_approval"
+    },
+    {
+      "id": "uuid-1asbg8sj8-mqhrr5u0",
+      "created_at": "2026-06-17T07:48:12.744Z",
+      "user_id": "usr-4813exriz",
+      "title": "Repayment Approved 👍",
+      "message": "Your online payment of ₹780 has been approved. Available credit updated to ₹500.",
+      "type": "payment_repayment"
+    },
+    {
+      "id": "uuid-f993x1m0e-mqhrvjk4",
+      "created_at": "2026-06-17T07:51:37.156Z",
+      "user_id": "usr-4813exriz",
+      "title": "Order Placed successfully 🎉",
+      "message": "Your order ORD-886354 for ₹1 has been placed. Payment method: Pay Later (Credit).",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-hqmxxu25x-mqhrvjlc",
+      "created_at": "2026-06-17T07:51:37.200Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Order Received 📦",
+      "message": "Order ORD-886354 placed by kadir qureshi for ₹1.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-rz7g1l7zp-mqhs1lan",
+      "created_at": "2026-06-17T07:56:19.343Z",
+      "user_id": "usr-4813exriz",
+      "title": "Payment Submitted (Pending) ⏳",
+      "message": "Your online UPI repayment of ₹1 is pending admin approval.",
+      "type": "payment_repayment"
+    },
+    {
+      "id": "uuid-z25my7nuo-mqhs1lh8",
+      "created_at": "2026-06-17T07:56:19.580Z",
+      "user_id": "d7b7b125-1234-5678-abcd-123456789abc",
+      "title": "New Payment Pending Approval 💰",
+      "message": "A B2B customer (kadeer hotel) has submitted a UPI payment of ₹1 for approval.",
+      "type": "payment_approval"
+    },
+    {
+      "id": "uuid-ji2t6stat-mqhs2iaj",
+      "created_at": "2026-06-17T07:57:02.107Z",
+      "user_id": "usr-4813exriz",
+      "title": "Repayment Approved 👍",
+      "message": "Your online payment of ₹1 has been approved. Available credit updated to ₹5000.",
+      "type": "payment_repayment"
+    },
+    {
+      "id": "uuid-8zh666vqu-mqi19c61",
+      "created_at": "2026-06-17T12:14:17.305Z",
+      "user_id": "dp-xtzmmb9gp",
+      "title": "New Delivery Assigned 🛵",
+      "message": "You have been assigned Order ORD-886354 for delivery to kadir qureshi.",
+      "type": "delivery_assigned"
+    },
+    {
+      "id": "uuid-ki3525e1p-mqi19c7k",
+      "created_at": "2026-06-17T12:14:17.360Z",
+      "user_id": "usr-4813exriz",
+      "title": "Delivery Partner Assigned 🛵",
+      "message": "Your order ORD-886354 has been assigned to salim (OTP: 9445).",
+      "type": "delivery_assigned"
+    }
+  ],
+  "payments": [
+    {
+      "id": "uuid-4qasp3lk1-mqgzqiq8",
+      "created_at": "2026-06-16T18:43:53.552Z",
+      "user_id": "usr-4813exriz",
+      "amount": 220,
+      "status": "active",
+      "payment_method": "Online",
+      "payment_ref": "repay-RZUERI2R2"
+    },
+    {
+      "id": "uuid-yqpyffwel-mqhn3nht",
+      "created_at": "2026-06-17T05:37:57.425Z",
+      "user_id": "usr-4813exriz",
+      "amount": 500,
+      "status": "rejected",
+      "payment_method": "Online",
+      "payment_ref": "repay-8LPLZVJQ6"
+    },
+    {
+      "id": "uuid-b9vd2cct1-mqhn3ynv",
+      "created_at": "2026-06-17T05:38:11.899Z",
+      "user_id": "usr-4813exriz",
+      "amount": 500,
+      "status": "rejected",
+      "payment_method": "Online",
+      "payment_ref": "repay-8W9I98MA5"
+    },
+    {
+      "id": "uuid-wmw1bixd0-mqhn7979",
+      "created_at": "2026-06-17T05:40:45.525Z",
+      "user_id": "usr-4813exriz",
+      "amount": 500,
+      "status": "rejected",
+      "payment_method": "Online",
+      "payment_ref": "repay-W1W9PYF66"
+    },
+    {
+      "id": "uuid-to1uq3j4c-mqhn7lc0",
+      "created_at": "2026-06-17T05:41:01.248Z",
+      "user_id": "usr-4813exriz",
+      "amount": 500,
+      "status": "approved",
+      "payment_method": "Online",
+      "payment_ref": "repay-OMR757G7K"
+    },
+    {
+      "id": "uuid-qcdrq86qh-mqhnoghh",
+      "created_at": "2026-06-17T05:54:08.117Z",
+      "user_id": "usr-4813exriz",
+      "amount": 500,
+      "status": "approved",
+      "payment_method": "Online",
+      "payment_ref": "repay-M88C5K9U3"
+    },
+    {
+      "id": "uuid-e1x4s6v8s-mqhnoqmu",
+      "created_at": "2026-06-17T05:54:21.270Z",
+      "user_id": "usr-4813exriz",
+      "amount": 500,
+      "status": "approved",
+      "payment_method": "Online",
+      "payment_ref": "repay-XYCUWZ8GW"
+    },
+    {
+      "id": "uuid-1t9vafz2j-mqhrqdu4",
+      "created_at": "2026-06-17T07:47:36.460Z",
+      "user_id": "usr-4813exriz",
+      "amount": 780,
+      "status": "Verified",
+      "payment_method": "Online (UPI)",
+      "payment_ref": "123456789012",
+      "screenshot_url": null
+    },
+    {
+      "id": "uuid-5dr5ogilu-mqhs1kns",
+      "created_at": "2026-06-17T07:56:18.520Z",
+      "user_id": "usr-4813exriz",
+      "amount": 1,
+      "status": "Verified",
+      "payment_method": "Online (UPI)",
+      "payment_ref": "653439839567",
+      "screenshot_url": null
+    },
+    {
+      "id": "pay-2oogni2hn",
+      "created_at": "2026-06-17T15:47:22.853Z",
+      "user_id": "d7b7b124-1234-5678-abcd-123456789abc",
+      "amount": 1200,
+      "status": "Verified",
+      "payment_method": "Online (Razorpay)",
+      "payment_ref": "pay_mock_123456789"
+    }
+  ]
+}

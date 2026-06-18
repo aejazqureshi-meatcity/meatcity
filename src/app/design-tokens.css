@@ -1,0 +1,29 @@
+/* Design Tokens for Mobile-First UI */
+:root {
+  /* Colors */
+  --color-primary-red: #D60000;
+  --color-gold: #D4AF37;
+  --color-black: #111111;
+  --color-white: #FFFFFF;
+  --color-background: #F8F9FA;
+
+  /* Typography */
+  --font-primary: 'Outfit', sans-serif;
+  --font-secondary: 'Inter', sans-serif;
+
+  /* Border radius */
+  --radius-default: 16px;
+  --radius-btn: 12px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+/* Utility classes (optional) */
+.bg-primary-red { background-color: var(--color-primary-red); }
+.text-primary-red { color: var(--color-primary-red); }
+.bg-gold { background-color: var(--color-gold); }
+.text-gold { color: var(--color-gold); }
+.bg-black { background-color: var(--color-black); }
+.text-white { color: var(--color-white); }
