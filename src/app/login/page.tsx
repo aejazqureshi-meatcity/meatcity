@@ -35,8 +35,15 @@ export default function Login() {
         return;
       }
 
-      const role = data.user?.user_metadata?.user_type;
-      const status = data.user?.user_metadata?.status;
+      // Fetch up-to-date profile from public.users table to avoid stale metadata issues
+      const { data: profile } = await supabase
+        .from('users')
+        .select('user_type, status')
+        .eq('id', data.user?.id)
+        .single();
+
+      const role = profile?.user_type || data.user?.user_metadata?.user_type;
+      const status = profile?.status || data.user?.user_metadata?.status;
       
       console.log(`[AUTH LOG] Client-side: Sign in success. User Type: ${role}, Status: ${status}`);
 
