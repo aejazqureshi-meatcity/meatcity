@@ -61,8 +61,27 @@ export async function POST(request: Request) {
         payment_ref: razorpay_payment_id || 'mock_pay_id_' + Math.random().toString(36).substr(2, 9)
       };
 
+      // Filter database payload to avoid PostgREST column schema mismatch errors
+      const dbOrderPayload = {
+        id: secureOrderPayload.id,
+        user_id: secureOrderPayload.user_id,
+        customer_name: secureOrderPayload.customer_name,
+        business_name: secureOrderPayload.business_name,
+        customer_phone: secureOrderPayload.customer_phone,
+        delivery_address: secureOrderPayload.delivery_address,
+        subtotal: secureOrderPayload.subtotal,
+        discount: secureOrderPayload.discount,
+        delivery_fee: secureOrderPayload.delivery_fee,
+        total: secureOrderPayload.total,
+        payment_method: secureOrderPayload.payment_method,
+        payment_status: secureOrderPayload.payment_status,
+        payment_ref: secureOrderPayload.payment_ref,
+        status: secureOrderPayload.status,
+        items: secureOrderPayload.items
+      };
+
       // Write order directly to database
-      const { error: orderError } = await supabase.from('orders').insert(secureOrderPayload);
+      const { error: orderError } = await supabase.from('orders').insert(dbOrderPayload);
       if (orderError) {
         console.error('Failed to save verified order:', orderError);
         return NextResponse.json({ error: 'Failed to write order: ' + orderError.message }, { status: 500 });

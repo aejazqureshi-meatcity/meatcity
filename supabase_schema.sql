@@ -1,3 +1,7 @@
+-- =========================================================================
+-- MEAT CITY - SYSTEM DATABASE SCHEMA
+-- =========================================================================
+
 -- Enable necessary extensions
 create extension if not exists pgcrypto;
 
@@ -60,6 +64,7 @@ create table if not exists public.orders (
     id text primary key,
     user_id uuid references public.users(id) on delete cascade not null,
     customer_name text,
+    business_name text,
     customer_phone text,
     delivery_address text,
     subtotal numeric not null default 0,
@@ -74,6 +79,7 @@ create table if not exists public.orders (
     delivery_partner_name text,
     delivery_status text,
     delivery_otp text,
+    items jsonb default '[]'::jsonb,
     created_at timestamp with time zone default now()
 );
 
@@ -130,6 +136,18 @@ create table if not exists public.notifications (
     created_at timestamp with time zone default now()
 );
 
+-- 17. Create payments table for B2B repayments
+create table if not exists public.payments (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid references public.users(id) on delete cascade not null,
+    amount numeric not null default 0,
+    status text not null default 'pending', -- 'pending', 'active', 'rejected'
+    payment_method text,
+    payment_ref text,
+    screenshot_url text,
+    created_at timestamp with time zone default now()
+);
+
 -- Enable RLS and setup simple access policies if needed
 alter table public.categories enable row level security;
 alter table public.products enable row level security;
@@ -141,20 +159,46 @@ alter table public.b2b_ledgers enable row level security;
 alter table public.cash_collection_requests enable row level security;
 alter table public.delivery_partners enable row level security;
 alter table public.notifications enable row level security;
+alter table public.payments enable row level security;
 
 -- Setup full read/write permissions for authenticated users and admins (simple policies)
+drop policy if exists "Allow all read categories" on public.categories;
 create policy "Allow all read categories" on public.categories for select using (true);
+
+drop policy if exists "Allow all read products" on public.products;
 create policy "Allow all read products" on public.products for select using (true);
+
+drop policy if exists "Allow all actions public.users" on public.users;
 create policy "Allow all actions public.users" on public.users for all using (true);
+
+drop policy if exists "Allow all actions public.addresses" on public.addresses;
 create policy "Allow all actions public.addresses" on public.addresses for all using (true);
+
+drop policy if exists "Allow all actions public.orders" on public.orders;
 create policy "Allow all actions public.orders" on public.orders for all using (true);
+
+drop policy if exists "Allow all actions public.order_items" on public.order_items;
 create policy "Allow all actions public.order_items" on public.order_items for all using (true);
+
+drop policy if exists "Allow all actions public.b2b_ledgers" on public.b2b_ledgers;
 create policy "Allow all actions public.b2b_ledgers" on public.b2b_ledgers for all using (true);
+
+drop policy if exists "Allow all actions public.cash_collection_requests" on public.cash_collection_requests;
 create policy "Allow all actions public.cash_collection_requests" on public.cash_collection_requests for all using (true);
+
+drop policy if exists "Allow all actions public.delivery_partners" on public.delivery_partners;
 create policy "Allow all actions public.delivery_partners" on public.delivery_partners for all using (true);
+
+drop policy if exists "Allow all actions public.notifications" on public.notifications;
 create policy "Allow all actions public.notifications" on public.notifications for all using (true);
 
+drop policy if exists "Allow all actions public.payments" on public.payments;
+create policy "Allow all actions public.payments" on public.payments for all using (true);
+
+drop policy if exists "Allow admin full access categories" on public.categories;
 create policy "Allow admin full access categories" on public.categories for all using (true);
+
+drop policy if exists "Allow admin full access products" on public.products;
 create policy "Allow admin full access products" on public.products for all using (true);
 
 
@@ -185,7 +229,8 @@ begin
     0,
     case when coalesce(new.raw_user_meta_data->>'user_type', 'b2c') = 'b2b' then 50000 else 0 end,
     0
-  );
+  )
+  on conflict (id) do nothing;
   return new;
 end;
 $$ language plpgsql security definer;
@@ -282,11 +327,13 @@ on conflict (id) do update set
 -- Admin credentials: admin@meatcity.com / password123
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, 
-  raw_app_meta_data, raw_user_meta_data, created_at, updated_at
+  raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+  confirmation_token, recovery_token, email_change_token_new, email_change,
+  phone, phone_change, phone_change_token, email_change_token_current, is_super_admin
 )
 values (
   '00000000-0000-0000-0000-000000000000',
-  'd7b7b123-1234-5678-abcd-123456789abc',
+  '1c6b0337-3b7b-4ccf-923e-87aca84d0c45', -- Unified Admin UID
   'authenticated',
   'authenticated',
   'admin@meatcity.com',
@@ -295,14 +342,16 @@ values (
   '{"provider":"email","providers":["email"]}',
   '{"full_name":"Aejaz Qureshi","user_type":"admin","status":"active"}',
   now(),
-  now()
+  now(),
+  '', '', '', '',
+  '', '', '', '', false
 ) on conflict (id) do nothing;
 
 insert into public.users (
   id, email, full_name, phone, user_type, status, created_at
 )
 values (
-  'd7b7b123-1234-5678-abcd-123456789abc',
+  '1c6b0337-3b7b-4ccf-923e-87aca84d0c45', -- Unified Admin UID
   'admin@meatcity.com',
   'Aejaz Qureshi',
   '7977630912',
@@ -310,19 +359,3 @@ values (
   'active',
   now()
 ) on conflict (id) do nothing;
-
-
--- 17. Create payments table for B2B repayments
-create table if not exists public.payments (
-    id uuid primary key default gen_random_uuid(),
-    user_id uuid references public.users(id) on delete cascade not null,
-    amount numeric not null default 0,
-    status text not null default 'pending', -- 'pending', 'active', 'rejected'
-    payment_method text,
-    payment_ref text,
-    created_at timestamp with time zone default now()
-);
-
-alter table public.payments enable row level security;
-create policy "Allow all actions public.payments" on public.payments for all using (true);
-

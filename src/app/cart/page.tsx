@@ -602,7 +602,26 @@ export default function CartPage() {
       }))
     };
 
-    const { error } = await supabase.from('orders').insert(orderPayload);
+    // Filter database payload to avoid PostgREST column schema mismatch errors
+    const dbOrderPayload = {
+      id: orderPayload.id,
+      user_id: orderPayload.user_id,
+      customer_name: orderPayload.customer_name,
+      business_name: orderPayload.business_name,
+      customer_phone: orderPayload.customer_phone,
+      delivery_address: orderPayload.delivery_address,
+      subtotal: orderPayload.subtotal,
+      discount: orderPayload.discount,
+      delivery_fee: orderPayload.delivery_fee,
+      total: orderPayload.total,
+      payment_method: orderPayload.payment_method,
+      payment_status: orderPayload.payment_status,
+      payment_ref: orderPayload.payment_ref,
+      status: orderPayload.status,
+      items: orderPayload.items
+    };
+
+    const { error } = await supabase.from('orders').insert(dbOrderPayload);
     setIsProcessingPayment(false);
 
     if (error) {

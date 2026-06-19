@@ -5,8 +5,8 @@
 -- It will:
 -- 1. Create a trigger to auto-confirm emails for all new signups.
 -- 2. Confirm emails for all existing users in auth.users.
--- 3. Reset the test B2B user aejazq36@gmail.com back to 'pending' status
---    so you can test the B2B pending page and the admin approval flow.
+-- 3. Reset the test B2B user aejazq36@gmail.com back to 'pending' status.
+-- 4. Create missing 'business_name' and 'items' columns in the 'orders' table.
 -- =========================================================================
 
 -- PART 1: Auto-confirm email trigger for new signups
@@ -39,3 +39,7 @@ SET
   payment_due_date = NULL,
   ledger = '[]'::jsonb
 WHERE email = 'aejazq36@gmail.com';
+
+-- PART 4: Add business_name and items columns to public.orders table
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS business_name text;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS items jsonb DEFAULT '[]'::jsonb;
