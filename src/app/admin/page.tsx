@@ -2109,190 +2109,387 @@ export default function AdminDashboard() {
             <div className="admin-section-card">
               <h2 className="admin-section-title" style={{ marginBottom: '1.25rem' }}>Current Orders Queue ({orders.length})</h2>
               
-              <div className="admin-table-container">
-                <table className="admin-table">
-                  <thead>
-                    <tr>
-                      <th>Order ID</th>
-                      <th>Customer info</th>
-                      <th>Address</th>
-                      <th>Delivery Slot</th>
-                      <th>Items ordered</th>
-                      <th>Totals</th>
-                      <th>Method</th>
-                      <th>Order status</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orders.map(order => (
-                      <tr key={order.id}>
-                        <td data-label="Order ID"><strong>{order.id}</strong></td>
-                        <td data-label="Customer info">
-                          <div className="admin-cell-stack">
-                            {(() => {
-                              const orderUser = users.find(u => u.id === order.user_id);
-                              return (
-                                <>
-                                  <strong>{orderUser ? orderUser.full_name : order.customer_name}</strong>
-                                  {orderUser?.business_name && (
-                                    <span style={{ fontSize: '0.75rem', color: '#666' }}>
-                                      🏭 {orderUser.business_name}
+              {/* Desktop Table View */}
+              <div className="admin-desktop-only">
+                <div className="admin-table-container">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Order ID</th>
+                        <th>Customer info</th>
+                        <th>Address</th>
+                        <th>Delivery Slot</th>
+                        <th>Items ordered</th>
+                        <th>Totals</th>
+                        <th>Method</th>
+                        <th>Order status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orders.map(order => (
+                        <tr key={order.id}>
+                          <td data-label="Order ID"><strong>{order.id}</strong></td>
+                          <td data-label="Customer info">
+                            <div className="admin-cell-stack">
+                              {(() => {
+                                const orderUser = users.find(u => u.id === order.user_id);
+                                return (
+                                  <>
+                                    <strong>{orderUser ? orderUser.full_name : order.customer_name}</strong>
+                                    {orderUser?.business_name && (
+                                      <span style={{ fontSize: '0.75rem', color: '#666' }}>
+                                        🏭 {orderUser.business_name}
+                                      </span>
+                                    )}
+                                    <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                                      📞 {orderUser ? orderUser.phone : order.customer_phone}
                                     </span>
-                                  )}
-                                  <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-                                    📞 {orderUser ? orderUser.phone : order.customer_phone}
-                                  </span>
-                                </>
-                              );
-                            })()}
-                          </div>
-                        </td>
-                        <td data-label="Address" style={{ maxWidth: '180px', fontSize: '0.8rem' }}>{order.delivery_address}</td>
-                        <td data-label="Delivery Slot">
-                          <span className="admin-badge admin-badge-secondary">
-                            {order.delivery_slot || 'ASAP'}
-                          </span>
-                        </td>
-                        <td data-label="Items ordered">
-                          <div className="admin-cell-stack">
-                            {order.items?.map((item, idx) => (
-                              <div key={idx} style={{ fontSize: '0.85rem' }}>- {item.name} x {item.quantity}</div>
-                            ))}
-                          </div>
-                        </td>
-                        <td data-label="Totals">
-                          <div className="admin-cell-stack">
-                            <strong>₹{order.total}</strong>
-                            <span style={{ fontSize: '0.75rem', color: '#666' }}>Sub: ₹{order.subtotal}</span>
-                          </div>
-                        </td>
-                        <td data-label="Method">
-                          <div className="admin-cell-stack">
-                            <span className={`admin-badge ${
-                              order.payment_status === 'Paid' ? 'admin-badge-success' :
-                              order.payment_status === 'Payment Rejected' ? 'admin-badge-danger' :
-                              'admin-badge-warning'
-                            }`}>
-                              {order.payment_method} ({order.payment_status})
+                                  </>
+                                );
+                              })()}
+                            </div>
+                          </td>
+                          <td data-label="Address" style={{ maxWidth: '180px', fontSize: '0.8rem' }}>{order.delivery_address}</td>
+                          <td data-label="Delivery Slot">
+                            <span className="admin-badge admin-badge-secondary">
+                              {order.delivery_slot || 'ASAP'}
                             </span>
-                            {order.payment_ref && (
-                              <div style={{ fontSize: '0.75rem', color: '#4b5563', fontFamily: 'monospace' }}>
-                                Ref: <strong>{order.payment_ref}</strong>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td data-label="Order status">
-                          <span className={`admin-badge ${
-                            order.status === 'Delivered' ? 'admin-badge-success' :
-                            order.status === 'Cancelled' ? 'admin-badge-danger' :
-                            order.status === 'New' ? 'admin-badge-danger' : 'admin-badge-warning'
-                          }`}>
-                            {order.status}
-                          </span>
-                        </td>
-                        <td data-label="Action">
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                            <select 
-                              className="admin-form-select" 
-                              style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem', width: 'auto' }}
-                              value={order.status} 
-                              onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value as any)}
-                            >
-                              <option value="New">New</option>
-                              <option value="Processing">Processing</option>
-                              <option value="Packed">Packed</option>
-                              <option value="Out for Delivery">Out for Delivery</option>
-                              <option value="Delivered">Delivered</option>
-                              <option value="Cancelled">Cancelled</option>
-                            </select>
-
-                            {order.payment_status === 'Pending Verification' && (
-                              <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.2rem' }}>
-                                <button 
-                                  onClick={() => handleVerifyPayment(order.id, 'Paid')} 
-                                  className="admin-btn admin-btn-sm admin-btn-success"
-                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', flex: 1 }}
-                                >
-                                  Approve Pay
-                                </button>
-                                <button 
-                                  onClick={() => handleVerifyPayment(order.id, 'Payment Rejected')} 
-                                  className="admin-btn admin-btn-sm admin-btn-danger"
-                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', flex: 1 }}
-                                >
-                                  Reject Pay
-                                </button>
-                              </div>
-                            )}
-
-                            {/* Delivery Partner Dropdown Selector */}
-                            <div style={{ marginTop: '0.4rem', display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                              <span style={{ fontSize: '0.72rem', color: '#B8B8B8', fontWeight: 700 }}>Courier Assignment:</span>
-                              <select 
-                                className="admin-form-select"
-                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', width: '100%', borderColor: order.delivery_partner_id ? '#10b981' : 'rgba(255,255,255,0.08)' }}
-                                value={order.delivery_partner_id || ''}
-                                onChange={async (e) => {
-                                  const partnerId = e.target.value;
-                                  const partnerUser = users.find(u => u.id === partnerId);
-                                  const randomOtp = Math.floor(1000 + Math.random() * 9000).toString(); // prefilled dynamic random 4-digit code
-                                  
-                                  await supabase.from('orders').update({
-                                    delivery_partner_id: partnerId,
-                                    delivery_partner_name: partnerUser ? (partnerUser.full_name || partnerUser.name) : '',
-                                    delivery_status: partnerId ? 'assigned' : '',
-                                    delivery_otp: partnerId ? randomOtp : ''
-                                  }).eq('id', order.id);
-
-                                  if (partnerId) {
-                                    try {
-                                      await supabase.from('notifications').insert({
-                                        user_id: partnerId,
-                                        title: 'New Delivery Assigned 🛵',
-                                        message: `You have been assigned Order ${order.id} for delivery to ${order.customer_name || 'Customer'}.`,
-                                        type: 'delivery_assigned'
-                                      });
-                                      await supabase.from('notifications').insert({
-                                        user_id: order.user_id,
-                                        title: 'Delivery Partner Assigned 🛵',
-                                        message: `Your order ${order.id} has been assigned to ${partnerUser?.full_name || partnerUser?.name || 'Delivery Partner'} (OTP: ${randomOtp}).`,
-                                        type: 'delivery_assigned'
-                                      });
-                                    } catch (nErr) {
-                                      console.error('Failed to trigger assignment notifications:', nErr);
-                                    }
-                                  }
-
-                                  loadData();
-                                }}
-                              >
-                                <option value="">Unassigned</option>
-                                {users.filter(u => u.user_type === 'delivery_partner' && u.status === 'active').map(u => (
-                                  <option key={u.id} value={u.id}>{u.full_name || u.name}</option>
-                                ))}
-                              </select>
-                              {order.delivery_partner_id && (
-                                <div style={{ fontSize: '0.72rem', color: order.delivery_status === 'delivered' ? '#10b981' : '#D4AF37', marginTop: '0.15rem' }}>
-                                  Status: <span style={{ textTransform: 'capitalize', fontWeight: 800 }}>{order.delivery_status || 'assigned'}</span>
-                                  {order.delivery_otp && ` (OTP: ${order.delivery_otp})`}
+                          </td>
+                          <td data-label="Items ordered">
+                            <div className="admin-cell-stack">
+                              {order.items?.map((item, idx) => (
+                                <div key={idx} style={{ fontSize: '0.85rem' }}>- {item.name} x {item.quantity}</div>
+                              ))}
+                            </div>
+                          </td>
+                          <td data-label="Totals">
+                            <div className="admin-cell-stack">
+                              <strong>₹{order.total}</strong>
+                              <span style={{ fontSize: '0.75rem', color: '#666' }}>Sub: ₹{order.subtotal}</span>
+                            </div>
+                          </td>
+                          <td data-label="Method">
+                            <div className="admin-cell-stack">
+                              <span className={`admin-badge ${
+                                order.payment_status === 'Paid' ? 'admin-badge-success' :
+                                order.payment_status === 'Payment Rejected' ? 'admin-badge-danger' :
+                                'admin-badge-warning'
+                              }`}>
+                                {order.payment_method} ({order.payment_status})
+                              </span>
+                              {order.payment_ref && (
+                                <div style={{ fontSize: '0.75rem', color: '#4b5563', fontFamily: 'monospace' }}>
+                                  Ref: <strong>{order.payment_ref}</strong>
                                 </div>
                               )}
                             </div>
+                          </td>
+                          <td data-label="Order status">
+                            <span className={`admin-badge ${
+                              order.status === 'Delivered' ? 'admin-badge-success' :
+                              order.status === 'Cancelled' ? 'admin-badge-danger' :
+                              order.status === 'New' ? 'admin-badge-danger' : 'admin-badge-warning'
+                            }`}>
+                              {order.status}
+                            </span>
+                          </td>
+                          <td data-label="Action">
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                              <select 
+                                className="admin-form-select" 
+                                style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem', width: 'auto' }}
+                                value={order.status} 
+                                onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value as any)}
+                              >
+                                <option value="New">New</option>
+                                <option value="Processing">Processing</option>
+                                <option value="Packed">Packed</option>
+                                <option value="Out for Delivery">Out for Delivery</option>
+                                <option value="Delivered">Delivered</option>
+                                <option value="Cancelled">Cancelled</option>
+                              </select>
+
+                              {order.payment_status === 'Pending Verification' && (
+                                <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.2rem' }}>
+                                  <button 
+                                    onClick={() => handleVerifyPayment(order.id, 'Paid')} 
+                                    className="admin-btn admin-btn-sm admin-btn-success"
+                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', flex: 1 }}
+                                  >
+                                    Approve Pay
+                                  </button>
+                                  <button 
+                                    onClick={() => handleVerifyPayment(order.id, 'Payment Rejected')} 
+                                    className="admin-btn admin-btn-sm admin-btn-danger"
+                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', flex: 1 }}
+                                  >
+                                    Reject Pay
+                                  </button>
+                                </div>
+                              )}
+
+                              {/* Delivery Partner Dropdown Selector */}
+                              <div style={{ marginTop: '0.4rem', display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                                <span style={{ fontSize: '0.72rem', color: '#B8B8B8', fontWeight: 700 }}>Courier Assignment:</span>
+                                <select 
+                                  className="admin-form-select"
+                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', width: '100%', borderColor: order.delivery_partner_id ? '#10b981' : 'rgba(255,255,255,0.08)' }}
+                                  value={order.delivery_partner_id || ''}
+                                  onChange={async (e) => {
+                                    const partnerId = e.target.value;
+                                    const partnerUser = users.find(u => u.id === partnerId);
+                                    const randomOtp = Math.floor(1000 + Math.random() * 9000).toString();
+                                    
+                                    await supabase.from('orders').update({
+                                      delivery_partner_id: partnerId,
+                                      delivery_partner_name: partnerUser ? (partnerUser.full_name || partnerUser.name) : '',
+                                      delivery_status: partnerId ? 'assigned' : '',
+                                      delivery_otp: partnerId ? randomOtp : ''
+                                    }).eq('id', order.id);
+
+                                    if (partnerId) {
+                                      try {
+                                        await supabase.from('notifications').insert({
+                                          user_id: partnerId,
+                                          title: 'New Delivery Assigned 🛵',
+                                          message: `You have been assigned Order ${order.id} for delivery to ${order.customer_name || 'Customer'}.`,
+                                          type: 'delivery_assigned'
+                                        });
+                                        await supabase.from('notifications').insert({
+                                          user_id: order.user_id,
+                                          title: 'Delivery Partner Assigned 🛵',
+                                          message: `Your order ${order.id} has been assigned to ${partnerUser?.full_name || partnerUser?.name || 'Delivery Partner'} (OTP: ${randomOtp}).`,
+                                          type: 'delivery_assigned'
+                                        });
+                                      } catch (nErr) {
+                                        console.error('Failed to trigger assignment notifications:', nErr);
+                                      }
+                                    }
+
+                                    loadData();
+                                  }}
+                                >
+                                  <option value="">Unassigned</option>
+                                  {users.filter(u => u.user_type === 'delivery_partner' && u.status === 'active').map(u => (
+                                    <option key={u.id} value={u.id}>{u.full_name || u.name}</option>
+                                  ))}
+                                </select>
+                                {order.delivery_partner_id && (
+                                  <div style={{ fontSize: '0.72rem', color: order.delivery_status === 'delivered' ? '#10b981' : '#D4AF37', marginTop: '0.15rem' }}>
+                                    Status: <span style={{ textTransform: 'capitalize', fontWeight: 800 }}>{order.delivery_status || 'assigned'}</span>
+                                    {order.delivery_otp && ` (OTP: ${order.delivery_otp})`}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {orders.length === 0 && (
+                        <tr>
+                          <td data-label="Order ID" colSpan={9} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>
+                            No orders placed in this branch database.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Mobile Card/Invoice View */}
+              <div className="admin-mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {orders.map(order => (
+                  <div key={order.id} className="admin-order-card" style={{
+                    backgroundColor: '#111111',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '16px',
+                    padding: '1rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.75rem'
+                  }}>
+                    {/* Header: ID & Status */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '0.5rem' }}>
+                      <div>
+                        <span style={{ fontSize: '0.65rem', color: '#888', display: 'block', textTransform: 'uppercase' }}>Order ID</span>
+                        <strong style={{ fontSize: '0.85rem', color: '#fff' }}>{order.id}</strong>
+                      </div>
+                      <span className={`admin-badge ${
+                        order.status === 'Delivered' ? 'admin-badge-success' :
+                        order.status === 'Cancelled' ? 'admin-badge-danger' :
+                        order.status === 'New' ? 'admin-badge-danger' : 'admin-badge-warning'
+                      }`}>
+                        {order.status}
+                      </span>
+                    </div>
+
+                    {/* Customer Details */}
+                    <div>
+                      <span style={{ fontSize: '0.65rem', color: '#888', display: 'block', textTransform: 'uppercase', marginBottom: '0.15rem' }}>Customer</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+                        {(() => {
+                          const orderUser = users.find(u => u.id === order.user_id);
+                          return (
+                            <>
+                              <strong style={{ fontSize: '0.8rem', color: '#fff' }}>{orderUser ? orderUser.full_name : order.customer_name}</strong>
+                              {orderUser?.business_name && (
+                                <span style={{ fontSize: '0.7rem', color: '#D4AF37' }}>🏭 {orderUser.business_name}</span>
+                              )}
+                              <span style={{ fontSize: '0.75rem', color: '#B8B8B8' }}>📞 {orderUser ? orderUser.phone : order.customer_phone}</span>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+
+                    {/* Address & Slot */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', backgroundColor: 'rgba(255,255,255,0.02)', padding: '0.6rem', borderRadius: '8px' }}>
+                      <div>
+                        <span style={{ fontSize: '0.65rem', color: '#888', display: 'block', textTransform: 'uppercase' }}>Address</span>
+                        <span style={{ fontSize: '0.75rem', color: '#fff', wordBreak: 'break-word' }}>{order.delivery_address}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '0.35rem', marginTop: '0.15rem' }}>
+                        <span style={{ fontSize: '0.65rem', color: '#888', textTransform: 'uppercase' }}>Delivery Slot</span>
+                        <span className="admin-badge admin-badge-secondary" style={{ fontSize: '0.7rem' }}>
+                          {order.delivery_slot || 'ASAP'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Items */}
+                    <div>
+                      <span style={{ fontSize: '0.65rem', color: '#888', display: 'block', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Items Ordered</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                        {order.items?.map((item, idx) => (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#fff' }}>
+                            <span>- {item.name} x {item.quantity}</span>
+                            <strong>₹{item.total || (item.price * item.quantity)}</strong>
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {orders.length === 0 && (
-                      <tr>
-                        <td data-label="Order ID" colSpan={9} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>
-                          No orders placed in this branch database.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Totals & Payment */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', backgroundColor: 'rgba(255,255,255,0.02)', padding: '0.6rem', borderRadius: '8px' }}>
+                      <div>
+                        <span style={{ fontSize: '0.65rem', color: '#888', display: 'block', textTransform: 'uppercase' }}>Payment</span>
+                        <span className={`admin-badge ${
+                          order.payment_status === 'Paid' ? 'admin-badge-success' :
+                          order.payment_status === 'Payment Rejected' ? 'admin-badge-danger' :
+                          'admin-badge-warning'
+                        }`} style={{ fontSize: '0.7rem', marginTop: '0.15rem' }}>
+                          {order.payment_method} ({order.payment_status})
+                        </span>
+                        {order.payment_ref && (
+                          <div style={{ fontSize: '0.65rem', color: '#888', fontFamily: 'monospace', marginTop: '0.15rem' }}>Ref: {order.payment_ref}</div>
+                        )}
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span style={{ fontSize: '0.65rem', color: '#888', display: 'block', textTransform: 'uppercase' }}>Total</span>
+                        <strong style={{ fontSize: '1rem', color: '#D4AF37' }}>₹{order.total}</strong>
+                        <div style={{ fontSize: '0.65rem', color: '#888' }}>Sub: ₹{order.subtotal}</div>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '0.5rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                        <span style={{ fontSize: '0.65rem', color: '#B8B8B8', fontWeight: 700 }}>UPDATE STATUS:</span>
+                        <select 
+                          className="admin-form-select" 
+                          style={{ padding: '0.35rem 0.5rem', fontSize: '0.75rem', width: '100%' }}
+                          value={order.status} 
+                          onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value as any)}
+                        >
+                          <option value="New">New</option>
+                          <option value="Processing">Processing</option>
+                          <option value="Packed">Packed</option>
+                          <option value="Out for Delivery">Out for Delivery</option>
+                          <option value="Delivered">Delivered</option>
+                          <option value="Cancelled">Cancelled</option>
+                        </select>
+                      </div>
+
+                      {order.payment_status === 'Pending Verification' && (
+                        <div style={{ display: 'flex', gap: '0.35rem' }}>
+                          <button 
+                            onClick={() => handleVerifyPayment(order.id, 'Paid')} 
+                            className="admin-btn admin-btn-sm admin-btn-success"
+                            style={{ padding: '0.35rem', fontSize: '0.7rem', flex: 1 }}
+                          >
+                            Approve Pay
+                          </button>
+                          <button 
+                            onClick={() => handleVerifyPayment(order.id, 'Payment Rejected')} 
+                            className="admin-btn admin-btn-sm admin-btn-danger"
+                            style={{ padding: '0.35rem', fontSize: '0.7rem', flex: 1 }}
+                          >
+                            Reject Pay
+                          </button>
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                        <span style={{ fontSize: '0.65rem', color: '#B8B8B8', fontWeight: 700 }}>COURIER ASSIGNMENT:</span>
+                        <select 
+                          className="admin-form-select"
+                          style={{ padding: '0.35rem 0.5rem', fontSize: '0.75rem', width: '100%', borderColor: order.delivery_partner_id ? '#10b981' : 'rgba(255,255,255,0.08)' }}
+                          value={order.delivery_partner_id || ''}
+                          onChange={async (e) => {
+                            const partnerId = e.target.value;
+                            const partnerUser = users.find(u => u.id === partnerId);
+                            const randomOtp = Math.floor(1000 + Math.random() * 9000).toString();
+                            
+                            await supabase.from('orders').update({
+                              delivery_partner_id: partnerId,
+                              delivery_partner_name: partnerUser ? (partnerUser.full_name || partnerUser.name) : '',
+                              delivery_status: partnerId ? 'assigned' : '',
+                              delivery_otp: partnerId ? randomOtp : ''
+                            }).eq('id', order.id);
+
+                            if (partnerId) {
+                              try {
+                                await supabase.from('notifications').insert({
+                                  user_id: partnerId,
+                                  title: 'New Delivery Assigned 🛵',
+                                  message: `You have been assigned Order ${order.id} for delivery to ${order.customer_name || 'Customer'}.`,
+                                  type: 'delivery_assigned'
+                                });
+                                await supabase.from('notifications').insert({
+                                  user_id: order.user_id,
+                                  title: 'Delivery Partner Assigned 🛵',
+                                  message: `Your order ${order.id} has been assigned to ${partnerUser?.full_name || partnerUser?.name || 'Delivery Partner'} (OTP: ${randomOtp}).`,
+                                  type: 'delivery_assigned'
+                                });
+                              } catch (nErr) {
+                                console.error('Failed to trigger assignment notifications:', nErr);
+                              }
+                            }
+                            loadData();
+                          }}
+                        >
+                          <option value="">Unassigned</option>
+                          {users.filter(u => u.user_type === 'delivery_partner' && u.status === 'active').map(u => (
+                            <option key={u.id} value={u.id}>{u.full_name || u.name}</option>
+                          ))}
+                        </select>
+                        {order.delivery_partner_id && (
+                          <div style={{ fontSize: '0.65rem', color: order.delivery_status === 'delivered' ? '#10b981' : '#D4AF37', marginTop: '0.15rem' }}>
+                            Status: <span style={{ textTransform: 'capitalize', fontWeight: 800 }}>{order.delivery_status || 'assigned'}</span>
+                            {order.delivery_otp && ` (OTP: ${order.delivery_otp})`}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {orders.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '3rem', color: '#888', backgroundColor: '#111111', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    No orders placed in this branch database.
+                  </div>
+                )}
               </div>
             </div>
           )}

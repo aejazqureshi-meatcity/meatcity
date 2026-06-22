@@ -1790,11 +1790,12 @@ export default function CartPage() {
                       <div 
                         key={addr.id} 
                         onClick={() => setSelectedAddressId(addr.id)}
-                        className={`p-3.5 bg-white/5 border rounded-[12px] flex gap-3 items-start cursor-pointer transition-all ${
+                        className={`p-3.5 bg-[#111111] border rounded-[12px] flex gap-3 items-start cursor-pointer transition-all ${
                           selectedAddressId === addr.id 
                             ? 'border-gold bg-gold/5 shadow-md shadow-gold/5' 
-                            : 'border-white/5 hover:border-white/10'
+                            : 'border-white/10 hover:border-white/20'
                         }`}
+                        style={{ color: '#ffffff' }}
                       >
                         <input 
                           type="radio" 
@@ -1805,15 +1806,15 @@ export default function CartPage() {
                         />
                         <div className="flex-1 flex flex-col gap-0.5">
                           <div className="flex justify-between items-center">
-                            <span className="font-extrabold text-xs text-white">{addr.name}</span>
+                            <span className="font-extrabold text-xs text-white" style={{ color: '#ffffff' }}>{addr.name}</span>
                             {selectedAddressId === addr.id && (
-                              <span className="text-[9px] text-gold font-extrabold uppercase bg-gold/10 px-2 py-0.5 rounded-full">
+                              <span className="text-[9px] text-gold font-extrabold uppercase bg-gold/10 px-2 py-0.5 rounded-full" style={{ color: '#D4AF37', backgroundColor: 'rgba(212, 175, 55, 0.1)' }}>
                                 Selected
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px] text-text-secondary leading-relaxed mt-0.5">{addr.addressLine}</p>
-                          <span className="text-[10px] text-text-secondary font-bold mt-1">📞 {addr.phone}</span>
+                          <p className="text-[11px] text-[#B8B8B8] leading-relaxed mt-0.5" style={{ color: '#B8B8B8' }}>{addr.addressLine}</p>
+                          <span className="text-[10px] text-[#B8B8B8] font-bold mt-1" style={{ color: '#B8B8B8' }}>📞 {addr.phone}</span>
                         </div>
                       </div>
                     ))}

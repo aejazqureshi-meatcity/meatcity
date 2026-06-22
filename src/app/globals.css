@@ -520,4 +520,23 @@ html, body {
   border-color: #D4AF37 !important;
 }
 
+/* Responsive visibility helper classes for Admin page */
+@media (min-width: 768px) {
+  .admin-desktop-only {
+    display: block !important;
+  }
+  .admin-mobile-only {
+    display: none !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .admin-desktop-only {
+    display: none !important;
+  }
+  .admin-mobile-only {
+    display: block !important;
+  }
+}
+
 

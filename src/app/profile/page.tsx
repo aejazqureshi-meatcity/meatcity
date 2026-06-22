@@ -711,11 +711,11 @@ export default function ProfilePage() {
           ) : (
             <div className="flex flex-col gap-3.5">
               {addresses.map(addr => (
-                <div key={addr.id} className="bg-neutral-900 border border-white/5 rounded-[16px] p-4 flex justify-between items-start gap-4">
+                <div key={addr.id} className="bg-[#111111] border border-white/10 rounded-[16px] p-4 flex justify-between items-start gap-4" style={{ color: '#ffffff' }}>
                   <div className="flex-1 flex flex-col gap-1">
-                    <span className="font-extrabold text-xs text-white">{addr.name}</span>
-                    <p className="text-[11px] text-text-secondary leading-relaxed mt-0.5">{addr.addressLine}</p>
-                    <span className="text-[10px] text-text-secondary font-bold mt-1">📞 {addr.phone}</span>
+                    <span className="font-extrabold text-xs text-white" style={{ color: '#ffffff' }}>{addr.name}</span>
+                    <p className="text-[11px] text-[#B8B8B8] leading-relaxed mt-0.5" style={{ color: '#B8B8B8' }}>{addr.addressLine}</p>
+                    <span className="text-[10px] text-gold font-bold mt-1" style={{ color: '#D4AF37' }}>📞 {addr.phone}</span>
                   </div>
 
                   <div className="flex gap-2.5">
