@@ -117,11 +117,12 @@ export default function InvoicePage() {
           .no-print {
             display: none !important;
           }
-          /* Force all text elements to print in clear black */
-          *, h1, h2, h3, h4, span, strong, p, div, table, tr, th, td {
-            color: black !important;
+          /* Keep text shadows/box shadows clean and force color rendering */
+          * {
             text-shadow: none !important;
             box-shadow: none !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           /* Styling for details boxes in B&W print */
           .print-bg-gray {
@@ -281,7 +282,7 @@ export default function InvoicePage() {
             </div>
             
             {order.discount > 0 && (
-              <div className="flex justify-between text-emerald-400 font-bold">
+              <div className="flex justify-between text-emerald-400 print:text-emerald-600 font-bold">
                 <span>Discount {order.coupon_code ? `(${order.coupon_code})` : ''}</span>
                 <span>-₹{order.discount}</span>
               </div>
@@ -290,7 +291,11 @@ export default function InvoicePage() {
             <div className="flex justify-between text-text-secondary print:text-gray-600 border-b border-white/5 pb-2.5 print:border-gray-200">
               <span>Delivery Fee</span>
               <span className="text-white print:text-black">
-                {order.delivery_fee === 0 ? 'FREE' : `₹${order.delivery_fee}`}
+                {order.delivery_fee === 0 ? (
+                  <span className="text-emerald-400 print:text-emerald-600 font-bold">FREE</span>
+                ) : (
+                  `₹${order.delivery_fee}`
+                )}
               </span>
             </div>
 
