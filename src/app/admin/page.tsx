@@ -2102,46 +2102,54 @@ export default function AdminDashboard() {
                       <tr key={order.id}>
                         <td data-label="Order ID"><strong>{order.id}</strong></td>
                         <td data-label="Customer info">
-                          {(() => {
-                            const orderUser = users.find(u => u.id === order.user_id);
-                            return (
-                              <>
-                                <strong>{orderUser ? orderUser.full_name : order.customer_name}</strong>
-                                {orderUser?.business_name && (
-                                  <span style={{ display: 'block', fontSize: '0.75rem', color: '#666' }}>
-                                    🏭 {orderUser.business_name}
+                          <div className="admin-cell-stack">
+                            {(() => {
+                              const orderUser = users.find(u => u.id === order.user_id);
+                              return (
+                                <>
+                                  <strong>{orderUser ? orderUser.full_name : order.customer_name}</strong>
+                                  {orderUser?.business_name && (
+                                    <span style={{ fontSize: '0.75rem', color: '#666' }}>
+                                      🏭 {orderUser.business_name}
+                                    </span>
+                                  )}
+                                  <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                                    📞 {orderUser ? orderUser.phone : order.customer_phone}
                                   </span>
-                                )}
-                                <span style={{ display: 'block', fontSize: '0.8rem', color: '#6b7280' }}>
-                                  📞 {orderUser ? orderUser.phone : order.customer_phone}
-                                </span>
-                              </>
-                            );
-                          })()}
+                                </>
+                              );
+                            })()}
+                          </div>
                         </td>
                         <td data-label="Address" style={{ maxWidth: '180px', fontSize: '0.8rem' }}>{order.delivery_address}</td>
                         <td data-label="Items ordered">
-                          {order.items?.map((item, idx) => (
-                            <div key={idx} style={{ fontSize: '0.85rem' }}>- {item.name} x {item.quantity}</div>
-                          ))}
+                          <div className="admin-cell-stack">
+                            {order.items?.map((item, idx) => (
+                              <div key={idx} style={{ fontSize: '0.85rem' }}>- {item.name} x {item.quantity}</div>
+                            ))}
+                          </div>
                         </td>
                         <td data-label="Totals">
-                          <strong>₹{order.total}</strong><br/>
-                          <span style={{ fontSize: '0.75rem', color: '#666' }}>Sub: ₹{order.subtotal}</span>
+                          <div className="admin-cell-stack">
+                            <strong>₹{order.total}</strong>
+                            <span style={{ fontSize: '0.75rem', color: '#666' }}>Sub: ₹{order.subtotal}</span>
+                          </div>
                         </td>
                         <td data-label="Method">
-                          <span className={`admin-badge ${
-                            order.payment_status === 'Paid' ? 'admin-badge-success' :
-                            order.payment_status === 'Payment Rejected' ? 'admin-badge-danger' :
-                            'admin-badge-warning'
-                          }`}>
-                            {order.payment_method} ({order.payment_status})
-                          </span>
-                          {order.payment_ref && (
-                            <div style={{ fontSize: '0.75rem', marginTop: '0.25rem', color: '#4b5563', fontFamily: 'monospace' }}>
-                              Ref: <strong>{order.payment_ref}</strong>
-                            </div>
-                          )}
+                          <div className="admin-cell-stack">
+                            <span className={`admin-badge ${
+                              order.payment_status === 'Paid' ? 'admin-badge-success' :
+                              order.payment_status === 'Payment Rejected' ? 'admin-badge-danger' :
+                              'admin-badge-warning'
+                            }`}>
+                              {order.payment_method} ({order.payment_status})
+                            </span>
+                            {order.payment_ref && (
+                              <div style={{ fontSize: '0.75rem', color: '#4b5563', fontFamily: 'monospace' }}>
+                                Ref: <strong>{order.payment_ref}</strong>
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td data-label="Order status">
                           <span className={`admin-badge ${

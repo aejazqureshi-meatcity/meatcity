@@ -151,15 +151,18 @@ export default function ProfilePage() {
       const { data: addrData } = await supabase.from('addresses').select('*').eq('user_id', userId);
       const localKey = `meatcity_addresses_${userId}`;
       if (addrData && addrData.length > 0) {
-        const mappedAddrs: Address[] = addrData.map((a: any) => ({
-          id: a.id,
-          name: a.name,
-          roomNumber: a.room_number || '',
-          sectorArea: a.sector_area || '',
-          pincode: a.pincode || '',
-          addressLine: a.address_line || `${a.room_number || ''}, ${a.sector_area || ''}, Pincode: ${a.pincode || ''}`,
-          phone: a.phone || ''
-        }));
+        const mappedAddrs: Address[] = addrData.map((a: any) => {
+          const parsedPin = a.pincode || (a.address_line?.match(/\b\d{6}\b/)?.[0]) || '';
+          return {
+            id: a.id,
+            name: a.name,
+            roomNumber: a.room_number || '',
+            sectorArea: a.sector_area || '',
+            pincode: parsedPin,
+            addressLine: a.address_line || `${a.room_number || ''}, ${a.sector_area || ''}, Pincode: ${parsedPin}`,
+            phone: a.phone || ''
+          };
+        });
         setAddresses(mappedAddrs);
         localStorage.setItem(localKey, JSON.stringify(mappedAddrs));
       } else {
@@ -170,15 +173,28 @@ export default function ProfilePage() {
           setAddresses(parsed);
           // Sync to DB
           for (const item of parsed) {
-            await supabase.from('addresses').insert({
-              user_id: userId,
-              name: item.name,
-              room_number: item.roomNumber,
-              sector_area: item.sectorArea,
-              pincode: item.pincode,
-              address_line: item.addressLine,
-              phone: item.phone
-            });
+            try {
+              const { error } = await supabase.from('addresses').insert({
+                user_id: userId,
+                name: item.name,
+                room_number: item.roomNumber,
+                sector_area: item.sectorArea,
+                pincode: item.pincode,
+                address_line: item.addressLine,
+                phone: item.phone
+              });
+              if (error) {
+                // Try fallback insert
+                await supabase.from('addresses').insert({
+                  user_id: userId,
+                  name: item.name,
+                  address_line: item.addressLine,
+                  phone: item.phone
+                });
+              }
+            } catch (e) {
+              console.warn('Sync address fallback failed:', e);
+            }
           }
         }
       }
@@ -226,7 +242,18 @@ export default function ProfilePage() {
           })
           .eq('id', editingAddressId);
 
-        if (error) throw error;
+        if (error) {
+          console.warn('[DB FALLBACK] Update failed, retrying with address_line fallback:', error);
+          const { error: fallbackError } = await supabase
+            .from('addresses')
+            .update({
+              name: newAddress.name,
+              address_line: addressLine,
+              phone: newAddress.phone
+            })
+            .eq('id', editingAddressId);
+          if (fallbackError) throw fallbackError;
+        }
       } else {
         // Insert Address
         const { error } = await supabase
@@ -241,7 +268,18 @@ export default function ProfilePage() {
             phone: newAddress.phone
           });
 
-        if (error) throw error;
+        if (error) {
+          console.warn('[DB FALLBACK] Insert failed, retrying with address_line fallback:', error);
+          const { error: fallbackError } = await supabase
+            .from('addresses')
+            .insert({
+              user_id: user.id,
+              name: newAddress.name,
+              address_line: addressLine,
+              phone: newAddress.phone
+            });
+          if (fallbackError) throw fallbackError;
+        }
       }
 
       // Reload

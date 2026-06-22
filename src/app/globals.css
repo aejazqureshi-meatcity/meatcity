@@ -383,6 +383,14 @@ html, body {
 .admin-badge-danger { background-color: rgba(214, 0, 0, 0.1); color: #D60000; border-color: rgba(214, 0, 0, 0.2); }
 .admin-badge-secondary { background-color: rgba(255,255,255,0.05); color: #B8B8B8; border-color: rgba(255,255,255,0.08); }
 
+.admin-cell-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+  text-align: left;
+}
+
 .admin-btn {
   padding: 0.5rem 1rem;
   font-size: 11px;
@@ -482,6 +490,11 @@ html, body {
     font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+  }
+  .admin-cell-stack {
+    align-items: flex-end;
+    text-align: right;
+    width: 100%;
   }
 }
 
