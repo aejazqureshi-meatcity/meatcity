@@ -298,22 +298,27 @@ export default function CartPage() {
 
   // Address Management
   const handleAddAddress = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newAddress.name || !newAddress.roomNumber || !newAddress.sectorArea || !newAddress.pincode || !newAddress.phone) {
-      alert('Please fill in all address fields.');
-      return;
-    }
-
-    const added: Address = {
-      id: 'addr-' + Math.random().toString(36).substr(2, 9),
-      name: newAddress.name,
-      roomNumber: newAddress.roomNumber,
-      sectorArea: newAddress.sectorArea,
-      pincode: newAddress.pincode,
-      addressLine: `${newAddress.roomNumber}, ${newAddress.sectorArea}, Pincode: ${newAddress.pincode}`,
-      phone: newAddress.phone
-    };
-
+  e.preventDefault();
+  // Validate all fields are present
+  if (!newAddress.name || !newAddress.roomNumber || !newAddress.sectorArea || !newAddress.pincode || !newAddress.phone) {
+    alert('Please fill in all address fields.');
+    return;
+  }
+  // Validate pincode format (6 digits)
+  if (!/^\d{6}$/.test(newAddress.pincode)) {
+    alert('Please enter a valid 6-digit pincode');
+    return;
+  }
+  const added: Address = {
+    id: 'addr-' + Math.random().toString(36).substr(2, 9),
+    name: newAddress.name,
+    roomNumber: newAddress.roomNumber,
+    sectorArea: newAddress.sectorArea,
+    pincode: newAddress.pincode,
+    addressLine: `${newAddress.roomNumber}, ${newAddress.sectorArea}, Pincode: ${newAddress.pincode}`,
+    phone: newAddress.phone,
+  };
+  try {
     const updated = [...addresses, added];
     setAddresses(updated);
     setSelectedAddressId(added.id);
@@ -321,7 +326,11 @@ export default function CartPage() {
     localStorage.setItem(addrKey, JSON.stringify(updated));
     setNewAddress({ name: '', roomNumber: '', sectorArea: '', pincode: '', phone: '' });
     setShowAddAddress(false);
-  };
+  } catch (err) {
+    console.error('Error adding address', err);
+    alert('Failed to add address. Please try again.');
+  }
+};
 
   // Coupon management
   const handleApplyCoupon = async () => {
