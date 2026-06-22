@@ -107,31 +107,63 @@ export default function InvoicePage() {
       {/* CSS overrides for print layout */}
       <style jsx global>{`
         @media print {
-          body {
+          body, html {
             background-color: white !important;
             color: black !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            font-size: 11px !important;
           }
           .no-print {
             display: none !important;
           }
-          .print-border {
-            border-color: #ddd !important;
+          /* Force all text elements to print in clear black */
+          *, h1, h2, h3, h4, span, strong, p, div, table, tr, th, td {
+            color: black !important;
+            text-shadow: none !important;
+            box-shadow: none !important;
           }
+          /* Styling for details boxes in B&W print */
           .print-bg-gray {
-            background-color: #f5f5f5 !important;
+            background-color: #f3f4f6 !important;
+            border: 1px solid #d1d5db !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
-          .print-text-dark {
-            color: #111 !important;
+          /* Tables */
+          table {
+            border-collapse: collapse !important;
+            width: 100% !important;
+            margin-top: 10px !important;
           }
-          .print-text-muted {
-            color: #666 !important;
+          th {
+            border-bottom: 2px solid #333 !important;
+            padding: 6px 4px !important;
+            font-weight: 800 !important;
+            text-transform: uppercase !important;
+          }
+          td {
+            border-bottom: 1px solid #ddd !important;
+            padding: 6px 4px !important;
+          }
+          /* Layout fitting on A4 */
+          .print-container {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            background: white !important;
+            box-shadow: none !important;
+          }
+          /* Avoid page breaks inside layout items */
+          tr, .print-bg-gray, .print-container {
+            page-break-inside: avoid !important;
           }
         }
       `}</style>
 
-      <div className="max-w-[650px] mx-auto bg-neutral-900 border border-white/5 rounded-[24px] p-6 shadow-xl flex flex-col gap-6 print:border-0 print:bg-white print:shadow-none print:p-0">
+      <div className="max-w-[650px] mx-auto bg-neutral-900 border border-white/5 rounded-[24px] p-6 shadow-xl flex flex-col gap-6 print-container print:border-0 print:bg-white print:shadow-none print:p-0">
         
         {/* Navigation & Actions Header */}
         <div className="no-print flex justify-between items-center pb-4 border-b border-white/5">

@@ -26,7 +26,8 @@ export default function ThemeWrapper({ children }: { children: React.ReactNode }
     pathname?.startsWith('/register') || 
     pathname?.startsWith('/pending') || 
     pathname?.startsWith('/delivery') ||
-    pathname?.startsWith('/cart');
+    pathname?.startsWith('/cart') ||
+    pathname?.startsWith('/invoice');
 
   if (isAdminRoute) {
     return (
