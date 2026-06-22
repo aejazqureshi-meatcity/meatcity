@@ -175,8 +175,8 @@ export default function InvoicePage() {
           </div>
         </div>
 
-        {/* Customer & Delivery Slot details */}
-        <div className="grid grid-cols-2 gap-6 bg-white/5 border border-white/5 p-4 rounded-[16px] print:border-gray-200 print:bg-gray-50 print-bg-gray">
+        {/* Customer, Delivery & Payment details */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white/5 border border-white/5 p-4 rounded-[16px] print:grid-cols-3 print:border-gray-200 print:bg-gray-50 print-bg-gray">
           <div className="flex flex-col gap-1 text-xs">
             <span className="text-[9px] text-text-secondary print:text-gray-500 uppercase tracking-wider font-extrabold">Bill To</span>
             <strong className="text-white print:text-black font-extrabold text-sm">
@@ -195,6 +195,16 @@ export default function InvoicePage() {
             </span>
             <span className="text-gold print:text-red-600 font-extrabold mt-1 uppercase tracking-wide text-[10px]">
               Slot: {order.delivery_slot || 'ASAP'}
+            </span>
+          </div>
+
+          <div className="flex flex-col gap-1 text-xs">
+            <span className="text-[9px] text-text-secondary print:text-gray-500 uppercase tracking-wider font-extrabold">Payment Details</span>
+            <span className="text-white print:text-black font-extrabold uppercase">
+              {order.payment_method || 'COD'}
+            </span>
+            <span className={`font-extrabold mt-1 uppercase text-[10px] ${order.payment_status?.toLowerCase() === 'paid' ? 'text-emerald-400 print:text-emerald-600' : 'text-amber-400 print:text-amber-600'}`}>
+              Status: {order.payment_status || 'Pending'}
             </span>
           </div>
         </div>

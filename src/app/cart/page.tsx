@@ -1310,7 +1310,7 @@ export default function CartPage() {
                   type="button"
                   onClick={() => setShowUpiRepayModal(false)}
                   disabled={isSubmittingRepayUpi}
-                  className="py-2.5 bg-neutral-850 text-white font-bold text-xs rounded-[12px] border border-white/5 active:scale-95"
+                  className="py-2.5 bg-[#1E2020] text-white font-bold text-xs rounded-[12px] border border-white/5 active:scale-95"
                 >
                   Cancel
                 </button>
@@ -1724,7 +1724,7 @@ export default function CartPage() {
                           value={newAddress.name} 
                           onChange={e => setNewAddress({...newAddress, name: e.target.value})} 
                           placeholder="Home / Shop"
-                          className="bg-neutral-850 border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
+                          className="bg-[#1E2020] border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
                         />
                       </div>
                       <div className="flex flex-col gap-1.5">
@@ -1735,7 +1735,7 @@ export default function CartPage() {
                           value={newAddress.phone} 
                           onChange={e => setNewAddress({...newAddress, phone: e.target.value})} 
                           placeholder="10-digit number"
-                          className="bg-neutral-850 border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
+                          className="bg-[#1E2020] border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
                         />
                       </div>
                     </div>
@@ -1748,7 +1748,7 @@ export default function CartPage() {
                         value={newAddress.roomNumber} 
                         onChange={e => setNewAddress({...newAddress, roomNumber: e.target.value})} 
                         placeholder="e.g. Shop No. 2, Room No. 126"
-                        className="bg-neutral-850 border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
+                        className="bg-[#1E2020] border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
                       />
                     </div>
 
@@ -1760,7 +1760,7 @@ export default function CartPage() {
                         value={newAddress.sectorArea} 
                         onChange={e => setNewAddress({...newAddress, sectorArea: e.target.value})} 
                         placeholder="e.g. Sector 20, Turbhe"
-                        className="bg-neutral-850 border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
+                        className="bg-[#1E2020] border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
                       />
                     </div>
 
@@ -1772,7 +1772,7 @@ export default function CartPage() {
                         value={newAddress.pincode} 
                         onChange={e => setNewAddress({...newAddress, pincode: e.target.value})} 
                         placeholder="e.g. 400705"
-                        className="bg-neutral-850 border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
+                        className="bg-[#1E2020] border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
                       />
                     </div>
                     
@@ -2015,7 +2015,7 @@ export default function CartPage() {
                       placeholder="e.g. name@okhdfcbank" 
                       value={upiId} 
                       onChange={e => setUpiId(e.target.value)} 
-                      className="bg-neutral-850 border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
+                      className="bg-[#1E2020] border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
                     />
                     {upiError && <p className="text-primary text-[10px] font-bold mt-0.5">{upiError}</p>}
                   </div>
@@ -2037,7 +2037,7 @@ export default function CartPage() {
                         placeholder="12-digit UTR reference" 
                         value={bankUtr} 
                         onChange={e => setBankUtr(e.target.value)} 
-                        className="bg-neutral-850 border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
+                        className="bg-[#1E2020] border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
                       />
                       {bankError && <p className="text-primary text-[10px] font-bold mt-0.5">{bankError}</p>}
                     </div>
@@ -2235,7 +2235,7 @@ export default function CartPage() {
               <button 
                 type="button"
                 onClick={() => setShowUpiPaymentModal(false)}
-                className="py-2.5 bg-neutral-850 text-white font-bold text-xs rounded-[10px] border border-white/5 active:scale-95"
+                className="py-2.5 bg-[#1E2020] text-white font-bold text-xs rounded-[10px] border border-white/5 active:scale-95"
               >
                 Cancel
               </button>

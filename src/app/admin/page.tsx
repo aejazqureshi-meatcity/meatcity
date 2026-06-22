@@ -2210,6 +2210,26 @@ export default function AdminDashboard() {
                                 <option value="Cancelled">Cancelled</option>
                               </select>
 
+                              <button 
+                                onClick={() => window.open(`/invoice/${order.id}`, '_blank')}
+                                className="admin-btn admin-btn-sm admin-btn-gold"
+                                style={{ 
+                                  padding: '0.3rem 0.5rem', 
+                                  fontSize: '0.75rem', 
+                                  width: '100%', 
+                                  marginTop: '0.2rem', 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  justifyContent: 'center', 
+                                  gap: '0.2rem',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                📄 View Invoice
+                              </button>
+
                               {order.payment_status === 'Pending Verification' && (
                                 <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.2rem' }}>
                                   <button 
@@ -2482,6 +2502,26 @@ export default function AdminDashboard() {
                           </div>
                         )}
                       </div>
+
+                      <button 
+                        onClick={() => window.open(`/invoice/${order.id}`, '_blank')}
+                        className="admin-btn admin-btn-sm admin-btn-gold"
+                        style={{ 
+                          padding: '0.4rem 0.5rem', 
+                          fontSize: '0.75rem', 
+                          width: '100%', 
+                          marginTop: '0.2rem', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          gap: '0.2rem',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        📄 View / Print Invoice
+                      </button>
                     </div>
                   </div>
                 ))}

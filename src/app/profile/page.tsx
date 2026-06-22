@@ -56,6 +56,12 @@ export default function ProfilePage() {
   const [reviewComment, setReviewComment] = useState<string>('');
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
   const supabase = createClient();
   const router = useRouter();
 
@@ -152,51 +158,41 @@ export default function ProfilePage() {
       const localKey = `meatcity_addresses_${userId}`;
       if (addrData && addrData.length > 0) {
         const mappedAddrs: Address[] = addrData.map((a: any) => {
-          const parsedPin = a.pincode || (a.address_line?.match(/\b\d{6}\b/)?.[0]) || '';
+          const parsedPin = a.pincode || a.Pincode || (a.address_line?.match(/\b\d{6}\b/)?.[0]) || '';
+          
+          let parsedRoom = a.room_number || '';
+          let parsedSector = a.sector_area || '';
+          
+          if ((!parsedRoom || !parsedSector) && a.address_line) {
+            const parts = a.address_line.split(',');
+            if (parts.length >= 2) {
+              parsedRoom = parts[0].trim();
+              let sectorPart = parts.slice(1).join(',').trim();
+              const pinIndex = sectorPart.toLowerCase().indexOf('pincode:');
+              if (pinIndex !== -1) {
+                sectorPart = sectorPart.substring(0, pinIndex).trim();
+              }
+              parsedSector = sectorPart.replace(/,\s*$/, '').trim();
+            } else {
+              parsedRoom = a.address_line;
+            }
+          }
+
           return {
             id: a.id,
             name: a.name,
-            roomNumber: a.room_number || '',
-            sectorArea: a.sector_area || '',
+            roomNumber: parsedRoom,
+            sectorArea: parsedSector,
             pincode: parsedPin,
-            addressLine: a.address_line || `${a.room_number || ''}, ${a.sector_area || ''}, Pincode: ${parsedPin}`,
+            addressLine: a.address_line || `${parsedRoom}, ${parsedSector}, Pincode: ${parsedPin}`,
             phone: a.phone || ''
           };
         });
         setAddresses(mappedAddrs);
         localStorage.setItem(localKey, JSON.stringify(mappedAddrs));
       } else {
-        // Fallback to local storage if DB is empty
-        const saved = localStorage.getItem(localKey);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          setAddresses(parsed);
-          // Sync to DB
-          for (const item of parsed) {
-            try {
-              const { error } = await supabase.from('addresses').insert({
-                user_id: userId,
-                name: item.name,
-                room_number: item.roomNumber,
-                sector_area: item.sectorArea,
-                pincode: item.pincode,
-                address_line: item.addressLine,
-                phone: item.phone
-              });
-              if (error) {
-                // Try fallback insert
-                await supabase.from('addresses').insert({
-                  user_id: userId,
-                  name: item.name,
-                  address_line: item.addressLine,
-                  phone: item.phone
-                });
-              }
-            } catch (e) {
-              console.warn('Sync address fallback failed:', e);
-            }
-          }
-        }
+        setAddresses([]);
+        localStorage.setItem(localKey, JSON.stringify([]));
       }
     } catch (err) {
       console.error('Failed to load addresses:', err);
@@ -284,11 +280,12 @@ export default function ProfilePage() {
 
       // Reload
       await loadAddresses(user.id);
+      showToast(editingAddressId ? 'Address updated successfully!' : 'Address added successfully!', 'success');
       setNewAddress({ name: '', roomNumber: '', sectorArea: '', pincode: '', phone: '' });
       setShowAddEditAddress(false);
       setEditingAddressId(null);
     } catch (err: any) {
-      alert('Error saving address: ' + err.message);
+      showToast('Error saving address: ' + err.message, 'error');
     }
   };
 
@@ -310,8 +307,9 @@ export default function ProfilePage() {
       const { error } = await supabase.from('addresses').delete().eq('id', id);
       if (error) throw error;
       await loadAddresses(user.id);
+      showToast('Address deleted successfully!', 'success');
     } catch (err: any) {
-      alert('Error deleting address: ' + err.message);
+      showToast('Error deleting address: ' + err.message, 'error');
     }
   };
 
@@ -498,7 +496,7 @@ export default function ProfilePage() {
           <div className="flex flex-col gap-3">
             <Link 
               href="/about"
-              className="flex justify-between items-center px-5 py-4 bg-neutral-900 hover:bg-neutral-850 border border-white/5 rounded-[16px] text-white text-sm font-bold transition-all active:scale-[0.98]"
+              className="flex justify-between items-center px-5 py-4 bg-neutral-900 hover:bg-neutral-800 border border-white/5 rounded-[16px] text-white text-sm font-bold transition-all active:scale-[0.98]"
             >
               <span>ℹ️ About MeatCity</span>
               <span className="text-gold">→</span>
@@ -638,7 +636,7 @@ export default function ProfilePage() {
                     value={newAddress.name} 
                     onChange={e => setNewAddress({...newAddress, name: e.target.value})} 
                     placeholder="Home / Shop / Office"
-                    className="bg-neutral-850 border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none focus:border-gold/30"
+                    className="bg-[#1E2020] border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none focus:border-gold/30"
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
@@ -649,7 +647,7 @@ export default function ProfilePage() {
                     value={newAddress.phone} 
                     onChange={e => setNewAddress({...newAddress, phone: e.target.value})} 
                     placeholder="10-digit number"
-                    className="bg-neutral-850 border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none focus:border-gold/30"
+                    className="bg-[#1E2020] border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none focus:border-gold/30"
                   />
                 </div>
               </div>
@@ -662,7 +660,7 @@ export default function ProfilePage() {
                   value={newAddress.roomNumber} 
                   onChange={e => setNewAddress({...newAddress, roomNumber: e.target.value})} 
                   placeholder="e.g. Room No 126, Shop 2, A/2"
-                  className="bg-neutral-850 border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none focus:border-gold/30"
+                  className="bg-[#1E2020] border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none focus:border-gold/30"
                 />
               </div>
 
@@ -674,7 +672,7 @@ export default function ProfilePage() {
                   value={newAddress.sectorArea} 
                   onChange={e => setNewAddress({...newAddress, sectorArea: e.target.value})} 
                   placeholder="e.g. Sector 20, Turbhe"
-                  className="bg-neutral-850 border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none focus:border-gold/30"
+                  className="bg-[#1E2020] border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none focus:border-gold/30"
                 />
               </div>
 
@@ -686,7 +684,7 @@ export default function ProfilePage() {
                   value={newAddress.pincode} 
                   onChange={e => setNewAddress({...newAddress, pincode: e.target.value})} 
                   placeholder="e.g. 400705"
-                  className="bg-neutral-850 border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none focus:border-gold/30"
+                  className="bg-[#1E2020] border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none focus:border-gold/30"
                 />
                 {newAddress.pincode && serviceablePincodes.length > 0 && !serviceablePincodes.includes(newAddress.pincode) && (
                   <p className="text-primary text-[10px] font-bold mt-1">
@@ -853,7 +851,7 @@ export default function ProfilePage() {
                   setReviewOrder(null);
                 }}
                 disabled={reviewSubmitting}
-                className="py-2.5 bg-neutral-850 text-white font-bold text-xs rounded-[10px] border border-white/5 active:scale-95"
+                className="py-2.5 bg-neutral-800 text-white font-bold text-xs rounded-[10px] border border-white/5 active:scale-95"
               >
                 Cancel
               </button>
@@ -866,6 +864,28 @@ export default function ProfilePage() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          bottom: '2rem',
+          right: '2rem',
+          zIndex: 9999,
+          backgroundColor: toast.type === 'success' ? '#10B981' : '#EF4444',
+          color: '#fff',
+          padding: '0.85rem 1.5rem',
+          borderRadius: '12px',
+          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          fontWeight: 800,
+          fontSize: '0.85rem'
+        }}>
+          {toast.type === 'success' ? <span>✅</span> : <span>❌</span>}
+          <span>{toast.message}</span>
         </div>
       )}
     </div>

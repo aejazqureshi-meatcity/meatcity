@@ -788,7 +788,7 @@ export default function Home() {
                       type="button"
                       onClick={() => setShowUpiModal(false)}
                       disabled={isSubmittingUpi}
-                      className="py-2.5 bg-neutral-850 text-white font-bold text-xs rounded-[12px] border border-white/5 active:scale-95"
+                      className="py-2.5 bg-[#1E2020] text-white font-bold text-xs rounded-[12px] border border-white/5 active:scale-95"
                     >
                       Cancel
                     </button>
