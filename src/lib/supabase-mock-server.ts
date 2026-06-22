@@ -6,14 +6,67 @@ const dbPath = path.join(process.cwd(), 'mock_db.json');
 // Helper to read DB
 export function readDb() {
   try {
+    const defaultDb = { 
+      users: [], 
+      products: [], 
+      orders: [], 
+      categories: [], 
+      coupons: [
+        { code: 'WELCOME20', discount_percent: 20, flat_discount: 0, min_order_amount: 0, expiry_date: '2026-12-31', usage_limit: 1000, is_active: true },
+        { code: 'EID25', discount_percent: 25, flat_discount: 0, min_order_amount: 500, expiry_date: '2026-12-31', usage_limit: 1000, is_active: true },
+        { code: 'B2B10', discount_percent: 10, flat_discount: 0, min_order_amount: 1000, expiry_date: '2026-12-31', usage_limit: 1000, is_active: true }
+      ], 
+      wishlists: [], 
+      addresses: [], 
+      serviceable_pincodes: [
+        { pincode: '400705', delivery_charge: 50 },
+        { pincode: '400703', delivery_charge: 50 },
+        { pincode: '400701', delivery_charge: 60 },
+        { pincode: '400706', delivery_charge: 50 },
+        { pincode: '400709', delivery_charge: 70 }
+      ], 
+      reviews: [
+        { id: 'rev-1', customer_name: 'Aejaz Qureshi', rating: 5, comment: 'Fresh meat and fast delivery.', status: 'approved', created_at: new Date().toISOString() },
+        { id: 'rev-2', customer_name: 'Altaf Shaikh', rating: 5, comment: 'Best wholesale rates in Navi Mumbai.', status: 'approved', created_at: new Date().toISOString() }
+      ],
+      admin_settings: [
+        { key: 'whatsapp_notifications_enabled', value: 'true' },
+        { key: 'admin_whatsapp_number', value: '917977630912' },
+        { key: 'is_open', value: 'true' },
+        { key: 'delivery_fee', value: '50' },
+        { key: 'free_delivery_above', value: '999' },
+        { key: 'minimum_b2c_order', value: '200' },
+        { key: 'minimum_b2b_order', value: '1000' }
+      ]
+    };
+
     if (!fs.existsSync(dbPath)) {
-      return { users: [], products: [], orders: [], categories: [], coupons: [], wishlists: [], addresses: [] };
+      fs.writeFileSync(dbPath, JSON.stringify(defaultDb, null, 2), 'utf8');
+      return defaultDb;
     }
+
     const data = fs.readFileSync(dbPath, 'utf8');
-    return JSON.parse(data);
+    const parsed = JSON.parse(data);
+    let changed = false;
+
+    if (!parsed.users) { parsed.users = []; changed = true; }
+    if (!parsed.products) { parsed.products = []; changed = true; }
+    if (!parsed.orders) { parsed.orders = []; changed = true; }
+    if (!parsed.categories) { parsed.categories = []; changed = true; }
+    if (!parsed.coupons) { parsed.coupons = defaultDb.coupons; changed = true; }
+    if (!parsed.wishlists) { parsed.wishlists = []; changed = true; }
+    if (!parsed.addresses) { parsed.addresses = []; changed = true; }
+    if (!parsed.serviceable_pincodes) { parsed.serviceable_pincodes = defaultDb.serviceable_pincodes; changed = true; }
+    if (!parsed.reviews) { parsed.reviews = defaultDb.reviews; changed = true; }
+    if (!parsed.admin_settings) { parsed.admin_settings = defaultDb.admin_settings; changed = true; }
+
+    if (changed) {
+      fs.writeFileSync(dbPath, JSON.stringify(parsed, null, 2), 'utf8');
+    }
+    return parsed;
   } catch (error) {
     console.error('Failed to read mock db:', error);
-    return { users: [], products: [], orders: [], categories: [], coupons: [], wishlists: [], addresses: [] };
+    return { users: [], products: [], orders: [], categories: [], coupons: [], wishlists: [], addresses: [], serviceable_pincodes: [], reviews: [], admin_settings: [] };
   }
 }
 

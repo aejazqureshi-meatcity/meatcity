@@ -47,12 +47,16 @@ export default function Login() {
       
       console.log(`[AUTH LOG] Client-side: Sign in success. User Type: ${role}, Status: ${status}`);
 
+      if (role === 'b2b' && status !== 'active' && status !== 'approved') {
+        await supabase.auth.signOut();
+        setError('This account is pending approval.');
+        setLoading(false);
+        return;
+      }
+
       if (role === 'admin') {
         console.log(`[AUTH LOG] Client-side: Executing redirect to /admin`);
         router.push('/admin');
-      } else if (role === 'b2b' && status === 'pending') {
-        console.log(`[AUTH LOG] Client-side: Executing redirect to /pending`);
-        router.push('/pending');
       } else {
         console.log(`[AUTH LOG] Client-side: Executing redirect to /`);
         router.push('/');

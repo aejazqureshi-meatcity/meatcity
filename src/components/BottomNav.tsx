@@ -66,15 +66,13 @@ export default function BottomNav() {
   const getOrdersHref = () => {
     if (userRole === 'guest') return '/login';
     if (userStatus === 'pending') return '/pending';
-    if (userRole === 'b2b') return '/?view=portal';
-    return '/'; // B2C homepage
+    return '/profile?tab=orders';
   };
 
   const getProfileHref = () => {
     if (userRole === 'guest') return '/login';
     if (userStatus === 'pending') return '/pending';
-    if (userRole === 'b2b') return '/?view=portal';
-    return '/'; // B2C homepage
+    return '/profile';
   };
 
   const navItems = [

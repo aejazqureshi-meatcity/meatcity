@@ -15,6 +15,8 @@ interface Product {
   unit: string;
   image_url: string;
   stock: number;
+  variants?: any;
+  stock_status?: string;
 }
 
 interface Address {
@@ -22,6 +24,9 @@ interface Address {
   name: string;
   addressLine: string;
   phone: string;
+  roomNumber?: string;
+  sectorArea?: string;
+  pincode?: string;
 }
 
 interface UserProfile {
@@ -60,7 +65,14 @@ export default function CartPage() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
   const [showAddAddress, setShowAddAddress] = useState(false);
-  const [newAddress, setNewAddress] = useState({ name: '', addressLine: '', phone: '' });
+  const [newAddress, setNewAddress] = useState({ name: '', roomNumber: '', sectorArea: '', pincode: '', phone: '' });
+  const [serviceablePincodes, setServiceablePincodes] = useState<string[]>([]);
+  const [pincodeCharges, setPincodeCharges] = useState<Record<string, number>>({});
+  const [freeDeliveryAbove, setFreeDeliveryAbove] = useState<number>(999);
+  const [defaultDeliveryFee, setDefaultDeliveryFee] = useState<number>(50);
+  const [deliverySlot, setDeliverySlot] = useState<string>('ASAP');
+  const [adminWhatsapp, setAdminWhatsapp] = useState<string>('917977630912');
+  const [whatsappEnabled, setWhatsappEnabled] = useState<boolean>(true);
 
   // Coupon State
   const [couponCode, setCouponCode] = useState('');
@@ -168,7 +180,60 @@ export default function CartPage() {
         }
       }
 
-      // 4. Load Addresses
+      // 4. Load Serviceable Pincodes
+      try {
+        const { data: pinData } = await supabase.from('serviceable_pincodes').select('*');
+        if (pinData) {
+          setServiceablePincodes(pinData.map((p: any) => p.pincode));
+          const charges: Record<string, number> = {};
+          pinData.forEach((p: any) => {
+            charges[p.pincode] = Number(p.delivery_charge ?? 50);
+          });
+          setPincodeCharges(charges);
+        } else {
+          setServiceablePincodes(['400705', '400703', '400701', '400706', '400709']);
+          setPincodeCharges({
+            '400705': 50,
+            '400703': 50,
+            '400701': 60,
+            '400706': 50,
+            '400709': 70
+          });
+        }
+      } catch (pinErr) {
+        console.warn('Failed to load serviceable pincodes:', pinErr);
+        setServiceablePincodes(['400705', '400703', '400701', '400706', '400709']);
+        setPincodeCharges({
+          '400705': 50,
+          '400703': 50,
+          '400701': 60,
+          '400706': 50,
+          '400709': 70
+        });
+      }
+
+      // Load Admin Settings
+      try {
+        const { data: settingsData } = await supabase.from('admin_settings').select('*');
+        if (settingsData && settingsData.length > 0) {
+          const settingsObj: any = {};
+          settingsData.forEach((s: any) => {
+            settingsObj[s.key] = s.value;
+          });
+          setAdminWhatsapp(settingsObj.admin_whatsapp_number || '917977630912');
+          setWhatsappEnabled(settingsObj.whatsapp_notifications_enabled === 'true');
+          if (settingsObj.free_delivery_above !== undefined) {
+            setFreeDeliveryAbove(Number(settingsObj.free_delivery_above));
+          }
+          if (settingsObj.delivery_fee !== undefined) {
+            setDefaultDeliveryFee(Number(settingsObj.delivery_fee));
+          }
+        }
+      } catch (settingsErr) {
+        console.warn('Failed to load admin settings:', settingsErr);
+      }
+
+      // 5. Load Addresses
       const addrKey = currentUser ? `meatcity_addresses_${currentUser.id}` : 'meatcity_addresses_guest';
       const savedAddresses = localStorage.getItem(addrKey);
       if (savedAddresses) {
@@ -216,17 +281,17 @@ export default function CartPage() {
     }
   };
 
-  const handleIncrement = (productId: string) => {
-    const updated = { ...cart, [productId]: (cart[productId] || 0) + 1 };
+  const handleIncrement = (key: string) => {
+    const updated = { ...cart, [key]: (cart[key] || 0) + 1 };
     saveCartToStorage(updated);
   };
 
-  const handleDecrement = (productId: string) => {
+  const handleDecrement = (key: string) => {
     const updated = { ...cart };
-    if (updated[productId] > 1) {
-      updated[productId]--;
+    if (updated[key] > 1) {
+      updated[key]--;
     } else {
-      delete updated[productId];
+      delete updated[key];
     }
     saveCartToStorage(updated);
   };
@@ -234,11 +299,19 @@ export default function CartPage() {
   // Address Management
   const handleAddAddress = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAddress.name || !newAddress.addressLine || !newAddress.phone) return;
+    if (!newAddress.name || !newAddress.roomNumber || !newAddress.sectorArea || !newAddress.pincode || !newAddress.phone) {
+      alert('Please fill in all address fields.');
+      return;
+    }
 
     const added: Address = {
       id: 'addr-' + Math.random().toString(36).substr(2, 9),
-      ...newAddress
+      name: newAddress.name,
+      roomNumber: newAddress.roomNumber,
+      sectorArea: newAddress.sectorArea,
+      pincode: newAddress.pincode,
+      addressLine: `${newAddress.roomNumber}, ${newAddress.sectorArea}, Pincode: ${newAddress.pincode}`,
+      phone: newAddress.phone
     };
 
     const updated = [...addresses, added];
@@ -246,30 +319,49 @@ export default function CartPage() {
     setSelectedAddressId(added.id);
     const addrKey = user ? `meatcity_addresses_${user.id}` : 'meatcity_addresses_guest';
     localStorage.setItem(addrKey, JSON.stringify(updated));
-    setNewAddress({ name: '', addressLine: '', phone: '' });
+    setNewAddress({ name: '', roomNumber: '', sectorArea: '', pincode: '', phone: '' });
     setShowAddAddress(false);
   };
 
   // Coupon management
-  const handleApplyCoupon = () => {
+  const handleApplyCoupon = async () => {
     setCouponError('');
     if (!couponCode) return;
 
     const code = couponCode.toUpperCase();
-    if (code === 'MEAT10') {
-      if (subtotal < 500) {
-        setCouponError('Minimum order of ₹500 required for MEAT10.');
+    try {
+      const { data, error } = await supabase
+        .from('coupons')
+        .select('*')
+        .eq('code', code)
+        .eq('is_active', true)
+        .single();
+
+      if (error || !data) {
+        setCouponError('Invalid or inactive coupon code.');
         return;
       }
-      setAppliedCoupon({ code, discountPercent: 10 });
-    } else if (code === 'WELCOME20') {
-      if (subtotal < 1000) {
-        setCouponError('Minimum order of ₹1000 required for WELCOME20.');
+
+      if (subtotal < data.min_order_amount) {
+        setCouponError(`Minimum order of ₹${data.min_order_amount} required for coupon ${code}.`);
         return;
       }
-      setAppliedCoupon({ code, discountPercent: 20 });
-    } else {
-      setCouponError('Invalid coupon code.');
+
+      if (data.expiry_date) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (todayStr > data.expiry_date) {
+          setCouponError('This coupon code has expired.');
+          return;
+        }
+      }
+
+      setAppliedCoupon({
+        code: data.code,
+        discountPercent: Number(data.discount_percent || 0),
+        flatDiscount: Number(data.flat_discount || 0)
+      });
+    } catch (err) {
+      setCouponError('Failed to validate coupon.');
     }
   };
 
@@ -279,18 +371,62 @@ export default function CartPage() {
   };
 
   // Cart calculations
-  const cartItems = Object.entries(cart).map(([id, qty]) => {
+  const cartItems = Object.entries(cart).map(([cartKey, qty]) => {
+    const parts = cartKey.split('_');
+    const id = parts[0];
+    const variantWeight = parts[1];
+
     const prod = products.find(p => p.id === id);
+    let price = 0;
+    let displayName = prod?.name || '';
+
+    if (prod) {
+      price = userRole === 'b2b' ? prod.price_b2b : prod.price_b2c;
+      if (variantWeight && prod.variants) {
+        const variantsList = typeof prod.variants === 'string' ? JSON.parse(prod.variants) : prod.variants;
+        const variant = variantsList?.find((v: any) => v.weight === variantWeight);
+        if (variant) {
+          price = userRole === 'b2b' ? Number(variant.price_b2b) : Number(variant.price_b2c);
+          displayName = `${prod.name} (${variantWeight})`;
+        }
+      }
+    }
+
     return {
-      product: prod,
+      cartKey,
+      productId: id,
+      variantWeight,
+      product: prod ? { ...prod, name: displayName } : undefined,
       quantity: qty,
-      price: prod ? (userRole === 'b2b' ? prod.price_b2b : prod.price_b2c) : 0
+      price
     };
   }).filter(item => item.product !== undefined);
 
   const subtotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-  const discountAmount = appliedCoupon ? Math.round((subtotal * appliedCoupon.discountPercent) / 100) : 0;
-  const deliveryFee = subtotal > 1500 || userRole === 'b2b' ? 0 : 40;
+  const discountAmount = appliedCoupon 
+    ? (appliedCoupon.discountPercent > 0 
+        ? Math.round((subtotal * appliedCoupon.discountPercent) / 100) 
+        : appliedCoupon.flatDiscount) 
+    : 0;
+  const getDynamicDeliveryFee = () => {
+    if (userRole === 'b2b') {
+      return 0;
+    }
+    const activeAddress = addresses.find(a => a.id === selectedAddressId);
+    if (!activeAddress || activeAddress.addressLine === 'Store Pickup') {
+      return 0;
+    }
+    if (subtotal >= freeDeliveryAbove) {
+      return 0;
+    }
+    const activePincode = activeAddress.pincode || (activeAddress.addressLine.match(/\b\d{6}\b/)?.[0]) || '';
+    if (activePincode && pincodeCharges[activePincode] !== undefined) {
+      return pincodeCharges[activePincode];
+    }
+    return defaultDeliveryFee;
+  };
+
+  const deliveryFee = getDynamicDeliveryFee();
   const total = Math.max(0, subtotal - discountAmount + deliveryFee);
 
   // Credit limits checks
@@ -589,9 +725,12 @@ export default function CartPage() {
       payment_method: paymentMethod === 'Credit' ? 'Pay Later (Credit)' : paymentMethod,
       payment_status: payStatus,
       payment_ref: upiRef,
-      status: 'New',
+      status: 'Pending',
+      delivery_slot: deliverySlot,
+      coupon_code: appliedCoupon ? appliedCoupon.code : null,
+      coupon_discount: discountAmount,
       items: cartItems.map(item => ({
-        product_id: item.product?.id,
+        product_id: item.productId,
         name: item.product?.name,
         product_name: item.product?.name || '',
         quantity: item.quantity,
@@ -618,7 +757,10 @@ export default function CartPage() {
       payment_status: orderPayload.payment_status,
       payment_ref: orderPayload.payment_ref,
       status: orderPayload.status,
-      items: orderPayload.items
+      items: orderPayload.items,
+      delivery_slot: orderPayload.delivery_slot,
+      coupon_code: orderPayload.coupon_code,
+      coupon_discount: orderPayload.coupon_discount
     };
 
     const { error } = await supabase.from('orders').insert(dbOrderPayload);
@@ -831,6 +973,16 @@ export default function CartPage() {
       return;
     }
 
+    // Validate serviceable pincode
+    const activeAddress = addresses.find(a => a.id === selectedAddressId);
+    if (activeAddress && activeAddress.addressLine !== 'Store Pickup') {
+      const activePincode = activeAddress.pincode || (activeAddress.addressLine.match(/\b\d{6}\b/)?.[0]) || '';
+      if (!serviceablePincodes.includes(activePincode)) {
+        alert('Sorry! Delivery is currently unavailable in your area. We are expanding soon and will serve your location shortly.');
+        return;
+      }
+    }
+
     if (userRole === 'b2b') {
       if (isCreditLimitExceeded) {
         alert('Credit limit exceeded. Please clear outstanding balance before placing a new order.');
@@ -891,7 +1043,7 @@ export default function CartPage() {
     message += `Thank you for ordering with Meat City.`;
 
     const encoded = encodeURIComponent(message);
-    window.open(`https://wa.me/917977630912?text=${encoded}`, '_blank');
+    window.open(`https://wa.me/${adminWhatsapp}?text=${encoded}`, '_blank');
   };
 
   const renderCreditDuesScreen = () => {
@@ -1485,12 +1637,21 @@ export default function CartPage() {
           Your order has been recorded in our branch database. For rapid dispatch and delivery notifications, click below to confirm details with our Turbhe branch manager on WhatsApp.
         </p>
 
-        <button 
-          onClick={handleWhatsAppRedirect} 
-          className="w-full py-4 bg-[#25D366] text-white font-extrabold text-sm uppercase tracking-wider rounded-[12px] shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-[0.98] mb-6"
-        >
-          <span>💬</span> Confirm on WhatsApp
-        </button>
+        {whatsappEnabled ? (
+          <button 
+            onClick={handleWhatsAppRedirect} 
+            className="w-full py-4 bg-[#25D366] text-white font-extrabold text-sm uppercase tracking-wider rounded-[12px] shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-[0.98] mb-6"
+          >
+            <span>💬</span> Confirm on WhatsApp
+          </button>
+        ) : (
+          <Link 
+            href="/profile?tab=orders" 
+            className="w-full py-4 bg-primary text-white font-extrabold text-sm uppercase rounded-[12px] shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-[0.98] mb-6 text-center"
+          >
+            📦 View Order History
+          </Link>
+        )}
 
         <Link 
           href="/" 
@@ -1580,13 +1741,37 @@ export default function CartPage() {
                     </div>
                     
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold">Address line</label>
+                      <label className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold">Room / Shop / Flat Number *</label>
                       <input 
                         type="text" 
                         required 
-                        value={newAddress.addressLine} 
-                        onChange={e => setNewAddress({...newAddress, addressLine: e.target.value})} 
-                        placeholder="Sector 20, Turbhe, Navi Mumbai"
+                        value={newAddress.roomNumber} 
+                        onChange={e => setNewAddress({...newAddress, roomNumber: e.target.value})} 
+                        placeholder="e.g. Shop No. 2, Room No. 126"
+                        className="bg-neutral-850 border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold">Sector / Area *</label>
+                      <input 
+                        type="text" 
+                        required 
+                        value={newAddress.sectorArea} 
+                        onChange={e => setNewAddress({...newAddress, sectorArea: e.target.value})} 
+                        placeholder="e.g. Sector 20, Turbhe"
+                        className="bg-neutral-850 border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold">Pincode *</label>
+                      <input 
+                        type="text" 
+                        required 
+                        value={newAddress.pincode} 
+                        onChange={e => setNewAddress({...newAddress, pincode: e.target.value})} 
+                        placeholder="e.g. 400705"
                         className="bg-neutral-850 border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
                       />
                     </div>
@@ -1634,6 +1819,25 @@ export default function CartPage() {
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* Delivery Time Slot Section */}
+              <div className="bg-neutral-900 border border-white/5 rounded-[16px] p-4 flex flex-col gap-3.5">
+                <h3 className="text-white text-xs font-extrabold uppercase tracking-wide">📅 Schedule Delivery</h3>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold">Select Delivery Time Slot</label>
+                  <select
+                    value={deliverySlot}
+                    onChange={e => setDeliverySlot(e.target.value)}
+                    className="w-full bg-[#1E2020] border border-white/5 rounded-[12px] px-4 py-3.5 text-white text-sm outline-none focus:border-gold/50"
+                  >
+                    <option value="ASAP">ASAP (Within 60 Minutes)</option>
+                    <option value="10 AM – 12 PM">10 AM – 12 PM</option>
+                    <option value="12 PM – 2 PM">12 PM – 2 PM</option>
+                    <option value="2 PM – 4 PM">2 PM – 4 PM</option>
+                    <option value="4 PM – 6 PM">4 PM – 6 PM</option>
+                  </select>
+                </div>
               </div>
 
               {/* 2. Payment Section */}
@@ -1844,8 +2048,8 @@ export default function CartPage() {
               <div className="bg-neutral-900 border border-white/5 rounded-[16px] p-4 flex flex-col gap-3.5">
                 <h3 className="text-white text-xs font-extrabold uppercase tracking-wide">🛒 Order Summary</h3>
                 <div className="flex flex-col gap-3.5 max-h-[300px] overflow-y-auto pr-1">
-                  {cartItems.map(({ product, quantity, price }) => (
-                    <div key={product?.id} className="flex justify-between items-center gap-3">
+                  {cartItems.map(({ cartKey, product, quantity, price }) => (
+                    <div key={cartKey} className="flex justify-between items-center gap-3">
                       <div className="flex gap-3 items-center flex-1">
                         <img 
                           src={product?.image_url} 
@@ -1863,7 +2067,7 @@ export default function CartPage() {
                         <div className="flex items-center bg-white/5 rounded-[10px] border border-white/5 p-0.5">
                           <button
                             type="button"
-                            onClick={() => handleDecrement(product!.id)}
+                            onClick={() => handleDecrement(cartKey)}
                             className="w-6 h-6 flex items-center justify-center font-bold text-white text-xs active:scale-75 transition-transform"
                           >
                             -
@@ -1871,7 +2075,7 @@ export default function CartPage() {
                           <span className="px-1.5 text-white font-extrabold text-[11px] min-w-[14px] text-center">{quantity}</span>
                           <button
                             type="button"
-                            onClick={() => handleIncrement(product!.id)}
+                            onClick={() => handleIncrement(cartKey)}
                             className="w-6 h-6 flex items-center justify-center font-bold text-white text-xs active:scale-75 transition-transform"
                           >
                             +
@@ -1955,6 +2159,18 @@ export default function CartPage() {
                     <span className="text-white font-black text-sm uppercase tracking-tight">Grand Total</span>
                     <span className="text-gold font-extrabold text-base">₹{total}</span>
                   </div>
+                </div>
+              </div>
+
+              {/* FSSAI Certified Trust Badge */}
+              <div className="bg-gradient-to-r from-emerald-950/20 to-emerald-900/10 border border-emerald-500/20 rounded-[16px] p-3.5 flex gap-3.5 items-center">
+                <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-lg">
+                  🛡️
+                </div>
+                <div className="flex flex-col text-left text-xs">
+                  <span className="text-emerald-400 font-extrabold text-[9px] uppercase tracking-wide">FSSAI Certified Safety</span>
+                  <span className="text-white font-black mt-0.5">Registration: 21525016001365</span>
+                  <span className="text-[9px] text-text-secondary font-bold mt-0.5">Quality Assured • Hygienic • Fresh Daily • Safe Pack</span>
                 </div>
               </div>
             </>

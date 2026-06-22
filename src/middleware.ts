@@ -34,7 +34,8 @@ export async function middleware(request: NextRequest) {
     // Protect Admin Route (except for admin-dev bypass)
     if (request.nextUrl.pathname.startsWith('/admin') && request.nextUrl.pathname !== '/admin-dev') {
       if (userRole !== 'admin') {
-        return NextResponse.redirect(new URL('/login', request.url))
+        const dest = cookieStr ? '/' : '/login';
+        return NextResponse.redirect(new URL(dest, request.url))
       }
     }
 
@@ -112,7 +113,8 @@ export async function middleware(request: NextRequest) {
   // Protect Admin Route (except for admin-dev bypass)
   if (request.nextUrl.pathname.startsWith('/admin') && request.nextUrl.pathname !== '/admin-dev') {
     if (userRole !== 'admin') {
-      return NextResponse.redirect(new URL('/login', request.url))
+      const dest = user ? '/' : '/login';
+      return NextResponse.redirect(new URL(dest, request.url))
     }
   }
 

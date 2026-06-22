@@ -114,6 +114,21 @@ export class MockSupabaseClient {
     return new QueryBuilder(table);
   }
 
+  channel(name: string) {
+    return {
+      on(event: string, filter: any, callback: (payload: any) => void) {
+        return this;
+      },
+      subscribe() {
+        return this;
+      }
+    };
+  }
+
+  removeChannel(channel: any) {
+    return Promise.resolve();
+  }
+
   auth = {
     signUp: async (params: { email: string; password?: string; options?: { data?: any } }) => {
       const email = params.email;

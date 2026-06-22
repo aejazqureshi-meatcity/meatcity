@@ -25,6 +25,8 @@ interface Product {
   unit: string;
   image_url: string;
   stock: number;
+  variants?: any;
+  stock_status?: string;
 }
 
 interface UserProfile {
@@ -62,6 +64,7 @@ export default function Home() {
   const [cart, setCart] = useState<{ [key: string]: number }>({});
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reviews, setReviews] = useState<any[]>([]);
 
   // B2B Specific States
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -324,7 +327,10 @@ export default function Home() {
         return;
       }
       
-      const { data: dbProfile } = await supabase.from('users').select('*').eq('id', user.id).single();
+      const { data: dbProfile, error: profileError } = await supabase.from('users').select('*').eq('id', user.id).single();
+      if (profileError) {
+        console.warn('[DB LOG] Error fetching user profile from public.users:', profileError.message);
+      }
       if (dbProfile) {
         setUserProfile(dbProfile);
         if (dbProfile.user_type === 'b2b') {
@@ -338,6 +344,7 @@ export default function Home() {
         }
         setUserName(dbProfile.full_name || 'Customer');
       } else {
+        console.log('[DB LOG] No public.users profile found. Falling back to auth metadata.');
         setUserRole(user.user_metadata?.user_type || 'b2c');
         setUserName(user.user_metadata?.full_name || 'Customer');
       }
@@ -348,14 +355,28 @@ export default function Home() {
       }
     }
 
-    // 3. Fetch products from mock database
-    const { data: prodData } = await supabase.from('products').select('*');
+    // 3. Fetch products from database
+    console.log('[DB LOG] Fetching products from database...');
+    const { data: prodData, error: prodError } = await supabase.from('products').select('*');
+    if (prodError) {
+      console.error('[DB LOG] Error fetching products:', prodError.message, prodError.details);
+    }
     if (prodData) {
+      console.log('[DB LOG] Products fetched successfully. Count:', prodData.length);
       setProducts(prodData);
     }
 
+    // Fetch categories dynamically
+    const { data: catData } = await supabase.from('categories').select('*');
+    if (catData && catData.length > 0) {
+      setCategories(catData.map((c: any) => c.name || c.id));
+    }
+
     // 4. Fetch orders for B2B Dashboard
-    const { data: ordersData } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+    const { data: ordersData, error: ordersError } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+    if (ordersError) {
+      console.warn('[DB LOG] Error fetching orders:', ordersError.message);
+    }
     if (ordersData) {
       setOrders(ordersData);
     }
@@ -378,6 +399,16 @@ export default function Home() {
       } catch (e) {
         console.error('Failed to parse wishlist');
       }
+    }
+
+    // Fetch approved customer reviews
+    try {
+      const { data: revData } = await supabase.from('reviews').select('*').eq('status', 'approved').order('created_at', { ascending: false });
+      if (revData) {
+        setReviews(revData);
+      }
+    } catch (e) {
+      console.warn('Failed to load reviews:', e);
     }
 
     setLoading(false);
@@ -417,23 +448,25 @@ export default function Home() {
     }
   };
 
-  const handleIncrement = (productId: string) => {
-    const updated = { ...cart, [productId]: (cart[productId] || 0) + 1 };
+  const handleIncrement = (productId: string, variantWeight?: string) => {
+    const key = variantWeight ? `${productId}_${variantWeight}` : productId;
+    const updated = { ...cart, [key]: (cart[key] || 0) + 1 };
     saveCartToStorage(updated);
   };
 
-  const handleDecrement = (productId: string) => {
+  const handleDecrement = (productId: string, variantWeight?: string) => {
+    const key = variantWeight ? `${productId}_${variantWeight}` : productId;
     const updated = { ...cart };
-    if (updated[productId] > 1) {
-      updated[productId]--;
+    if (updated[key] > 1) {
+      updated[key]--;
     } else {
-      delete updated[productId];
+      delete updated[key];
     }
     saveCartToStorage(updated);
   };
 
-  const handleAddToCart = (productId: string) => {
-    handleIncrement(productId);
+  const handleAddToCart = (productId: string, variantWeight?: string) => {
+    handleIncrement(productId, variantWeight);
   };
 
   const handleToggleWishlist = (productId: string) => {
@@ -462,10 +495,21 @@ export default function Home() {
 
   // Cart stats
   const cartItemCount = Object.values(cart).reduce((sum, q) => sum + q, 0);
-  const cartTotal = Object.entries(cart).reduce((sum, [id, qty]) => {
+  const cartTotal = Object.entries(cart).reduce((sum, [key, qty]) => {
+    const parts = key.split('_');
+    const id = parts[0];
+    const weight = parts[1];
     const prod = products.find(p => p.id === id);
     if (!prod) return sum;
-    const price = userRole === 'b2b' ? prod.price_b2b : prod.price_b2c;
+
+    let price = userRole === 'b2b' ? prod.price_b2b : prod.price_b2c;
+    if (weight && prod.variants) {
+      const variantsList = typeof prod.variants === 'string' ? JSON.parse(prod.variants) : prod.variants;
+      const variant = variantsList?.find((v: any) => v.weight === weight);
+      if (variant) {
+        price = userRole === 'b2b' ? Number(variant.price_b2b) : Number(variant.price_b2c);
+      }
+    }
     return sum + (price * qty);
   }, 0);
 
@@ -1066,14 +1110,14 @@ export default function Home() {
             <div className="grid grid-cols-2 gap-4">
               {filteredProducts.length > 0 ? (
                 filteredProducts.map((product) => (
-                  <ProductCard
+                   <ProductCard
                     key={product.id}
                     product={product}
                     userRole={userRole}
-                    quantityInCart={cart[product.id] || 0}
-                    onIncrement={() => handleIncrement(product.id)}
-                    onDecrement={() => handleDecrement(product.id)}
-                    onAddToCart={() => handleAddToCart(product.id)}
+                    cart={cart}
+                    onIncrement={handleIncrement}
+                    onDecrement={handleDecrement}
+                    onAddToCart={handleAddToCart}
                     isWishlisted={wishlist.includes(product.id)}
                     onToggleWishlist={() => handleToggleWishlist(product.id)}
                   />
@@ -1089,6 +1133,31 @@ export default function Home() {
 
           {/* Trust points card */}
           {!searchQuery && <TrustCard />}
+
+          {/* Customer Reviews Section */}
+          {!searchQuery && reviews.length > 0 && (
+            <section className="flex flex-col gap-3 mt-4">
+              <h3 className="text-white text-sm font-extrabold uppercase tracking-wide">⭐ Customer Reviews</h3>
+              <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-none snap-x snap-mandatory">
+                {reviews.map((rev) => (
+                  <div 
+                    key={rev.id} 
+                    className="min-w-[280px] max-w-[280px] snap-start bg-[#111111] border border-white/5 p-4 rounded-[16px] flex flex-col gap-2"
+                  >
+                    <div className="flex justify-between items-center">
+                      <strong className="text-white text-xs font-black truncate max-w-[160px]">{rev.customer_name}</strong>
+                      <span className="text-gold text-xs font-bold">
+                        {'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}
+                      </span>
+                    </div>
+                    <p className="text-text-secondary text-[11px] leading-relaxed italic">
+                      “{rev.comment}”
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </>
       )}
 

@@ -9,18 +9,10 @@ import { PrimaryButton } from '@/components/ui/Button';
 
 export default function RegisterB2B() {
   const [formData, setFormData] = useState({
-    businessName: '',
-    contactPerson: '',
+    fullName: '',
     phone: '',
     email: '',
-    password: '',
-    businessType: 'Restaurant',
-    address: '',
-    gstNumber: '',
-    fssaiLicense: '',
-    expectedMonthlyVolume: '',
-    notes: '',
-    referralCode: ''
+    password: ''
   });
   
   const [error, setError] = useState('');
@@ -40,17 +32,8 @@ export default function RegisterB2B() {
         data: {
           user_type: 'b2b',
           status: 'pending',
-          full_name: formData.contactPerson,
-          phone: formData.phone,
-          business_name: formData.businessName,
-          business_type: formData.businessType,
-          contact_person: formData.contactPerson,
-          address: formData.address,
-          gst_number: formData.gstNumber,
-          fssai_license: formData.fssaiLicense,
-          expected_monthly_volume: formData.expectedMonthlyVolume,
-          notes: formData.notes,
-          referral_code: formData.referralCode
+          full_name: formData.fullName,
+          phone: formData.phone
         }
       }
     });
@@ -63,7 +46,7 @@ export default function RegisterB2B() {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
@@ -82,7 +65,7 @@ export default function RegisterB2B() {
       </div>
 
       {/* Form scroll container */}
-      <form onSubmit={handleRegister} className="flex-1 flex flex-col gap-4 max-w-sm mx-auto w-full my-6 overflow-y-auto max-h-[60vh] pr-1">
+      <form onSubmit={handleRegister} className="flex-1 flex flex-col justify-center gap-4 max-w-sm mx-auto w-full my-6 overflow-y-auto max-h-[60vh] pr-1">
         {error && (
           <div className="bg-primary/10 border border-primary/20 text-primary p-3 rounded-[12px] text-xs font-bold text-center">
             {error}
@@ -90,41 +73,13 @@ export default function RegisterB2B() {
         )}
         
         <TextInput 
-          label="Business Name *"
+          label="Full Name *"
           type="text"
-          name="businessName"
+          name="fullName"
           required
-          value={formData.businessName}
+          value={formData.fullName}
           onChange={handleChange}
-          placeholder="e.g. Taste of Mumbai cloud kitchen"
-        />
-
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs text-text-secondary font-bold uppercase tracking-wider">Business Type *</label>
-          <select 
-            name="businessType" 
-            required 
-            value={formData.businessType} 
-            onChange={handleChange}
-            className="w-full bg-[#1E2020] border border-white/5 rounded-[12px] px-4 py-3.5 text-white text-sm outline-none focus:border-gold/50"
-          >
-            <option value="Restaurant">Restaurant</option>
-            <option value="Hotel">Hotel</option>
-            <option value="Caterer">Caterer</option>
-            <option value="Cloud Kitchen">Cloud Kitchen</option>
-            <option value="Meat Shop">Meat Shop</option>
-            <option value="Retailer">Retailer</option>
-          </select>
-        </div>
-
-        <TextInput 
-          label="Contact Person Name *"
-          type="text"
-          name="contactPerson"
-          required
-          value={formData.contactPerson}
-          onChange={handleChange}
-          placeholder="Your full name"
+          placeholder="Contact person full name"
         />
 
         <TextInput 
@@ -155,65 +110,6 @@ export default function RegisterB2B() {
           value={formData.password}
           onChange={handleChange}
           placeholder="Min. 6 characters"
-        />
-
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs text-text-secondary font-bold uppercase tracking-wider">Full Business Address *</label>
-          <textarea 
-            name="address" 
-            required 
-            value={formData.address} 
-            onChange={handleChange}
-            placeholder="Shop No., Block, Sector 20, Turbhe"
-            className="w-full bg-[#1E2020] border border-white/5 rounded-[12px] px-4 py-3.5 text-white text-sm outline-none focus:border-gold/50 min-h-[70px]"
-          />
-        </div>
-
-        <TextInput 
-          label="GST Number (Optional)"
-          type="text"
-          name="gstNumber"
-          value={formData.gstNumber}
-          onChange={handleChange}
-          placeholder="27AAAAA1111A1Z1"
-        />
-
-        <TextInput 
-          label="FSSAI License (Optional)"
-          type="text"
-          name="fssaiLicense"
-          value={formData.fssaiLicense}
-          onChange={handleChange}
-          placeholder="14-digit number"
-        />
-
-        <TextInput 
-          label="Expected Monthly Volume (kg)"
-          type="text"
-          name="expectedMonthlyVolume"
-          value={formData.expectedMonthlyVolume}
-          onChange={handleChange}
-          placeholder="e.g. 500 kg"
-        />
-
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs text-text-secondary font-bold uppercase tracking-wider">Notes (Optional)</label>
-          <textarea 
-            name="notes" 
-            value={formData.notes} 
-            onChange={handleChange}
-            placeholder="Specific cuts or delivery times required?"
-            className="w-full bg-[#1E2020] border border-white/5 rounded-[12px] px-4 py-3.5 text-white text-sm outline-none focus:border-gold/50 min-h-[70px]"
-          />
-        </div>
-
-        <TextInput 
-          label="Referral Code (Optional)"
-          type="text"
-          name="referralCode"
-          value={formData.referralCode}
-          onChange={handleChange}
-          placeholder="e.g. MEAT2026"
         />
 
         <PrimaryButton type="submit" loading={loading} className="mt-2">

@@ -72,7 +72,7 @@ interface Order {
 }
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'approvals' | 'customers' | 'products' | 'categories' | 'orders' | 'deliveries' | 'analytics' | 'settings' | 'payments'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'approvals' | 'customers' | 'products' | 'categories' | 'orders' | 'deliveries' | 'analytics' | 'settings' | 'payments' | 'pincodes' | 'coupons' | 'reviews'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // Delivery Partner Form States
@@ -93,6 +93,28 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   
+  // Custom states for pincodes, coupons, and reviews
+  const [serviceablePincodes, setServiceablePincodes] = useState<any[]>([]);
+  const [coupons, setCoupons] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<any[]>([]);
+
+  // Pincode form state
+  const [newPincode, setNewPincode] = useState('');
+  const [newPincodeCharge, setNewPincodeCharge] = useState<number>(50);
+
+  // Coupon form state
+  const [couponForm, setCouponForm] = useState({
+    code: '',
+    discount_percent: 0,
+    flat_discount: 0,
+    min_order_amount: 0,
+    expiry_date: '',
+    usage_limit: 100,
+    is_active: true
+  });
+  const [showCouponForm, setShowCouponForm] = useState(false);
+  const [editingCoupon, setEditingCoupon] = useState<any | null>(null);
+  
   // Dashboard & Analytics metrics
   const [stats, setStats] = useState({
     todaySales: 0,
@@ -105,7 +127,10 @@ export default function AdminDashboard() {
     activeOrders: 0,
     pendingB2B: 0,
     totalCustomers: 0,
-    pendingPayments: 0
+    pendingPayments: 0,
+    todayOrdersCount: 0,
+    totalProductsCount: 0,
+    pendingOrdersCount: 0
   });
 
   // Credit Balance Modifiers
@@ -128,7 +153,19 @@ export default function AdminDashboard() {
 
   // Product Form State
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [productForm, setProductForm] = useState({
+  const [productForm, setProductForm] = useState<{
+    name: string;
+    description: string;
+    category: string;
+    price_b2c: number;
+    price_b2b: number;
+    unit: string;
+    image_url: string;
+    stock: number;
+    is_available: boolean;
+    stock_status: string;
+    variants: Array<{ weight: string; price_b2c: number; price_b2b: number }>;
+  }>({
     name: '',
     description: '',
     category: 'Chicken',
@@ -137,7 +174,9 @@ export default function AdminDashboard() {
     unit: 'kg',
     image_url: '',
     stock: 10,
-    is_available: true
+    is_available: true,
+    stock_status: 'Available',
+    variants: []
   });
   const [showProductForm, setShowProductForm] = useState(false);
 
@@ -148,8 +187,11 @@ export default function AdminDashboard() {
   const [shopSettings, setShopSettings] = useState({
     isOpen: true,
     deliveryFee: 50,
+    freeDeliveryAbove: 999,
     minimumB2COrder: 200,
-    minimumB2BOrder: 1000
+    minimumB2BOrder: 1000,
+    whatsappNotificationsEnabled: true,
+    adminWhatsappNumber: '917977630912'
   });
 
   const supabase = createClient();
@@ -166,7 +208,7 @@ export default function AdminDashboard() {
 
     // 3. Fetch Categories
     const { data: catData } = await supabase.from('categories').select('*');
-    setCategories(catData || ['Chicken', 'Mutton', 'Seafood', 'Eggs', 'Ready To Cook']);
+    setCategories(catData ? catData.map((c: any) => c.name || c.id) : ['Chicken', 'Mutton', 'Seafood', 'Eggs', 'Ready To Cook']);
 
     // 4. Fetch Orders
     const { data: ordersData } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
@@ -181,6 +223,34 @@ export default function AdminDashboard() {
     const { data: paymentsData } = await supabase.from('payments').select('*');
     const pList = paymentsData || [];
     setPayments(pList);
+
+    // Fetch Custom tables
+    const { data: pinsData } = await supabase.from('serviceable_pincodes').select('*');
+    setServiceablePincodes(pinsData || []);
+
+    const { data: couponsData } = await supabase.from('coupons').select('*');
+    setCoupons(couponsData || []);
+
+    const { data: reviewsData } = await supabase.from('reviews').select('*').order('created_at', { ascending: false });
+    setReviews(reviewsData || []);
+
+    // Fetch Admin Settings
+    const { data: settingsData } = await supabase.from('admin_settings').select('*');
+    if (settingsData && settingsData.length > 0) {
+      const settingsObj: any = {};
+      settingsData.forEach((s: any) => {
+        settingsObj[s.key] = s.value;
+      });
+      setShopSettings({
+        isOpen: settingsObj.is_open === 'true',
+        deliveryFee: Number(settingsObj.delivery_fee || 50),
+        freeDeliveryAbove: Number(settingsObj.free_delivery_above || 999),
+        minimumB2COrder: Number(settingsObj.minimum_b2c_order || 200),
+        minimumB2BOrder: Number(settingsObj.minimum_b2b_order || 1000),
+        whatsappNotificationsEnabled: settingsObj.whatsapp_notifications_enabled === 'true',
+        adminWhatsappNumber: settingsObj.admin_whatsapp_number || '917977630912'
+      });
+    }
 
     // Update active user states in case limit/ledger details changed
     if (selectedB2BUserForLedger) {
@@ -209,12 +279,23 @@ export default function AdminDashboard() {
     let b2bRevenue = 0;
     let b2cRevenue = 0;
     let activeOrders = 0;
+    let todayOrdersCount = 0;
+    let pendingOrdersCount = 0;
 
     oList.forEach((order: Order) => {
-      if (order.status !== 'Cancelled') {
-        const orderDateStr = order.created_at?.split('T')[0];
-        const orderDate = new Date(order.created_at);
+      const orderDateStr = order.created_at?.split('T')[0];
+      const orderDate = new Date(order.created_at);
 
+      if (orderDateStr === todayStr) {
+        todayOrdersCount++;
+      }
+
+      const statusLower = (order.status || '').toLowerCase();
+      if (statusLower === 'pending' || statusLower === 'new') {
+        pendingOrdersCount++;
+      }
+
+      if (order.status !== 'Cancelled') {
         // Sales totals
         totalSales += order.total;
 
@@ -246,6 +327,7 @@ export default function AdminDashboard() {
     const pendingB2B = uList.filter((u: UserProfile) => u.user_type === 'b2b' && u.status === 'pending').length;
     const totalCustomers = uList.filter((u: UserProfile) => u.user_type !== 'admin').length;
     const pendingPayments = pList.filter((p: any) => p.status === 'pending' || p.status === 'Pending Verification').length;
+    const totalProductsCount = productsData?.length || 0;
 
     setStats({
       todaySales,
@@ -258,11 +340,31 @@ export default function AdminDashboard() {
       activeOrders,
       pendingB2B,
       totalCustomers,
-      pendingPayments
+      pendingPayments,
+      todayOrdersCount,
+      totalProductsCount,
+      pendingOrdersCount
     });
   };
 
   useEffect(() => {
+    const checkAdmin = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        window.location.href = '/login';
+        return;
+      }
+      const { data: profile } = await supabase
+        .from('users')
+        .select('user_type')
+        .eq('id', user.id)
+        .single();
+      const role = profile?.user_type || user.user_metadata?.user_type;
+      if (role !== 'admin') {
+        window.location.href = '/';
+      }
+    };
+    checkAdmin();
     loadData();
   }, []);
 
@@ -480,9 +582,67 @@ export default function AdminDashboard() {
   };
 
   // Order Actions
+  const triggerWhatsAppCustomerNotification = (order: any, newStatus: string) => {
+    if (!shopSettings.whatsappNotificationsEnabled) return;
+    
+    let text = '';
+    const cleanStatus = newStatus.toLowerCase();
+    
+    if (cleanStatus.includes('confirmed')) {
+      text = `Order Confirmed ✅\n\nYour MeatCity order #${order.id} has been confirmed.`;
+    } else if (cleanStatus.includes('processing')) {
+      text = `Order Processing 🔄\n\nYour order is being prepared.`;
+    } else if (cleanStatus.includes('out for delivery')) {
+      text = `Out For Delivery 🚚\n\nYour order is on the way.`;
+    } else if (cleanStatus.includes('delivered')) {
+      text = `Delivered ✅\n\nThank you for ordering from MeatCity.`;
+    } else if (cleanStatus.includes('cancelled')) {
+      text = `Cancelled ❌\n\nYour order has been cancelled.`;
+    } else {
+      text = `Your MeatCity order #${order.id} status updated to: ${newStatus}`;
+    }
+
+    const phone = order.customer_phone || '';
+    if (!phone) return;
+
+    const cleanPhone = phone.replace(/\D/g, '');
+    const finalPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+
+    const url = `https://wa.me/${finalPhone}?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
+
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
     await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
+    
+    const orderObj = orders.find(o => o.id === orderId);
+    if (orderObj) {
+      triggerWhatsAppCustomerNotification(orderObj, newStatus);
+    }
+    
     loadData();
+  };
+
+  const handleSaveSystemSettings = async () => {
+    try {
+      const settingsList = [
+        { key: 'is_open', value: String(shopSettings.isOpen) },
+        { key: 'delivery_fee', value: String(shopSettings.deliveryFee) },
+        { key: 'free_delivery_above', value: String(shopSettings.freeDeliveryAbove) },
+        { key: 'minimum_b2c_order', value: String(shopSettings.minimumB2COrder) },
+        { key: 'minimum_b2b_order', value: String(shopSettings.minimumB2BOrder) },
+        { key: 'whatsapp_notifications_enabled', value: String(shopSettings.whatsappNotificationsEnabled) },
+        { key: 'admin_whatsapp_number', value: String(shopSettings.adminWhatsappNumber) }
+      ];
+
+      for (const setting of settingsList) {
+        await supabase.from('admin_settings').upsert(setting);
+      }
+      alert('Settings saved successfully!');
+      loadData();
+    } catch (err: any) {
+      alert('Failed to save settings: ' + err.message);
+    }
   };
 
   const handleVerifyPayment = async (orderId: string, newPaymentStatus: string) => {
@@ -518,7 +678,9 @@ export default function AdminDashboard() {
       unit: productForm.unit,
       image_url: productForm.image_url,
       stock: Number(productForm.stock),
-      is_available: productForm.is_available
+      is_available: productForm.is_available,
+      stock_status: productForm.stock_status,
+      variants: typeof productForm.variants === 'string' ? productForm.variants : JSON.stringify(productForm.variants)
     };
 
     if (editingProduct) {
@@ -540,24 +702,34 @@ export default function AdminDashboard() {
       unit: 'kg',
       image_url: '',
       stock: 10,
-      is_available: true
+      is_available: true,
+      stock_status: 'Available',
+      variants: []
     });
     setShowProductForm(false);
     loadData();
   };
 
-  const handleEditProduct = (prod: Product) => {
+  const handleEditProduct = (prod: any) => {
     setEditingProduct(prod);
+    const parsedVariants = prod.variants
+      ? (typeof prod.variants === 'string'
+          ? JSON.parse(prod.variants)
+          : prod.variants)
+      : [];
+
     setProductForm({
       name: prod.name,
-      description: prod.description,
-      category: prod.category,
-      price_b2c: prod.price_b2c,
-      price_b2b: prod.price_b2b,
-      unit: prod.unit,
+      description: prod.description || '',
+      category: prod.category || 'Chicken',
+      price_b2c: prod.price_b2c || 0,
+      price_b2b: prod.price_b2b || 0,
+      unit: prod.unit || 'kg',
       image_url: prod.image_url || '',
-      stock: prod.stock,
-      is_available: prod.is_available
+      stock: prod.stock || 0,
+      is_available: prod.is_available !== false,
+      stock_status: prod.stock_status || 'Available',
+      variants: parsedVariants
     });
     setShowProductForm(true);
   };
@@ -579,14 +751,125 @@ export default function AdminDashboard() {
       return;
     }
 
-    await supabase.from('categories').insert(newCategoryName);
+    await supabase.from('categories').insert({ id: newCategoryName, name: newCategoryName });
     setNewCategoryName('');
     loadData();
   };
 
   const handleDeleteCategory = async (catName: string) => {
     if (confirm(`Are you sure you want to delete the category "${catName}"?`)) {
-      await supabase.from('categories').delete().eq('category', catName);
+      await supabase.from('categories').delete().eq('id', catName);
+      loadData();
+    }
+  };
+
+  // Pincode Actions
+  const handleAddPincode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPincode) return;
+    const cleanPin = newPincode.trim();
+    if (serviceablePincodes.some(p => p.pincode === cleanPin)) {
+      alert('Pincode already added');
+      return;
+    }
+    await supabase.from('serviceable_pincodes').insert({ pincode: cleanPin, delivery_charge: newPincodeCharge });
+    setNewPincode('');
+    setNewPincodeCharge(50);
+    loadData();
+  };
+
+  const handleDeletePincode = async (pincode: string) => {
+    if (confirm(`Remove delivery service for pincode ${pincode}?`)) {
+      await supabase.from('serviceable_pincodes').delete().eq('pincode', pincode);
+      loadData();
+    }
+  };
+
+  const handleExportCSV = (tableName: string, data: any[]) => {
+    if (!data || data.length === 0) {
+      alert(`No data available to export for ${tableName}`);
+      return;
+    }
+    const headers = Object.keys(data[0]);
+    const csvRows = [];
+    csvRows.push(headers.map(header => `"${header.replace(/"/g, '""')}"`).join(','));
+    data.forEach(row => {
+      const values = headers.map(header => {
+        let value = row[header];
+        if (value === null || value === undefined) {
+          value = '';
+        } else if (typeof value === 'object') {
+          value = JSON.stringify(value);
+        } else {
+          value = String(value);
+        }
+        return `"${value.replace(/"/g, '""')}"`;
+      });
+      csvRows.push(values.join(','));
+    });
+    const csvContent = '\uFEFF' + csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `meatcity_${tableName}_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Coupon Actions
+  const handleSaveCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload = {
+      code: couponForm.code.toUpperCase().trim(),
+      discount_percent: Number(couponForm.discount_percent),
+      flat_discount: Number(couponForm.flat_discount),
+      min_order_amount: Number(couponForm.min_order_amount),
+      expiry_date: couponForm.expiry_date,
+      usage_limit: Number(couponForm.usage_limit),
+      is_active: couponForm.is_active
+    };
+
+    if (editingCoupon) {
+      await supabase.from('coupons').update(payload).eq('code', editingCoupon.code);
+    } else {
+      await supabase.from('coupons').insert(payload);
+    }
+
+    setEditingCoupon(null);
+    setCouponForm({ code: '', discount_percent: 0, flat_discount: 0, min_order_amount: 0, expiry_date: '', usage_limit: 100, is_active: true });
+    setShowCouponForm(false);
+    loadData();
+  };
+
+  const handleDeleteCoupon = async (code: string) => {
+    if (confirm(`Delete coupon ${code}?`)) {
+      await supabase.from('coupons').delete().eq('code', code);
+      loadData();
+    }
+  };
+
+  const handleToggleCoupon = async (code: string, currentStatus: boolean) => {
+    await supabase.from('coupons').update({ is_active: !currentStatus }).eq('code', code);
+    loadData();
+  };
+
+  // Review Actions
+  const handleApproveReview = async (reviewId: string) => {
+    await supabase.from('reviews').update({ status: 'approved' }).eq('id', reviewId);
+    loadData();
+  };
+
+  const handleRejectReview = async (reviewId: string) => {
+    await supabase.from('reviews').update({ status: 'rejected' }).eq('id', reviewId);
+    loadData();
+  };
+
+  const handleDeleteReview = async (reviewId: string) => {
+    if (confirm('Delete this review?')) {
+      await supabase.from('reviews').delete().eq('id', reviewId);
       loadData();
     }
   };
@@ -779,6 +1062,39 @@ export default function AdminDashboard() {
                   {stats.pendingPayments}
                 </span>
               )}
+            </div>
+          </li>
+
+          <li className="admin-sidebar-menu-item">
+            <div 
+              className={`admin-sidebar-link ${activeTab === 'pincodes' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('pincodes'); setIsSidebarOpen(false); }}
+            >
+              <span className="admin-sidebar-link-left">
+                📍 Pincode Management
+              </span>
+            </div>
+          </li>
+
+          <li className="admin-sidebar-menu-item">
+            <div 
+              className={`admin-sidebar-link ${activeTab === 'coupons' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('coupons'); setIsSidebarOpen(false); }}
+            >
+              <span className="admin-sidebar-link-left">
+                🏷️ Coupon Config
+              </span>
+            </div>
+          </li>
+
+          <li className="admin-sidebar-menu-item">
+            <div 
+              className={`admin-sidebar-link ${activeTab === 'reviews' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('reviews'); setIsSidebarOpen(false); }}
+            >
+              <span className="admin-sidebar-link-left">
+                ⭐ Reviews Moderation
+              </span>
             </div>
           </li>
 
@@ -1547,6 +1863,15 @@ export default function AdminDashboard() {
                         <label className="admin-form-label">Initial Stock</label>
                         <input type="number" className="admin-form-input" required value={productForm.stock} onChange={e => setProductForm({...productForm, stock: Number(e.target.value)})} />
                       </div>
+
+                      <div className="admin-form-group">
+                        <label className="admin-form-label">Stock Status</label>
+                        <select className="admin-form-select" value={productForm.stock_status || 'Available'} onChange={e => setProductForm({...productForm, stock_status: e.target.value})}>
+                          <option value="Available">Available</option>
+                          <option value="Low Stock">Low Stock</option>
+                          <option value="Out Of Stock">Out Of Stock</option>
+                        </select>
+                      </div>
                     </div>
 
                     <div className="admin-form-group">
@@ -1557,6 +1882,79 @@ export default function AdminDashboard() {
                     <div className="admin-form-group">
                       <label className="admin-form-label">Product Description</label>
                       <textarea className="admin-form-textarea" required value={productForm.description} onChange={e => setProductForm({...productForm, description: e.target.value})} placeholder="Describe quality cuts, hygiene..." rows={3} />
+                    </div>
+
+                    {/* Weight Variants Section */}
+                    <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1.5rem' }}>
+                      <h4 style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--color-gold)', marginBottom: '0.75rem', textTransform: 'uppercase', tracking: '0.05em' }}>⚖️ Product Weight Variants</h4>
+                      
+                      {productForm.variants && productForm.variants.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+                          {productForm.variants.map((v, idx) => (
+                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', padding: '0.6rem 0.8rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.04)' }}>
+                              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'white' }}>{v.weight}</span>
+                              <span style={{ fontSize: '0.8rem', color: '#aaa' }}>Retail: <strong>₹{v.price_b2c}</strong> | Wholesale: <strong>₹{v.price_b2b}</strong></span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = productForm.variants.filter((_, i) => i !== idx);
+                                  setProductForm({ ...productForm, variants: updated });
+                                }}
+                                className="admin-btn admin-btn-sm admin-btn-danger"
+                                style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', borderRadius: '6px' }}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p style={{ fontSize: '0.75rem', color: '#666', marginBottom: '1.25rem' }}>No variants added yet. Storing standard price/unit above.</p>
+                      )}
+
+                      {/* Add Variant Form Inline */}
+                      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'end', flexWrap: 'wrap', backgroundColor: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }}>
+                        <div style={{ flex: 1, minWidth: '100px' }}>
+                          <label className="admin-form-label" style={{ fontSize: '0.7rem', marginBottom: '0.25rem' }}>Weight (e.g. 500g)</label>
+                          <input type="text" id="newVarWeight" placeholder="500g" className="admin-form-input" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: '80px' }}>
+                          <label className="admin-form-label" style={{ fontSize: '0.7rem', marginBottom: '0.25rem' }}>B2C Price (₹)</label>
+                          <input type="number" id="newVarB2C" placeholder="300" className="admin-form-input" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: '80px' }}>
+                          <label className="admin-form-label" style={{ fontSize: '0.7rem', marginBottom: '0.25rem' }}>B2B Price (₹)</label>
+                          <input type="number" id="newVarB2B" placeholder="270" className="admin-form-input" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }} />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const weightEl = document.getElementById('newVarWeight') as HTMLInputElement;
+                            const b2cEl = document.getElementById('newVarB2C') as HTMLInputElement;
+                            const b2bEl = document.getElementById('newVarB2B') as HTMLInputElement;
+                            if (weightEl && b2cEl && b2bEl) {
+                              const weight = weightEl.value.trim();
+                              const price_b2c = Number(b2cEl.value);
+                              const price_b2b = Number(b2bEl.value);
+                              if (weight && price_b2c > 0 && price_b2b > 0) {
+                                setProductForm({
+                                  ...productForm,
+                                  variants: [...productForm.variants, { weight, price_b2c, price_b2b }]
+                                });
+                                weightEl.value = '';
+                                b2cEl.value = '';
+                                b2bEl.value = '';
+                              } else {
+                                alert('Please enter valid variant details.');
+                              }
+                            }
+                          }}
+                          className="admin-btn admin-btn-gold"
+                          style={{ padding: '0.45rem 1.2rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+                        >
+                          + Add Variant
+                        </button>
+                      </div>
                     </div>
 
                     <div className="admin-form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1890,6 +2288,29 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
+              {/* Operational metrics row */}
+              <div className="admin-cards-grid" style={{ marginTop: '1.25rem' }}>
+                <div className="admin-card">
+                  <div className="admin-card-header">Today's Orders</div>
+                  <div className="admin-card-value">{stats.todayOrdersCount}</div>
+                </div>
+
+                <div className="admin-card">
+                  <div className="admin-card-header">Pending Orders</div>
+                  <div className="admin-card-value" style={{ color: 'var(--color-gold)' }}>{stats.pendingOrdersCount}</div>
+                </div>
+
+                <div className="admin-card">
+                  <div className="admin-card-header">Total Customers</div>
+                  <div className="admin-card-value">{stats.totalCustomers}</div>
+                </div>
+
+                <div className="admin-card">
+                  <div className="admin-card-header">Total Products</div>
+                  <div className="admin-card-value">{stats.totalProductsCount}</div>
+                </div>
+              </div>
+
               {/* Dynamic graph & list */}
               <div className="admin-grid-2">
                 
@@ -1970,14 +2391,25 @@ export default function AdminDashboard() {
                   </button>
                 </div>
 
-                <div className="admin-form-group" style={{ marginTop: '1.5rem' }}>
-                  <label className="admin-form-label">Delivery Fee (₹)</label>
-                  <input 
-                    type="number" 
-                    className="admin-form-input" 
-                    value={shopSettings.deliveryFee} 
-                    onChange={e => setShopSettings({...shopSettings, deliveryFee: Number(e.target.value)})} 
-                  />
+                <div className="admin-grid-2" style={{ marginTop: '1.5rem' }}>
+                  <div className="admin-form-group">
+                    <label className="admin-form-label">Delivery Fee (₹)</label>
+                    <input 
+                      type="number" 
+                      className="admin-form-input" 
+                      value={shopSettings.deliveryFee} 
+                      onChange={e => setShopSettings({...shopSettings, deliveryFee: Number(e.target.value)})} 
+                    />
+                  </div>
+                  <div className="admin-form-group">
+                    <label className="admin-form-label">Free Delivery Above (₹)</label>
+                    <input 
+                      type="number" 
+                      className="admin-form-input" 
+                      value={shopSettings.freeDeliveryAbove ?? 999} 
+                      onChange={e => setShopSettings({...shopSettings, freeDeliveryAbove: Number(e.target.value)})} 
+                    />
+                  </div>
                 </div>
 
                 <div className="admin-grid-2" style={{ marginTop: '1.5rem' }}>
@@ -2001,7 +2433,30 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <button onClick={() => alert('Settings saved successfully!')} className="admin-btn admin-btn-primary" style={{ marginTop: '1rem' }}>Save System Parameters</button>
+                <div className="admin-form-group" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #eee', borderBottom: '1px solid #eee', marginTop: '1.5rem', padding: '1rem 0' }}>
+                  <div>
+                    <strong>WhatsApp Notifications System</strong>
+                    <div style={{ fontSize: '0.8rem', color: '#666' }}>Trigger instant customer/admin redirection alerts.</div>
+                  </div>
+                  <button 
+                    onClick={() => setShopSettings({...shopSettings, whatsappNotificationsEnabled: !shopSettings.whatsappNotificationsEnabled})}
+                    className={`admin-btn ${shopSettings.whatsappNotificationsEnabled ? 'admin-btn-success' : 'admin-btn-danger'}`}
+                  >
+                    {shopSettings.whatsappNotificationsEnabled ? 'ENABLED' : 'DISABLED'}
+                  </button>
+                </div>
+
+                <div className="admin-form-group" style={{ marginTop: '1.5rem' }}>
+                  <label className="admin-form-label">Admin WhatsApp Number (For Placement Notifications)</label>
+                  <input 
+                    type="text" 
+                    className="admin-form-input" 
+                    value={shopSettings.adminWhatsappNumber} 
+                    onChange={e => setShopSettings({...shopSettings, adminWhatsappNumber: e.target.value})} 
+                  />
+                </div>
+
+                <button onClick={handleSaveSystemSettings} className="admin-btn admin-btn-primary" style={{ marginTop: '1.5rem' }}>Save System Parameters</button>
               </div>
 
               <div className="admin-section-card">
@@ -2012,6 +2467,43 @@ export default function AdminDashboard() {
                   <p><strong>Support Email:</strong> support@meatcity.com</p>
                   <p><strong>Branch Support:</strong> +91 7977630912</p>
                   <p><strong>Simulated Database Engine:</strong> Filesystem Local JSON Interceptor</p>
+                </div>
+
+                <div style={{ borderTop: '1px solid #eee', marginTop: '1.5rem', paddingTop: '1.5rem' }}>
+                  <h3 className="admin-section-title" style={{ fontSize: '1rem', marginBottom: '0.75rem' }}>Backup & Data Recovery</h3>
+                  <p style={{ fontSize: '0.8rem', color: '#666', marginBottom: '1.25rem', lineHeight: '1.4' }}>
+                    Export system database tables to CSV format for local backup.
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <button 
+                      onClick={() => handleExportCSV('orders', orders)} 
+                      className="admin-btn admin-btn-secondary"
+                      style={{ fontSize: '0.75rem', padding: '0.6rem 0.5rem', display: 'flex', gap: '0.25rem', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      📥 Orders
+                    </button>
+                    <button 
+                      onClick={() => handleExportCSV('customers', users.filter(u => u.user_type !== 'admin'))} 
+                      className="admin-btn admin-btn-secondary"
+                      style={{ fontSize: '0.75rem', padding: '0.6rem 0.5rem', display: 'flex', gap: '0.25rem', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      📥 Customers
+                    </button>
+                    <button 
+                      onClick={() => handleExportCSV('products', products)} 
+                      className="admin-btn admin-btn-secondary"
+                      style={{ fontSize: '0.75rem', padding: '0.6rem 0.5rem', display: 'flex', gap: '0.25rem', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      📥 Products
+                    </button>
+                    <button 
+                      onClick={() => handleExportCSV('reviews', reviews)} 
+                      className="admin-btn admin-btn-secondary"
+                      style={{ fontSize: '0.75rem', padding: '0.6rem 0.5rem', display: 'flex', gap: '0.25rem', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      📥 Reviews
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2127,6 +2619,285 @@ export default function AdminDashboard() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tab 11: Pincodes Management */}
+          {activeTab === 'pincodes' && (
+            <div className="admin-grid-2">
+              <div className="admin-section-card">
+                <h2 className="admin-section-title" style={{ marginBottom: '1.25rem' }}>Add Serviceable Pincode</h2>
+                <form onSubmit={handleAddPincode} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div className="admin-form-group">
+                    <label className="admin-form-label">Pincode</label>
+                    <input 
+                      type="text" 
+                      className="admin-form-input" 
+                      placeholder="Enter 6-digit Pincode (e.g. 400705)" 
+                      value={newPincode}
+                      onChange={e => setNewPincode(e.target.value)} 
+                      required
+                    />
+                  </div>
+                  <div className="admin-form-group">
+                    <label className="admin-form-label">Delivery Charge (₹)</label>
+                    <input 
+                      type="number" 
+                      className="admin-form-input" 
+                      placeholder="Delivery Charge (e.g. 50)" 
+                      value={newPincodeCharge}
+                      onChange={e => setNewPincodeCharge(Number(e.target.value))} 
+                      required
+                      min={0}
+                    />
+                  </div>
+                  <button type="submit" className="admin-btn admin-btn-primary" style={{ width: '100%' }}>Add Pincode</button>
+                </form>
+              </div>
+
+              <div className="admin-section-card">
+                <h2 className="admin-section-title" style={{ marginBottom: '1.25rem' }}>Active Serviceable Pincodes</h2>
+                <div className="admin-table-container">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Pincode</th>
+                        <th>Delivery Charge</th>
+                        <th>Created At</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {serviceablePincodes.map(p => (
+                        <tr key={p.pincode}>
+                          <td data-label="Pincode"><strong>{p.pincode}</strong></td>
+                          <td data-label="Delivery Charge">
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                              <span style={{ fontSize: '0.85rem' }}>₹</span>
+                              <input 
+                                type="number" 
+                                className="admin-form-input" 
+                                style={{ width: '70px', padding: '0.25rem 0.5rem', margin: 0, height: 'auto', fontSize: '0.85rem' }}
+                                value={p.delivery_charge ?? 50} 
+                                onChange={e => {
+                                  const val = Number(e.target.value);
+                                  setServiceablePincodes(prev => prev.map(item => item.pincode === p.pincode ? { ...item, delivery_charge: val } : item));
+                                }}
+                              />
+                              <button 
+                                onClick={async () => {
+                                  await supabase.from('serviceable_pincodes').update({ delivery_charge: p.delivery_charge }).eq('pincode', p.pincode);
+                                  alert('Delivery charge updated successfully for pincode ' + p.pincode);
+                                  loadData();
+                                }}
+                                className="admin-btn admin-btn-sm admin-btn-success"
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                              >
+                                Save
+                              </button>
+                            </div>
+                          </td>
+                          <td data-label="Created At">{p.created_at ? new Date(p.created_at).toLocaleDateString() : 'System Seed'}</td>
+                          <td data-label="Actions">
+                            <button onClick={() => handleDeletePincode(p.pincode)} className="admin-btn admin-btn-sm admin-btn-danger">Delete</button>
+                          </td>
+                        </tr>
+                      ))}
+                      {serviceablePincodes.length === 0 && (
+                        <tr>
+                          <td data-label="Pincode" colSpan={3} style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>No pincodes defined. All checkouts will be blocked!</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tab 12: Coupon Configuration */}
+          {activeTab === 'coupons' && (
+            <div>
+              {showCouponForm && (
+                <div className="admin-section-card" style={{ border: '1px solid rgba(255, 255, 255, 0.08)', backgroundColor: '#111111', padding: '1.5rem', marginBottom: '2rem' }}>
+                  <h3 className="admin-section-title" style={{ color: 'var(--color-red)', marginBottom: '1.25rem' }}>
+                    {editingCoupon ? 'Edit Coupon' : 'Create New Coupon'}
+                  </h3>
+                  
+                  <form onSubmit={handleSaveCoupon}>
+                    <div className="admin-grid-3">
+                      <div className="admin-form-group">
+                        <label className="admin-form-label">Coupon Code</label>
+                        <input type="text" className="admin-form-input" required value={couponForm.code} onChange={e => setCouponForm({...couponForm, code: e.target.value.toUpperCase()})} placeholder="e.g. SAVE20" disabled={!!editingCoupon} />
+                      </div>
+
+                      <div className="admin-form-group">
+                        <label className="admin-form-label">Discount Percentage (%)</label>
+                        <input type="number" className="admin-form-input" required value={couponForm.discount_percent} onChange={e => setCouponForm({...couponForm, discount_percent: Number(e.target.value)})} />
+                      </div>
+
+                      <div className="admin-form-group">
+                        <label className="admin-form-label">Flat Discount (₹)</label>
+                        <input type="number" className="admin-form-input" required value={couponForm.flat_discount} onChange={e => setCouponForm({...couponForm, flat_discount: Number(e.target.value)})} />
+                      </div>
+
+                      <div className="admin-form-group">
+                        <label className="admin-form-label">Min Order Amount (₹)</label>
+                        <input type="number" className="admin-form-input" required value={couponForm.min_order_amount} onChange={e => setCouponForm({...couponForm, min_order_amount: Number(e.target.value)})} />
+                      </div>
+
+                      <div className="admin-form-group">
+                        <label className="admin-form-label">Expiry Date</label>
+                        <input type="date" className="admin-form-input" required value={couponForm.expiry_date} onChange={e => setCouponForm({...couponForm, expiry_date: e.target.value})} />
+                      </div>
+
+                      <div className="admin-form-group">
+                        <label className="admin-form-label">Usage Limit</label>
+                        <input type="number" className="admin-form-input" required value={couponForm.usage_limit} onChange={e => setCouponForm({...couponForm, usage_limit: Number(e.target.value)})} />
+                      </div>
+                    </div>
+
+                    <div className="admin-form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem' }}>
+                      <input type="checkbox" id="couponActive" checked={couponForm.is_active} onChange={e => setCouponForm({...couponForm, is_active: e.target.checked})} />
+                      <label htmlFor="couponActive" style={{ fontWeight: 700 }}>Enable Coupon Listing Active</label>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.25rem' }}>
+                      <button type="submit" className="admin-btn admin-btn-primary">Save Coupon</button>
+                      <button type="button" onClick={() => setShowCouponForm(false)} className="admin-btn admin-btn-secondary">Cancel</button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              <div className="admin-section-card">
+                <div className="admin-section-header">
+                  <h2 className="admin-section-title">Active Coupons ({coupons.length})</h2>
+                  <button 
+                    onClick={() => {
+                      setEditingCoupon(null);
+                      setCouponForm({ code: '', discount_percent: 0, flat_discount: 0, min_order_amount: 0, expiry_date: '', usage_limit: 100, is_active: true });
+                      setShowCouponForm(true);
+                    }} 
+                    className="admin-btn admin-btn-primary"
+                  >
+                    + Create Coupon
+                  </button>
+                </div>
+
+                <div className="admin-table-container">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Code</th>
+                        <th>Type</th>
+                        <th>Discount Value</th>
+                        <th>Min Order</th>
+                        <th>Expiry</th>
+                        <th>Limit</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {coupons.map(c => (
+                        <tr key={c.code}>
+                          <td data-label="Code"><strong>{c.code}</strong></td>
+                          <td data-label="Type">{c.discount_percent > 0 ? 'Percentage' : 'Flat Discount'}</td>
+                          <td data-label="Discount Value">{c.discount_percent > 0 ? `${c.discount_percent}%` : `₹${c.flat_discount}`}</td>
+                          <td data-label="Min Order">₹{c.min_order_amount}</td>
+                          <td data-label="Expiry">{c.expiry_date || 'None'}</td>
+                          <td data-label="Limit">{c.usage_limit}</td>
+                          <td data-label="Status">
+                            <span onClick={() => handleToggleCoupon(c.code, c.is_active)} className={`admin-badge cursor-pointer ${c.is_active ? 'admin-badge-success' : 'admin-badge-danger'}`}>
+                              {c.is_active ? 'Active' : 'Disabled'}
+                            </span>
+                          </td>
+                          <td data-label="Actions">
+                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                              <button onClick={() => {
+                                setEditingCoupon(c);
+                                setCouponForm({
+                                  code: c.code,
+                                  discount_percent: c.discount_percent,
+                                  flat_discount: c.flat_discount,
+                                  min_order_amount: c.min_order_amount,
+                                  expiry_date: c.expiry_date || '',
+                                  usage_limit: c.usage_limit || 100,
+                                  is_active: c.is_active
+                                });
+                                setShowCouponForm(true);
+                              }} className="admin-btn admin-btn-sm admin-btn-gold">Edit</button>
+                              <button onClick={() => handleDeleteCoupon(c.code)} className="admin-btn admin-btn-sm admin-btn-danger">Delete</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {coupons.length === 0 && (
+                        <tr>
+                          <td data-label="Code" colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>No coupons defined. Create one above!</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tab 13: Customer Reviews Moderation */}
+          {activeTab === 'reviews' && (
+            <div className="admin-section-card">
+              <h2 className="admin-section-title" style={{ marginBottom: '1.25rem' }}>Customer Reviews Moderation Queue ({reviews.length})</h2>
+              <div className="admin-table-container">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Customer Name</th>
+                      <th>Rating</th>
+                      <th>Comment</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reviews.map(r => (
+                      <tr key={r.id}>
+                        <td data-label="Customer Name"><strong>{r.customer_name}</strong></td>
+                        <td data-label="Rating" style={{ color: 'var(--color-gold)', fontWeight: 900 }}>
+                          {'⭐'.repeat(r.rating)} ({r.rating}/5)
+                        </td>
+                        <td data-label="Comment" style={{ fontStyle: 'italic', maxWidth: '300px' }}>"{r.comment}"</td>
+                        <td data-label="Status">
+                          <span className={`admin-badge ${
+                            r.status === 'approved' ? 'admin-badge-success' :
+                            r.status === 'rejected' ? 'admin-badge-danger' :
+                            'admin-badge-warning'
+                          }`}>
+                            {r.status.toUpperCase()}
+                          </span>
+                        </td>
+                        <td data-label="Actions">
+                          <div style={{ display: 'flex', gap: '0.25rem' }}>
+                            {r.status !== 'approved' && (
+                              <button onClick={() => handleApproveReview(r.id)} className="admin-btn admin-btn-sm admin-btn-success">Approve</button>
+                            )}
+                            {r.status !== 'rejected' && (
+                              <button onClick={() => handleRejectReview(r.id)} className="admin-btn admin-btn-sm admin-btn-danger">Reject</button>
+                            )}
+                            <button onClick={() => handleDeleteReview(r.id)} className="admin-btn admin-btn-sm admin-btn-secondary">Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {reviews.length === 0 && (
+                      <tr>
+                        <td data-label="Customer" colSpan={5} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>No customer reviews submitted yet.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}

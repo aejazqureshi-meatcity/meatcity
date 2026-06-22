@@ -300,7 +300,9 @@
       "unit": "kg",
       "stock": 50,
       "is_available": true,
-      "image_url": "https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=500&auto=format&fit=crop&q=60"
+      "image_url": "https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=500&auto=format&fit=crop&q=60",
+      "variants": [],
+      "stock_status": "Available"
     },
     {
       "id": "prod-2",
@@ -312,7 +314,9 @@
       "unit": "kg",
       "stock": 40,
       "is_available": true,
-      "image_url": "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=500&auto=format&fit=crop&q=60"
+      "image_url": "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=500&auto=format&fit=crop&q=60",
+      "variants": [],
+      "stock_status": "Available"
     },
     {
       "id": "prod-3",
@@ -324,7 +328,9 @@
       "unit": "kg",
       "stock": 30,
       "is_available": true,
-      "image_url": "https://images.unsplash.com/photo-1514516345957-556ca7d90a29?w=500&auto=format&fit=crop&q=60"
+      "image_url": "https://images.unsplash.com/photo-1514516345957-556ca7d90a29?w=500&auto=format&fit=crop&q=60",
+      "variants": [],
+      "stock_status": "Available"
     },
     {
       "id": "prod-4",
@@ -336,7 +342,9 @@
       "unit": "kg",
       "stock": 25,
       "is_available": true,
-      "image_url": "https://images.unsplash.com/photo-1588168333986-5078647aa981?w=500&auto=format&fit=crop&q=60"
+      "image_url": "https://images.unsplash.com/photo-1588168333986-5078647aa981?w=500&auto=format&fit=crop&q=60",
+      "variants": [],
+      "stock_status": "Available"
     },
     {
       "id": "prod-5",
@@ -348,7 +356,9 @@
       "unit": "kg",
       "stock": 15,
       "is_available": true,
-      "image_url": "https://images.unsplash.com/photo-1534604973900-c43ab4c2e0ab?w=500&auto=format&fit=crop&q=60"
+      "image_url": "https://images.unsplash.com/photo-1534604973900-c43ab4c2e0ab?w=500&auto=format&fit=crop&q=60",
+      "variants": [],
+      "stock_status": "Available"
     },
     {
       "id": "prod-6",
@@ -360,7 +370,9 @@
       "unit": "pack",
       "stock": 100,
       "is_available": true,
-      "image_url": "https://images.unsplash.com/photo-1506976785307-8732e854ad03?w=500&auto=format&fit=crop&q=60"
+      "image_url": "https://images.unsplash.com/photo-1506976785307-8732e854ad03?w=500&auto=format&fit=crop&q=60",
+      "variants": [],
+      "stock_status": "Available"
     },
     {
       "id": "prod-7",
@@ -372,7 +384,9 @@
       "unit": "pack",
       "stock": 35,
       "is_available": true,
-      "image_url": "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=500&auto=format&fit=crop&q=60"
+      "image_url": "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=500&auto=format&fit=crop&q=60",
+      "variants": [],
+      "stock_status": "Available"
     },
     {
       "id": "prod-wq838neqs",
@@ -385,7 +399,9 @@
       "unit": "kg",
       "image_url": "",
       "stock": 10,
-      "is_available": true
+      "is_available": true,
+      "variants": [],
+      "stock_status": "Available"
     }
   ],
   "categories": [
@@ -1399,6 +1415,41 @@
       "delivery_partner_name": "salim",
       "delivery_status": "assigned",
       "delivery_otp": "9445"
+    },
+    {
+      "id": "ORD-888123",
+      "created_at": "2026-06-18T07:47:41.679Z",
+      "order_id": "ORD-888123",
+      "user_id": "usr-4813exriz",
+      "customer_id": "usr-4813exriz",
+      "created_by": "usr-4813exriz",
+      "customer_name": "kadir qureshi",
+      "business_name": "kadeer hotel",
+      "customer_phone": "1234567891",
+      "role": "b2b",
+      "user_role": "b2b",
+      "delivery_address": "naka",
+      "subtotal": 1,
+      "discount": 0,
+      "delivery_fee": 0,
+      "total": 1,
+      "grand_total": 1,
+      "payment_method": "UPI",
+      "payment_status": "Pending Verification",
+      "payment_ref": "123123123123",
+      "status": "New",
+      "items": [
+        {
+          "product_id": "prod-wq838neqs",
+          "name": "test",
+          "product_name": "test",
+          "quantity": 1,
+          "qty": 1,
+          "price": 1,
+          "unit_price": 1,
+          "total": 1
+        }
+      ]
     }
   ],
   "coupons": [
@@ -2061,6 +2112,22 @@
       "title": "Delivery Partner Assigned 🛵",
       "message": "Your order ORD-886354 has been assigned to salim (OTP: 9445).",
       "type": "delivery_assigned"
+    },
+    {
+      "id": "uuid-dw0o0qz3j-mqj76csa",
+      "created_at": "2026-06-18T07:47:42.010Z",
+      "user_id": "usr-4813exriz",
+      "title": "Order Placed successfully 🎉",
+      "message": "Your order ORD-888123 for ₹1 has been placed. Payment method: UPI.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-qpkq1290r-mqj76cun",
+      "created_at": "2026-06-18T07:47:42.095Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Order Received 📦",
+      "message": "Order ORD-888123 placed by kadir qureshi for ₹1.",
+      "type": "new_order"
     }
   ],
   "payments": [
@@ -2155,6 +2222,41 @@
       "status": "Verified",
       "payment_method": "Online (Razorpay)",
       "payment_ref": "pay_mock_123456789"
+    }
+  ],
+  "serviceable_pincodes": [
+    {
+      "pincode": "400705"
+    },
+    {
+      "pincode": "400703"
+    },
+    {
+      "pincode": "400701"
+    },
+    {
+      "pincode": "400706"
+    },
+    {
+      "pincode": "400709"
+    }
+  ],
+  "reviews": [
+    {
+      "id": "rev-1",
+      "customer_name": "Aejaz Qureshi",
+      "rating": 5,
+      "comment": "Fresh meat and fast delivery.",
+      "status": "approved",
+      "created_at": "2026-06-22T05:23:00.409Z"
+    },
+    {
+      "id": "rev-2",
+      "customer_name": "Altaf Shaikh",
+      "rating": 5,
+      "comment": "Best wholesale rates in Navi Mumbai.",
+      "status": "approved",
+      "created_at": "2026-06-22T05:23:00.425Z"
     }
   ]
 }

@@ -147,11 +147,19 @@ export default function Header() {
             </Link>
 
             <Link 
-              href="/cart"
+              href="/profile"
               onClick={() => setIsDrawerOpen(false)}
               className="flex items-center gap-3 px-4 py-3.5 bg-white/5 hover:bg-white/10 text-white text-sm font-extrabold rounded-[12px] transition-colors border border-white/5"
             >
-              🛒 My Shopping Cart
+              👤 My Account Profile
+            </Link>
+
+            <Link 
+              href="/about"
+              onClick={() => setIsDrawerOpen(false)}
+              className="flex items-center gap-3 px-4 py-3.5 bg-white/5 hover:bg-white/10 text-white text-sm font-extrabold rounded-[12px] transition-colors border border-white/5"
+            >
+              ℹ️ About MeatCity
             </Link>
 
             {userRole === 'guest' ? (

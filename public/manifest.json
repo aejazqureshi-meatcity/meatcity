@@ -1,0 +1,19 @@
+{
+  "name": "MeatCity Turbhe",
+  "short_name": "MeatCity",
+  "description": "Premium Quality Fresh Meat & Fish Delivery in Navi Mumbai",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#000000",
+  "theme_color": "#D4AF37",
+  "status_bar": "black-translucent",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
