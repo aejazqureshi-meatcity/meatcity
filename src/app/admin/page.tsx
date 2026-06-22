@@ -768,27 +768,14 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!newPincode) return;
     const cleanPin = newPincode.trim();
-    // Validate pincode format (6 digits)
-    if (!/^\d{6}$/.test(cleanPin)) {
-      alert('Please enter a valid 6-digit pincode');
-      return;
-    }
     if (serviceablePincodes.some(p => p.pincode === cleanPin)) {
       alert('Pincode already added');
       return;
     }
-    try {
-      const { error } = await supabase
-        .from('serviceable_pincodes')
-        .insert({ pincode: cleanPin, delivery_charge: Number(newPincodeCharge) || 0 });
-      if (error) throw error;
-      setNewPincode('');
-      setNewPincodeCharge(50);
-      await loadData();
-    } catch (err) {
-      console.error('Error adding pincode', err);
-      alert('Failed to add pincode. Please try again.');
-    }
+    await supabase.from('serviceable_pincodes').insert({ pincode: cleanPin, delivery_charge: newPincodeCharge });
+    setNewPincode('');
+    setNewPincodeCharge(50);
+    loadData();
   };
 
   const handleDeletePincode = async (pincode: string) => {
