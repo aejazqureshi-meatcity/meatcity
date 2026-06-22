@@ -79,6 +79,7 @@ create table if not exists public.orders (
     delivery_partner_name text,
     delivery_status text,
     delivery_otp text,
+    delivery_slot text,
     items jsonb default '[]'::jsonb,
     created_at timestamp with time zone default now()
 );
@@ -362,8 +363,10 @@ values (
 
 -- Serviceable Pincodes Table
 create table if not exists public.serviceable_pincodes (
-    pincode text primary key,
-    delivery_charge numeric not null default 0
+    id uuid primary key default gen_random_uuid(),
+    pincode text unique not null,
+    delivery_charge numeric not null default 50,
+    created_at timestamp with time zone default now()
 );
 
 -- Enable RLS for pincodes

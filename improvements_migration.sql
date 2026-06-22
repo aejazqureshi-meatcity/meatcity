@@ -1,6 +1,7 @@
 -- Create serviceable pincodes table
 create table if not exists public.serviceable_pincodes (
-    pincode text primary key,
+    id uuid primary key default gen_random_uuid(),
+    pincode text unique not null,
     delivery_charge numeric not null default 50,
     created_at timestamp with time zone default now()
 );

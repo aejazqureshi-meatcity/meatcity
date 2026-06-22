@@ -74,6 +74,11 @@ interface Order {
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'approvals' | 'customers' | 'products' | 'categories' | 'orders' | 'deliveries' | 'analytics' | 'settings' | 'payments' | 'pincodes' | 'coupons' | 'reviews'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
   
   // Delivery Partner Form States
   const [editingPartner, setEditingPartner] = useState<any | null>(null);
@@ -768,20 +773,41 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!newPincode) return;
     const cleanPin = newPincode.trim();
-    if (serviceablePincodes.some(p => p.pincode === cleanPin)) {
-      alert('Pincode already added');
+    // Validate pincode format (6 digits)
+    if (!/^\d{6}$/.test(cleanPin)) {
+      showToast('Please enter a valid 6-digit pincode', 'error');
       return;
     }
-    await supabase.from('serviceable_pincodes').insert({ pincode: cleanPin, delivery_charge: newPincodeCharge });
-    setNewPincode('');
-    setNewPincodeCharge(50);
-    loadData();
+    if (serviceablePincodes.some(p => p.pincode === cleanPin)) {
+      showToast('Pincode already added', 'error');
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from('serviceable_pincodes')
+        .insert({ pincode: cleanPin, delivery_charge: Number(newPincodeCharge) || 0 });
+      if (error) throw error;
+      setNewPincode('');
+      setNewPincodeCharge(50);
+      showToast('Pincode added successfully!', 'success');
+      await loadData();
+    } catch (err: any) {
+      console.error('Error adding pincode', err);
+      showToast(err.message || 'Failed to add pincode. Please try again.', 'error');
+    }
   };
 
   const handleDeletePincode = async (pincode: string) => {
     if (confirm(`Remove delivery service for pincode ${pincode}?`)) {
-      await supabase.from('serviceable_pincodes').delete().eq('pincode', pincode);
-      loadData();
+      try {
+        const { error } = await supabase.from('serviceable_pincodes').delete().eq('pincode', pincode);
+        if (error) throw error;
+        showToast('Pincode removed successfully!', 'success');
+        await loadData();
+      } catch (err: any) {
+        console.error('Error deleting pincode', err);
+        showToast(err.message || 'Failed to delete pincode.', 'error');
+      }
     }
   };
 
@@ -2090,6 +2116,7 @@ export default function AdminDashboard() {
                       <th>Order ID</th>
                       <th>Customer info</th>
                       <th>Address</th>
+                      <th>Delivery Slot</th>
                       <th>Items ordered</th>
                       <th>Totals</th>
                       <th>Method</th>
@@ -2122,6 +2149,11 @@ export default function AdminDashboard() {
                           </div>
                         </td>
                         <td data-label="Address" style={{ maxWidth: '180px', fontSize: '0.8rem' }}>{order.delivery_address}</td>
+                        <td data-label="Delivery Slot">
+                          <span className="admin-badge admin-badge-secondary">
+                            {order.delivery_slot || 'ASAP'}
+                          </span>
+                        </td>
                         <td data-label="Items ordered">
                           <div className="admin-cell-stack">
                             {order.items?.map((item, idx) => (
@@ -2254,7 +2286,7 @@ export default function AdminDashboard() {
                     ))}
                     {orders.length === 0 && (
                       <tr>
-                        <td data-label="Order ID" colSpan={8} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>
+                        <td data-label="Order ID" colSpan={9} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>
                           No orders placed in this branch database.
                         </td>
                       </tr>
@@ -2695,9 +2727,15 @@ export default function AdminDashboard() {
                               />
                               <button 
                                 onClick={async () => {
-                                  await supabase.from('serviceable_pincodes').update({ delivery_charge: p.delivery_charge }).eq('pincode', p.pincode);
-                                  alert('Delivery charge updated successfully for pincode ' + p.pincode);
-                                  loadData();
+                                  try {
+                                    const { error } = await supabase.from('serviceable_pincodes').update({ delivery_charge: p.delivery_charge }).eq('pincode', p.pincode);
+                                    if (error) throw error;
+                                    showToast('Delivery charge updated successfully for pincode ' + p.pincode, 'success');
+                                    await loadData();
+                                  } catch (err: any) {
+                                    console.error('Error updating delivery charge', err);
+                                    showToast(err.message || 'Failed to update delivery charge.', 'error');
+                                  }
                                 }}
                                 className="admin-btn admin-btn-sm admin-btn-success"
                                 style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
@@ -2714,7 +2752,7 @@ export default function AdminDashboard() {
                       ))}
                       {serviceablePincodes.length === 0 && (
                         <tr>
-                          <td data-label="Pincode" colSpan={3} style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>No pincodes defined. All checkouts will be blocked!</td>
+                          <td data-label="Pincode" colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>No pincodes defined. All checkouts will be blocked!</td>
                         </tr>
                       )}
                     </tbody>
@@ -3161,6 +3199,37 @@ export default function AdminDashboard() {
 
         </div>
       </main>
+      
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          padding: '12px 24px',
+          borderRadius: '12px',
+          backgroundColor: toast.type === 'success' ? '#10B981' : '#EF4444',
+          color: '#ffffff',
+          fontWeight: 600,
+          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(8px)'
+        }}>
+          {toast.type === 'success' ? (
+            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          ) : (
+            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          )}
+          <span>{toast.message}</span>
+        </div>
+      )}
     </div>
   );
 }
