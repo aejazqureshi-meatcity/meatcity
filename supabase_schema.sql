@@ -359,3 +359,16 @@ values (
   'active',
   now()
 ) on conflict (id) do nothing;
+
+-- Serviceable Pincodes Table
+create table if not exists public.serviceable_pincodes (
+    pincode text primary key,
+    delivery_charge numeric not null default 0
+);
+
+-- Enable RLS for pincodes
+alter table public.serviceable_pincodes enable row level security;
+
+-- Allow all reads and writes (admin and authenticated users)
+create policy "Allow all read pincodes" on public.serviceable_pincodes for select using (true);
+create policy "Allow all write pincodes" on public.serviceable_pincodes for all using (true);
