@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 interface Product {
@@ -102,6 +102,75 @@ export default function AdminDashboard() {
   const [serviceablePincodes, setServiceablePincodes] = useState<any[]>([]);
   const [coupons, setCoupons] = useState<any[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
+
+  // Auto-refresh & alerts state
+  const [lastUpdatedTime, setLastUpdatedTime] = useState<string>('');
+  const [newOrderAlerts, setNewOrderAlerts] = useState<{
+    id: string;
+    orderId: string;
+    customerName: string;
+    amount: number;
+  }[]>([]);
+  
+  const isInitialLoad = useRef(true);
+  const currentOrdersRef = useRef<Order[]>([]);
+
+  useEffect(() => {
+    currentOrdersRef.current = orders;
+  }, [orders]);
+
+  const playNotificationSound = () => {
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const now = ctx.currentTime;
+
+      // Note 1 (E5, 659.25 Hz)
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(659.25, now);
+      gain1.gain.setValueAtTime(0.15, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.3);
+
+      // Note 2 (A5, 880 Hz)
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(880, now + 0.15);
+      gain2.gain.setValueAtTime(0.2, now + 0.15);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.15);
+      osc2.stop(now + 0.55);
+    } catch (e) {
+      console.error('Failed to play notification chime:', e);
+    }
+  };
+
+  const triggerNewOrderNotification = (order: Order) => {
+    playNotificationSound();
+
+    const alertId = order.id + '-' + Date.now();
+    const newAlert = {
+      id: alertId,
+      orderId: order.id,
+      customerName: order.customer_name,
+      amount: order.total
+    };
+
+    setNewOrderAlerts(prev => [...prev, newAlert]);
+
+    setTimeout(() => {
+      setNewOrderAlerts(prev => prev.filter(a => a.id !== alertId));
+    }, 8000);
+  };
 
   // Pincode form state
   const [newPincode, setNewPincode] = useState('');
@@ -219,6 +288,8 @@ export default function AdminDashboard() {
     const { data: ordersData } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
     const oList = ordersData || [];
     setOrders(oList);
+    setLastUpdatedTime(new Date().toTimeString().split(' ')[0]);
+    isInitialLoad.current = false;
 
     // 5. Fetch Cash Pickup requests
     const { data: requestsData } = await supabase.from('cash_collection_requests').select('*');
@@ -352,6 +423,35 @@ export default function AdminDashboard() {
     });
   };
 
+  const refreshOrders = async () => {
+    try {
+      const { data: ordersData, error } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+
+      const newOrders = ordersData || [];
+
+      // Check for new orders if it's not initial load
+      if (!isInitialLoad.current && currentOrdersRef.current.length > 0) {
+        const existingIds = new Set(currentOrdersRef.current.map(o => o.id));
+        const newIncoming = newOrders.filter(o => !existingIds.has(o.id));
+        if (newIncoming.length > 0) {
+          newIncoming.forEach(newOrder => {
+            triggerNewOrderNotification(newOrder);
+          });
+        }
+      }
+
+      setOrders(newOrders);
+      setLastUpdatedTime(new Date().toTimeString().split(' ')[0]);
+      isInitialLoad.current = false;
+    } catch (err) {
+      console.error('Failed to auto-refresh orders:', err);
+    }
+  };
+
   useEffect(() => {
     const checkAdmin = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -371,6 +471,13 @@ export default function AdminDashboard() {
     };
     checkAdmin();
     loadData();
+
+    // Set up auto-refresh interval for orders data (every 15 seconds)
+    const intervalId = setInterval(() => {
+      refreshOrders();
+    }, 15000);
+
+    return () => clearInterval(intervalId);
   }, []);
 
   const handleLogout = async () => {
@@ -2106,8 +2213,29 @@ export default function AdminDashboard() {
 
           {/* Tab 6: Orders tracking */}
           {activeTab === 'orders' && (
-            <div className="admin-section-card">
-              <h2 className="admin-section-title" style={{ marginBottom: '1.25rem' }}>Current Orders Queue ({orders.length})</h2>
+            <div className="admin-section-card" id="orders-section">
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '1.25rem',
+                flexWrap: 'wrap',
+                gap: '0.75rem'
+              }}>
+                <h2 className="admin-section-title" style={{ margin: 0 }}>Current Orders Queue ({orders.length})</h2>
+                {lastUpdatedTime && (
+                  <span style={{
+                    fontSize: '0.75rem',
+                    color: '#888',
+                    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    fontFamily: 'monospace'
+                  }}>
+                    Last Updated: {lastUpdatedTime}
+                  </span>
+                )}
+              </div>
               
               {/* Desktop Table View */}
               <div className="admin-desktop-only">
@@ -3467,6 +3595,89 @@ export default function AdminDashboard() {
           <span>{toast.message}</span>
         </div>
       )}
+
+      {/* Floating New Order Alerts */}
+      <div style={{
+        position: 'fixed',
+        top: '20px',
+        right: '20px',
+        zIndex: 9999,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        maxWidth: '320px',
+        width: '100%'
+      }}>
+        {newOrderAlerts.map(alert => (
+          <div key={alert.id} className="new-order-toast" style={{
+            backgroundColor: '#1E2020',
+            border: '2px solid #D4AF37',
+            borderRadius: '12px',
+            padding: '16px',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
+            color: '#fff',
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            animation: 'slideIn 0.3s ease-out'
+          }}>
+            <style jsx>{`
+              @keyframes slideIn {
+                from { transform: translateX(120%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+              }
+            `}</style>
+            <div style={{ display: 'flex', justifycontent: 'space-between', alignitems: 'flex-start' }}>
+              <strong style={{ fontSize: '0.95rem', color: '#D4AF37', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                🔔 New Order Received
+              </strong>
+              <button 
+                onClick={() => {
+                  setNewOrderAlerts(prev => prev.filter(a => a.id !== alert.id));
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#888',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  padding: 0
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ fontSize: '0.85rem', marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div>Order: <strong>#{alert.orderId}</strong></div>
+              <div>Customer: <strong>{alert.customerName}</strong></div>
+              <div>Amount: <strong style={{ color: '#E31E24' }}>₹{alert.amount}</strong></div>
+            </div>
+            <button
+              onClick={() => {
+                setActiveTab('orders');
+                setNewOrderAlerts(prev => prev.filter(a => a.id !== alert.id));
+                const target = document.getElementById('orders-section') || document.querySelector('.admin-table');
+                if (target) {
+                  target.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              style={{
+                marginTop: '12px',
+                width: '100%',
+                padding: '8px',
+                backgroundColor: '#D4AF37',
+                color: '#000',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: 'bold',
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s'
+              }}
+            >
+              View Order
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

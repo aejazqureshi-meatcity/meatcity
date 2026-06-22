@@ -789,6 +789,19 @@ export default function CartPage() {
       console.error('Failed to trigger database notifications:', nErr);
     }
 
+    // Trigger Resend email notification via our server-side API endpoint (non-blocking)
+    try {
+      fetch('/api/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ order: dbOrderPayload })
+      }).catch(err => console.error('Fetch post error on send-email:', err));
+    } catch (eErr) {
+      console.error('Failed to dispatch order email trigger:', eErr);
+    }
+
     localStorage.removeItem('meatcity_cart');
     setCart({});
     if (typeof window !== 'undefined') {

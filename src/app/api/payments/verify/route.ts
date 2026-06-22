@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import crypto from 'crypto';
+import { sendOrderEmail } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,7 +78,10 @@ export async function POST(request: Request) {
         payment_status: secureOrderPayload.payment_status,
         payment_ref: secureOrderPayload.payment_ref,
         status: secureOrderPayload.status,
-        items: secureOrderPayload.items
+        items: secureOrderPayload.items,
+        delivery_slot: secureOrderPayload.delivery_slot,
+        coupon_code: secureOrderPayload.coupon_code,
+        coupon_discount: secureOrderPayload.coupon_discount
       };
 
       // Write order directly to database
@@ -104,6 +108,13 @@ export async function POST(request: Request) {
         });
       } catch (nErr) {
         console.error('Failed to trigger database notifications:', nErr);
+      }
+
+      // Send Resend email notification (errors logged, does not block return)
+      try {
+        await sendOrderEmail(dbOrderPayload);
+      } catch (eErr) {
+        console.error('Resend email dispatch error:', eErr);
       }
 
       return NextResponse.json({ success: true, orderId: secureOrderPayload.id });
