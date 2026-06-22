@@ -12,6 +12,15 @@ export default function Header() {
   const [userName, setUserName] = useState('');
   const [userRole, setUserRole] = useState<'guest' | 'b2c' | 'b2b'>('guest');
   const [userStatus, setUserStatus] = useState<string>('');
+
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 5000);
+  };
   
   const supabase = createClient();
   const router = useRouter();
@@ -68,18 +77,84 @@ export default function Header() {
     router.refresh();
   };
 
+  const handleInstallClick = async () => {
+    if (isInstalled) return;
+
+    const promptEvent = (window as any).pwaDeferredPrompt || deferredPrompt;
+    if (promptEvent) {
+      setIsDrawerOpen(false);
+      try {
+        promptEvent.prompt();
+        const { outcome } = await promptEvent.userChoice;
+        console.log(`User response to install prompt: ${outcome}`);
+        if (outcome === 'accepted') {
+          setIsInstalled(true);
+          localStorage.setItem('pwa_installed', 'true');
+          showToast('Thank you for installing MeatCity App! 🎉', 'success');
+        }
+      } catch (err) {
+        console.error('Install prompt error:', err);
+      }
+      (window as any).pwaDeferredPrompt = null;
+      setDeferredPrompt(null);
+    } else {
+      setIsDrawerOpen(false);
+      const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+      if (isiOS) {
+        showToast("To Install: Tap the Share button 📤 and select 'Add to Home Screen' ➕", 'success');
+      } else {
+        showToast("To Install: Tap your browser menu (⋮) and select 'Install' or 'Add to Home Screen'.", 'success');
+      }
+    }
+  };
+
   useEffect(() => {
     updateCartCount();
     loadUser();
 
-    // Listen to custom event for cart updates
     window.addEventListener('cart-updated', updateCartCount);
-    // Listen to storage events (cross-tab sync)
     window.addEventListener('storage', updateCartCount);
+
+    const handlePromptAvailable = () => {
+      setDeferredPrompt((window as any).pwaDeferredPrompt);
+    };
+
+    const handleNativePrompt = (e: Event) => {
+      e.preventDefault();
+      (window as any).pwaDeferredPrompt = e;
+      setDeferredPrompt(e);
+    };
+
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      localStorage.setItem('pwa_installed', 'true');
+      showToast('MeatCity App installed successfully! 🎉', 'success');
+    };
+
+    if (typeof window !== 'undefined') {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+      const isLocalInstalledFlag = localStorage.getItem('pwa_installed') === 'true';
+      if (isStandalone || isLocalInstalledFlag) {
+        setIsInstalled(true);
+      }
+
+      if ((window as any).pwaDeferredPrompt) {
+        setDeferredPrompt((window as any).pwaDeferredPrompt);
+      }
+
+      window.addEventListener('pwa-prompt-available', handlePromptAvailable);
+      window.addEventListener('beforeinstallprompt', handleNativePrompt);
+      window.addEventListener('appinstalled', handleAppInstalled);
+    }
 
     return () => {
       window.removeEventListener('cart-updated', updateCartCount);
       window.removeEventListener('storage', updateCartCount);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('pwa-prompt-available', handlePromptAvailable);
+        window.removeEventListener('beforeinstallprompt', handleNativePrompt);
+        window.removeEventListener('appinstalled', handleAppInstalled);
+      }
     };
   }, []);
 
@@ -154,6 +229,27 @@ export default function Header() {
               👤 My Account Profile
             </Link>
 
+            <button
+              onClick={handleInstallClick}
+              disabled={isInstalled}
+              className={`flex items-center justify-between w-full px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/5 rounded-[12px] transition-all duration-300 text-left ${
+                isInstalled ? 'opacity-60 cursor-default hover:bg-white/5' : 'active:scale-[0.98]'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-lg text-gold">📲</span>
+                <div className="flex flex-col">
+                  <span className="text-white text-xs font-black uppercase tracking-tight">
+                    {isInstalled ? 'App Installed ✓' : 'Install App'}
+                  </span>
+                  <span className="text-[10px] text-text-secondary font-bold">
+                    {isInstalled ? 'MeatCity is ready on your device' : 'Add MeatCity to your Home Screen'}
+                  </span>
+                </div>
+              </div>
+              {!isInstalled && <span className="text-gold text-xs">📥</span>}
+            </button>
+
             <Link 
               href="/about"
               onClick={() => setIsDrawerOpen(false)}
@@ -213,6 +309,33 @@ export default function Header() {
           </div>
         </div>
       </Drawer>
+
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          bottom: '2rem',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: 'calc(100% - 2rem)',
+          maxWidth: '448px',
+          zIndex: 9999,
+          backgroundColor: toast.type === 'success' ? '#10B981' : '#EF4444',
+          color: '#fff',
+          padding: '0.85rem 1.25rem',
+          borderRadius: '12px',
+          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          fontWeight: 800,
+          fontSize: '0.85rem',
+          textAlign: 'center',
+          justifyContent: 'center'
+        }}>
+          {toast.type === 'success' ? <span>✅</span> : <span>❌</span>}
+          <span>{toast.message}</span>
+        </div>
+      )}
     </>
   );
 }
