@@ -113,6 +113,7 @@ export default function AdminDashboard() {
   }[]>([]);
   
   const isInitialLoad = useRef(true);
+  const isInitialFetchDone = useRef(false);
   const currentOrdersRef = useRef<Order[]>([]);
 
   useEffect(() => {
@@ -278,17 +279,63 @@ export default function AdminDashboard() {
 
     // 2. Fetch Products
     const { data: productsData } = await supabase.from('products').select('*');
-    setProducts(productsData || []);
+    const parsedProducts = (productsData || []).map((prod: any) => {
+      let parsedVariants = [];
+      let parsedStockStatus = prod.stock_status || 'Available';
+      
+      // Parse description fallback if available
+      if (prod.description && prod.description.includes('__METADATA__:')) {
+        try {
+          const parts = prod.description.split('__METADATA__:');
+          const cleanDesc = parts[0].trim();
+          const metaJson = JSON.parse(parts[1].trim());
+          parsedVariants = metaJson.variants || [];
+          parsedStockStatus = metaJson.stock_status || 'Available';
+          
+          return {
+            ...prod,
+            description: cleanDesc,
+            variants: parsedVariants,
+            stock_status: parsedStockStatus
+          };
+        } catch (e) {
+          console.warn('Failed to parse fallback product metadata:', e);
+        }
+      }
+      
+      // Otherwise use actual columns if they exist
+      try {
+        parsedVariants = prod.variants 
+          ? (typeof prod.variants === 'string' ? JSON.parse(prod.variants) : prod.variants) 
+          : [];
+      } catch (e) {
+        parsedVariants = [];
+      }
+
+      return {
+        ...prod,
+        variants: parsedVariants,
+        stock_status: parsedStockStatus
+      };
+    });
+    setProducts(parsedProducts);
 
     // 3. Fetch Categories
     const { data: catData } = await supabase.from('categories').select('*');
-    setCategories(catData ? catData.map((c: any) => c.name || c.id) : ['Chicken', 'Mutton', 'Seafood', 'Eggs', 'Ready To Cook']);
+    const rawCategories = catData || [];
+    setCategories(
+      rawCategories
+        .filter((c: any) => !c.name.startsWith('COUPON_') && !c.id.startsWith('COUPON_'))
+        .map((c: any) => c.name || c.id)
+    );
 
     // 4. Fetch Orders
     const { data: ordersData } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
     const oList = ordersData || [];
+    currentOrdersRef.current = oList;
     setOrders(oList);
     setLastUpdatedTime(new Date().toTimeString().split(' ')[0]);
+    isInitialFetchDone.current = true;
     isInitialLoad.current = false;
 
     // 5. Fetch Cash Pickup requests
@@ -304,8 +351,42 @@ export default function AdminDashboard() {
     const { data: pinsData } = await supabase.from('serviceable_pincodes').select('*');
     setServiceablePincodes(pinsData || []);
 
-    const { data: couponsData } = await supabase.from('coupons').select('*');
-    setCoupons(couponsData || []);
+    let couponsList: any[] = [];
+    try {
+      const { data: couponsData, error: couponsErr } = await supabase.from('coupons').select('*');
+      if (!couponsErr && couponsData) {
+        couponsList = [...couponsData];
+      }
+    } catch (e) {
+      console.warn('Failed to load from coupons table, falling back to categories virtual store');
+    }
+
+    // Load coupons from categories fallback
+    const categoryCoupons = rawCategories
+      .filter((c: any) => c.id.startsWith('COUPON_') || c.name.startsWith('COUPON_'))
+      .map((c: any) => {
+        const code = c.id.startsWith('COUPON_') ? c.id.replace('COUPON_', '') : c.name.replace('COUPON_', '');
+        try {
+          const jsonStr = c.id.startsWith('COUPON_') ? c.name : c.image_url;
+          const meta = JSON.parse(jsonStr);
+          return {
+            code,
+            discount_percent: meta.discount_percent || 0,
+            flat_discount: meta.flat_discount || 0,
+            min_order_amount: meta.min_order_amount || 0,
+            expiry_date: meta.expiry_date || '',
+            usage_limit: meta.usage_limit || 0,
+            is_active: meta.is_active !== false,
+            is_fallback: true
+          };
+        } catch (e) {
+          console.warn('Failed to parse virtual coupon:', c.id || c.name, e);
+          return null;
+        }
+      })
+      .filter(Boolean);
+
+    setCoupons([...couponsList, ...categoryCoupons]);
 
     const { data: reviewsData } = await supabase.from('reviews').select('*').order('created_at', { ascending: false });
     setReviews(reviewsData || []);
@@ -433,8 +514,8 @@ export default function AdminDashboard() {
 
       const newOrders = ordersData || [];
 
-      // Check for new orders if it's not initial load
-      if (!isInitialLoad.current && currentOrdersRef.current.length > 0) {
+      // Check for new orders if initial fetch is complete
+      if (isInitialFetchDone.current) {
         const existingIds = new Set(currentOrdersRef.current.map(o => o.id));
         const newIncoming = newOrders.filter(o => !existingIds.has(o.id));
         if (newIncoming.length > 0) {
@@ -444,6 +525,7 @@ export default function AdminDashboard() {
         }
       }
 
+      currentOrdersRef.current = newOrders;
       setOrders(newOrders);
       setLastUpdatedTime(new Date().toTimeString().split(' ')[0]);
       isInitialLoad.current = false;
@@ -782,7 +864,7 @@ export default function AdminDashboard() {
     e.preventDefault();
 
     try {
-      const payload = {
+      const basePayload: any = {
         name: productForm.name,
         description: productForm.description,
         category: productForm.category,
@@ -791,23 +873,54 @@ export default function AdminDashboard() {
         unit: productForm.unit,
         image_url: productForm.image_url,
         stock: Number(productForm.stock),
-        is_available: productForm.is_available,
+        is_available: productForm.is_available
+      };
+
+      const fullPayload = {
+        ...basePayload,
         stock_status: productForm.stock_status,
         variants: typeof productForm.variants === 'string' ? productForm.variants : JSON.stringify(productForm.variants)
       };
 
       let res;
       if (editingProduct) {
-        res = await supabase.from('products').update(payload).eq('id', editingProduct.id);
+        res = await supabase.from('products').update(fullPayload).eq('id', editingProduct.id);
       } else {
         res = await supabase.from('products').insert({
           id: 'prod-' + Math.random().toString(36).substr(2, 9),
-          ...payload
+          ...fullPayload
         });
       }
 
       if (res.error) {
-        throw new Error(res.error.message);
+        // Fallback if stock_status or variants columns do not exist in schema cache
+        const isColumnError = res.error.message.includes('stock_status') || res.error.message.includes('variants') || res.error.code === 'PGRST204';
+        
+        if (isColumnError) {
+          console.warn('[DB FALLBACK] products table is missing stock_status or variants columns. Storing metadata in description instead.');
+          
+          const metadata = {
+            stock_status: productForm.stock_status,
+            variants: productForm.variants
+          };
+          basePayload.description = `${productForm.description}\n__METADATA__:${JSON.stringify(metadata)}`;
+          
+          let resFallback;
+          if (editingProduct) {
+            resFallback = await supabase.from('products').update(basePayload).eq('id', editingProduct.id);
+          } else {
+            resFallback = await supabase.from('products').insert({
+              id: 'prod-' + Math.random().toString(36).substr(2, 9),
+              ...basePayload
+            });
+          }
+          
+          if (resFallback.error) {
+            throw new Error(resFallback.error.message);
+          }
+        } else {
+          throw new Error(res.error.message);
+        }
       }
 
       setEditingProduct(null);
@@ -825,7 +938,7 @@ export default function AdminDashboard() {
         variants: []
       });
       setShowProductForm(false);
-      loadData();
+      await loadData();
       alert('Product saved successfully!');
     } catch (err: any) {
       console.error('Failed to save product:', err);
@@ -974,8 +1087,9 @@ export default function AdminDashboard() {
   const handleSaveCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const codeUpper = couponForm.code.toUpperCase().trim();
       const payload = {
-        code: couponForm.code.toUpperCase().trim(),
+        code: codeUpper,
         discount_percent: Number(couponForm.discount_percent),
         flat_discount: Number(couponForm.flat_discount),
         min_order_amount: Number(couponForm.min_order_amount),
@@ -984,21 +1098,55 @@ export default function AdminDashboard() {
         is_active: couponForm.is_active
       };
 
-      let res;
-      if (editingCoupon) {
-        res = await supabase.from('coupons').update(payload).eq('code', editingCoupon.code);
-      } else {
-        res = await supabase.from('coupons').insert(payload);
+      let useFallback = false;
+      try {
+        let res;
+        if (editingCoupon) {
+          res = await supabase.from('coupons').update(payload).eq('code', editingCoupon.code);
+        } else {
+          res = await supabase.from('coupons').insert(payload);
+        }
+
+        if (res.error) {
+          console.warn('[DB FALLBACK] coupons table save failed, trying categories fallback:', res.error.message);
+          useFallback = true;
+        }
+      } catch (e: any) {
+        console.warn('[DB FALLBACK] coupons table save threw exception, trying categories fallback:', e.message);
+        useFallback = true;
       }
 
-      if (res.error) {
-        throw new Error(res.error.message);
+      if (useFallback) {
+        const metaPayload = {
+          discount_percent: payload.discount_percent,
+          flat_discount: payload.flat_discount,
+          min_order_amount: payload.min_order_amount,
+          expiry_date: payload.expiry_date,
+          usage_limit: payload.usage_limit,
+          is_active: payload.is_active
+        };
+        const catId = `COUPON_${codeUpper}`;
+        
+        // If editing a fallback coupon and the code has changed, delete the old virtual coupon category row
+        if (editingCoupon && editingCoupon.code !== codeUpper) {
+          const oldCatId = `COUPON_${editingCoupon.code}`;
+          await supabase.from('categories').delete().eq('id', oldCatId);
+        }
+
+        const { error: fallbackErr } = await supabase.from('categories').upsert({
+          id: catId,
+          name: JSON.stringify(metaPayload)
+        });
+
+        if (fallbackErr) {
+          throw new Error('Fallback coupon storage failed: ' + fallbackErr.message);
+        }
       }
 
       setEditingCoupon(null);
       setCouponForm({ code: '', discount_percent: 0, flat_discount: 0, min_order_amount: 0, expiry_date: '', usage_limit: 100, is_active: true });
       setShowCouponForm(false);
-      loadData();
+      await loadData();
       alert('Coupon saved successfully!');
     } catch (err: any) {
       console.error('Failed to save coupon:', err);
@@ -1009,9 +1157,25 @@ export default function AdminDashboard() {
   const handleDeleteCoupon = async (code: string) => {
     if (confirm(`Delete coupon ${code}?`)) {
       try {
-        const { error } = await supabase.from('coupons').delete().eq('code', code);
-        if (error) throw error;
-        loadData();
+        let useFallback = false;
+        try {
+          const { error } = await supabase.from('coupons').delete().eq('code', code);
+          if (error) {
+            console.warn('[DB FALLBACK] coupons table delete failed, trying categories fallback:', error.message);
+            useFallback = true;
+          }
+        } catch (e: any) {
+          console.warn('[DB FALLBACK] coupons table delete threw exception, trying categories fallback:', e.message);
+          useFallback = true;
+        }
+
+        if (useFallback) {
+          const catId = `COUPON_${code}`;
+          const { error: fallbackErr } = await supabase.from('categories').delete().eq('id', catId);
+          if (fallbackErr) throw fallbackErr;
+        }
+
+        await loadData();
         alert('Coupon deleted successfully!');
       } catch (err: any) {
         console.error('Failed to delete coupon:', err);
@@ -1022,9 +1186,42 @@ export default function AdminDashboard() {
 
   const handleToggleCoupon = async (code: string, currentStatus: boolean) => {
     try {
-      const { error } = await supabase.from('coupons').update({ is_active: !currentStatus }).eq('code', code);
-      if (error) throw error;
-      loadData();
+      let useFallback = false;
+      try {
+        const { error } = await supabase.from('coupons').update({ is_active: !currentStatus }).eq('code', code);
+        if (error) {
+          console.warn('[DB FALLBACK] coupons table toggle failed, trying categories fallback:', error.message);
+          useFallback = true;
+        }
+      } catch (e: any) {
+        console.warn('[DB FALLBACK] coupons table toggle threw exception, trying categories fallback:', e.message);
+        useFallback = true;
+      }
+
+      if (useFallback) {
+        const catId = `COUPON_${code}`;
+        const { data: catData, error: catErr } = await supabase.from('categories').select('*').eq('id', catId).single();
+        if (catErr || !catData) {
+          throw new Error(catErr ? catErr.message : 'Fallback coupon category not found');
+        }
+        
+        const jsonStr = catData.id.startsWith('COUPON_') ? catData.name : catData.image_url;
+        const meta = JSON.parse(jsonStr || '{}');
+        meta.is_active = !currentStatus;
+
+        const updatePayload: any = {};
+        if (catData.id.startsWith('COUPON_')) {
+          updatePayload.name = JSON.stringify(meta);
+        } else {
+          updatePayload.image_url = JSON.stringify(meta);
+        }
+
+        const { error: fallbackErr } = await supabase.from('categories').update(updatePayload).eq('id', catId);
+
+        if (fallbackErr) throw fallbackErr;
+      }
+
+      await loadData();
     } catch (err: any) {
       console.error('Failed to toggle coupon status:', err);
       alert('Failed to toggle coupon status: ' + err.message);

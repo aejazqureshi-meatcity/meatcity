@@ -160,7 +160,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-[#050505]/90 backdrop-blur-md border-b border-white/5 py-3.5 px-4 flex items-center justify-between">
+      <header className="sticky top-0 z-40 bg-[#050505]/90 backdrop-blur-md border-b border-white/5 py-3.5 px-4 flex items-center justify-between print:hidden">
         {/* Left Side: Hamburger */}
         <button
           onClick={() => setIsDrawerOpen(true)}

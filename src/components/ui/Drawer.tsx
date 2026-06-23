@@ -22,7 +22,7 @@ export function Drawer({ isOpen, onClose, title, children }: DrawerProps) {
   }, [isOpen]);
 
   return (
-    <div className={`fixed inset-0 z-[9990] transition-visibility duration-300 ${isOpen ? 'visible' : 'invisible'}`}>
+    <div className={`fixed inset-0 z-[9990] transition-visibility duration-300 print:hidden ${isOpen ? 'visible' : 'invisible'}`}>
       {/* Backdrop */}
       <div
         className={`absolute inset-0 bg-black/75 backdrop-blur-sm transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'}`}

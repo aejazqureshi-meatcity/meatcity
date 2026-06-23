@@ -85,7 +85,7 @@ export default function BottomNav() {
   const currentPath = typeof window !== 'undefined' ? (pathname + window.location.search) : pathname;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#111111]/90 backdrop-blur-md border-t border-white/5 py-2 select-none">
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#111111]/90 backdrop-blur-md border-t border-white/5 py-2 select-none print:hidden">
       <div className="max-w-[480px] mx-auto px-6 flex justify-between items-center">
         {navItems.map((item, idx) => {
           const isActive = currentPath === item.href;

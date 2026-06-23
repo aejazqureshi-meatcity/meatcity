@@ -344,37 +344,78 @@ export default function CartPage() {
     setCouponError('');
     if (!couponCode) return;
 
-    const code = couponCode.toUpperCase();
+    const code = couponCode.toUpperCase().trim();
     try {
-      const { data, error } = await supabase
-        .from('coupons')
-        .select('*')
-        .eq('code', code)
-        .eq('is_active', true)
-        .single();
+      let couponData: any = null;
 
-      if (error || !data) {
+      // 1. Try checking the standard coupons table
+      try {
+        const { data, error } = await supabase
+          .from('coupons')
+          .select('*')
+          .eq('code', code)
+          .eq('is_active', true)
+          .single();
+
+        if (!error && data) {
+          couponData = data;
+        }
+      } catch (e: any) {
+        console.warn('Failed to query coupons table directly, trying fallback:', e.message);
+      }
+
+      // 2. Try checking the categories table fallback virtual store
+      if (!couponData) {
+        const catId = `COUPON_${code}`;
+        const { data: catData, error: catErr } = await supabase
+          .from('categories')
+          .select('*')
+          .eq('id', catId)
+          .single();
+
+        if (!catErr && catData) {
+          try {
+            const jsonStr = catData.id.startsWith('COUPON_') ? catData.name : catData.image_url;
+            const meta = JSON.parse(jsonStr);
+            if (meta.is_active !== false) {
+              couponData = {
+                code,
+                discount_percent: Number(meta.discount_percent || 0),
+                flat_discount: Number(meta.flat_discount || 0),
+                min_order_amount: Number(meta.min_order_amount || 0),
+                expiry_date: meta.expiry_date || '',
+                usage_limit: Number(meta.usage_limit || 0),
+                is_active: true
+              };
+            }
+          } catch (e) {
+            console.warn('Failed to parse fallback virtual coupon from categories:', e);
+          }
+        }
+      }
+
+      if (!couponData) {
         setCouponError('Invalid or inactive coupon code.');
         return;
       }
 
-      if (subtotal < data.min_order_amount) {
-        setCouponError(`Minimum order of ₹${data.min_order_amount} required for coupon ${code}.`);
+      if (subtotal < couponData.min_order_amount) {
+        setCouponError(`Minimum order of ₹${couponData.min_order_amount} required for coupon ${code}.`);
         return;
       }
 
-      if (data.expiry_date) {
+      if (couponData.expiry_date) {
         const todayStr = new Date().toISOString().split('T')[0];
-        if (todayStr > data.expiry_date) {
+        if (todayStr > couponData.expiry_date) {
           setCouponError('This coupon code has expired.');
           return;
         }
       }
 
       setAppliedCoupon({
-        code: data.code,
-        discountPercent: Number(data.discount_percent || 0),
-        flatDiscount: Number(data.flat_discount || 0)
+        code: couponData.code,
+        discountPercent: Number(couponData.discount_percent || 0),
+        flatDiscount: Number(couponData.flat_discount || 0)
       });
     } catch (err) {
       setCouponError('Failed to validate coupon.');

@@ -539,4 +539,25 @@ html, body {
   }
 }
 
+/* Print Media Styles to clean up Invoice PDF prints */
+@media print {
+  header,
+  footer,
+  .no-print,
+  .bottom-nav,
+  .fixed.bottom-0,
+  .sticky.top-0,
+  [role="dialog"], /* Slide-out menu Drawer */
+  .admin-sidebar-link,
+  .admin-btn,
+  button,
+  a[href],
+  .fixed.bottom-4,
+  .fixed.bottom-6,
+  .fixed.right-4,
+  .fixed.right-6 {
+    display: none !important;
+  }
+}
+
 
