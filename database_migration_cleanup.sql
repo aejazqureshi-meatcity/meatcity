@@ -1,5 +1,5 @@
 -- =========================================================================
--- MEAT CITY - PRODUCTION DATABASE CLEANUP & SCHEMA FIX
+-- MEAT CITY - PRODUCTION DATABASE CLEANUP & SCHEMA FIX (CORRECTED)
 -- =========================================================================
 -- Run this script in your Supabase SQL Editor (https://supabase.com)
 -- to create proper tables/columns and migrate serialized data.
@@ -29,11 +29,16 @@ CREATE TABLE IF NOT EXISTS public.coupons (
 ALTER TABLE public.coupons ENABLE ROW LEVEL SECURITY;
 
 -- Add RLS Policies for coupons table
+-- 1. Anyone (public) can view active coupons
+DROP POLICY IF EXISTS "coupons_select_public" ON public.coupons;
 DROP POLICY IF EXISTS "Allow public read coupons" ON public.coupons;
-CREATE POLICY "Allow public read coupons" ON public.coupons FOR SELECT USING (true);
+CREATE POLICY "coupons_select_public" ON public.coupons FOR SELECT USING (true);
 
+-- 2. Only admins can perform write/all CRUD operations on coupons table
+DROP POLICY IF EXISTS "coupons_admin_all" ON public.coupons;
 DROP POLICY IF EXISTS "Allow admin all coupons" ON public.coupons;
-CREATE POLICY "Allow admin all coupons" ON public.coupons FOR ALL USING (true);
+CREATE POLICY "coupons_admin_all" ON public.coupons FOR ALL 
+  USING (public.is_admin(auth.uid()));
 
 -- -------------------------------------------------------------------------
 -- PART 3: Data Migration
@@ -78,17 +83,16 @@ DECLARE
     coupon_code text;
     meta_json jsonb;
 BEGIN
-    FOR cat_row IN SELECT id, name FROM public.categories WHERE id LIKE 'COUPON_%' OR name LIKE 'COUPON_%' LOOP
-        -- Code can be extracted from id or name
-        IF cat_row.id LIKE 'COUPON_%' THEN
-            coupon_code := replace(cat_row.id, 'COUPON_', '');
-            meta_json := cat_row.name::jsonb;
-        ELSE
-            coupon_code := replace(cat_row.name, 'COUPON_', '');
-            meta_json := cat_row.image_url::jsonb;
-        END IF;
+    -- Fetch fallback coupon categories (where id starts with COUPON_ and name is JSON)
+    FOR cat_row IN 
+        SELECT id, name FROM public.categories 
+        WHERE id LIKE 'COUPON_%' 
+    LOOP
+        coupon_code := replace(cat_row.id, 'COUPON_', '');
         
         BEGIN
+            meta_json := cat_row.name::jsonb;
+            
             -- Insert into coupons table (handling duplicates gracefully)
             INSERT INTO public.coupons (
                 code, discount_percent, flat_discount, min_order_amount, expiry_date, usage_limit, is_active
