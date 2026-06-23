@@ -37,3 +37,4 @@ yarn-error.log*
 /meatcity-production.zip
 /meatcity-deploy/
 /meatcity-deploy.zip
+.env*
