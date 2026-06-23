@@ -80,7 +80,7 @@ export default function CartPage() {
   const [couponError, setCouponError] = useState('');
 
   // Payment State
-  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'UPI' | 'Razorpay' | 'Credit' | 'BankTransfer' | 'CashCollection'>('COD');
+  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'UPI' | 'Razorpay' | 'Credit' | 'BankTransfer'>('COD');
   const [upiId, setUpiId] = useState('');
   const [upiError, setUpiError] = useState('');
   const [bankUtr, setBankUtr] = useState('');
@@ -235,13 +235,21 @@ export default function CartPage() {
 
       // 5. Load Addresses
       const addrKey = currentUser ? `meatcity_addresses_${currentUser.id}` : 'meatcity_addresses_guest';
+      const activeIdKey = currentUser ? `meatcity_active_address_id_${currentUser.id}` : 'meatcity_active_address_id_guest';
       const savedAddresses = localStorage.getItem(addrKey);
       if (savedAddresses) {
         try {
           const parsed = JSON.parse(savedAddresses);
           setAddresses(parsed);
           if (parsed.length > 0) {
-            setSelectedAddressId(parsed[0].id);
+            const storedActiveId = localStorage.getItem(activeIdKey);
+            const exists = parsed.some((a: any) => a.id === storedActiveId);
+            if (exists && storedActiveId) {
+              setSelectedAddressId(storedActiveId);
+            } else {
+              setSelectedAddressId(parsed[0].id);
+              localStorage.setItem(activeIdKey, parsed[0].id);
+            }
           }
         } catch (e) {
           console.error(e);
@@ -257,6 +265,7 @@ export default function CartPage() {
           setAddresses([defaultAddress]);
           setSelectedAddressId(defaultAddress.id);
           localStorage.setItem(addrKey, JSON.stringify([defaultAddress]));
+          localStorage.setItem(activeIdKey, defaultAddress.id);
         }
       }
 
@@ -272,6 +281,13 @@ export default function CartPage() {
 
     init();
   }, []);
+
+  useEffect(() => {
+    if (user && selectedAddressId) {
+      localStorage.setItem(`meatcity_active_address_id_${user.id}`, selectedAddressId);
+      window.dispatchEvent(new Event('address-changed'));
+    }
+  }, [selectedAddressId, user]);
 
   const saveCartToStorage = (updatedCart: { [key: string]: number }) => {
     setCart(updatedCart);
@@ -682,14 +698,14 @@ export default function CartPage() {
     const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
     const activeRole = freshProfile?.user_type || freshUser.user_metadata?.user_type || userRole;
 
-    if (activeRole === 'b2b' && paymentMethod === 'Credit') {
+    if (activeRole === 'b2b' && (paymentMethod === 'Credit' || paymentMethod === 'COD')) {
       const outstandingBalance = (freshProfile?.outstanding_balance || 0) + total;
       const creditUsed = (freshProfile?.credit_used || 0) + total;
       const creditAvailable = (freshProfile?.credit_available || 0) - total;
       
       const ledgerEntry = {
         date: new Date().toISOString(),
-        description: `Order #${orderId}`,
+        description: `Order #${orderId} (${paymentMethod === 'Credit' ? 'Credit' : 'COD'})`,
         debit: total,
         credit: 0,
         balance: outstandingBalance
@@ -1002,10 +1018,10 @@ export default function CartPage() {
         return;
       }
 
-      if (paymentMethod === 'Credit') {
+      if (paymentMethod === 'Credit' || paymentMethod === 'COD') {
         const availableCredit = userProfile?.credit_available || 0;
         if (total > availableCredit) {
-          alert(`Your available credit is ₹${availableCredit}. Please clear pending balance or contact admin.`);
+          alert(`Your available credit is ₹${availableCredit}. Please clear pending balance or contact admin to place this ${paymentMethod} order.`);
           return;
         }
       }
@@ -1021,7 +1037,7 @@ export default function CartPage() {
       return;
     }
 
-    const defaultPayStatus = (paymentMethod === 'COD' || paymentMethod === 'Credit' || paymentMethod === 'CashCollection') ? 'Pending' : 'Paid';
+    const defaultPayStatus = (paymentMethod === 'COD' || paymentMethod === 'Credit') ? 'Pending' : 'Paid';
     await completeOrderWithPayment(defaultPayStatus);
   };
 
@@ -1942,20 +1958,25 @@ export default function CartPage() {
                       </div>
 
                       <div 
-                        onClick={() => setPaymentMethod('CashCollection')}
+                        onClick={() => {
+                          if (!isCreditLimitExceeded) {
+                            setPaymentMethod('COD');
+                          }
+                        }}
                         className={`p-3.5 bg-white/5 border rounded-[12px] flex gap-3 items-start cursor-pointer transition-all ${
-                          paymentMethod === 'CashCollection' ? 'border-gold bg-gold/5' : 'border-white/5 opacity-55'
-                        }`}
+                          paymentMethod === 'COD' ? 'border-gold bg-gold/5' : 'border-white/5'
+                        } ${isCreditLimitExceeded ? 'opacity-40 cursor-not-allowed' : 'hover:border-white/20'}`}
                       >
                         <input 
                           type="radio" 
-                          checked={paymentMethod === 'CashCollection'} 
-                          onChange={() => setPaymentMethod('CashCollection')} 
+                          checked={paymentMethod === 'COD'} 
+                          disabled={isCreditLimitExceeded}
+                          onChange={() => setPaymentMethod('COD')} 
                           className="accent-primary mt-1"
                         />
                         <div className="flex-1">
-                          <span className="font-extrabold text-xs text-white">Store Cash Collection</span>
-                          <p className="text-[10px] text-text-secondary leading-relaxed mt-1">Submit payment in cash directly at the Turbhe store outlet.</p>
+                          <span className="font-extrabold text-xs text-white">Cash On Delivery (COD)</span>
+                          <p className="text-[10px] text-text-secondary leading-relaxed mt-1">Pay with cash or scan UPI code when order is delivered to your hotel/restaurant.</p>
                         </div>
                       </div>
                     </>

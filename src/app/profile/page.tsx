@@ -156,6 +156,7 @@ export default function ProfilePage() {
     try {
       const { data: addrData } = await supabase.from('addresses').select('*').eq('user_id', userId);
       const localKey = `meatcity_addresses_${userId}`;
+      const activeIdKey = `meatcity_active_address_id_${userId}`;
       if (addrData && addrData.length > 0) {
         const mappedAddrs: Address[] = addrData.map((a: any) => {
           const parsedPin = a.pincode || a.Pincode || (a.address_line?.match(/\b\d{6}\b/)?.[0]) || '';
@@ -190,10 +191,18 @@ export default function ProfilePage() {
         });
         setAddresses(mappedAddrs);
         localStorage.setItem(localKey, JSON.stringify(mappedAddrs));
+
+        const storedId = localStorage.getItem(activeIdKey);
+        const exists = mappedAddrs.some((a: Address) => a.id === storedId);
+        if (!exists) {
+          localStorage.setItem(activeIdKey, mappedAddrs[0].id);
+        }
       } else {
         setAddresses([]);
         localStorage.setItem(localKey, JSON.stringify([]));
+        localStorage.removeItem(activeIdKey);
       }
+      window.dispatchEvent(new Event('address-changed'));
     } catch (err) {
       console.error('Failed to load addresses:', err);
     }

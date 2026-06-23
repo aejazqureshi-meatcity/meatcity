@@ -781,45 +781,56 @@ export default function AdminDashboard() {
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const payload = {
-      name: productForm.name,
-      description: productForm.description,
-      category: productForm.category,
-      price_b2c: Number(productForm.price_b2c),
-      price_b2b: Number(productForm.price_b2b),
-      unit: productForm.unit,
-      image_url: productForm.image_url,
-      stock: Number(productForm.stock),
-      is_available: productForm.is_available,
-      stock_status: productForm.stock_status,
-      variants: typeof productForm.variants === 'string' ? productForm.variants : JSON.stringify(productForm.variants)
-    };
+    try {
+      const payload = {
+        name: productForm.name,
+        description: productForm.description,
+        category: productForm.category,
+        price_b2c: Number(productForm.price_b2c),
+        price_b2b: Number(productForm.price_b2b),
+        unit: productForm.unit,
+        image_url: productForm.image_url,
+        stock: Number(productForm.stock),
+        is_available: productForm.is_available,
+        stock_status: productForm.stock_status,
+        variants: typeof productForm.variants === 'string' ? productForm.variants : JSON.stringify(productForm.variants)
+      };
 
-    if (editingProduct) {
-      await supabase.from('products').update(payload).eq('id', editingProduct.id);
-    } else {
-      await supabase.from('products').insert({
-        id: 'prod-' + Math.random().toString(36).substr(2, 9),
-        ...payload
+      let res;
+      if (editingProduct) {
+        res = await supabase.from('products').update(payload).eq('id', editingProduct.id);
+      } else {
+        res = await supabase.from('products').insert({
+          id: 'prod-' + Math.random().toString(36).substr(2, 9),
+          ...payload
+        });
+      }
+
+      if (res.error) {
+        throw new Error(res.error.message);
+      }
+
+      setEditingProduct(null);
+      setProductForm({
+        name: '',
+        description: '',
+        category: categories[0] || 'Chicken',
+        price_b2c: 0,
+        price_b2b: 0,
+        unit: 'kg',
+        image_url: '',
+        stock: 10,
+        is_available: true,
+        stock_status: 'Available',
+        variants: []
       });
+      setShowProductForm(false);
+      loadData();
+      alert('Product saved successfully!');
+    } catch (err: any) {
+      console.error('Failed to save product:', err);
+      alert('Failed to save product: ' + err.message);
     }
-
-    setEditingProduct(null);
-    setProductForm({
-      name: '',
-      description: '',
-      category: categories[0] || 'Chicken',
-      price_b2c: 0,
-      price_b2b: 0,
-      unit: 'kg',
-      image_url: '',
-      stock: 10,
-      is_available: true,
-      stock_status: 'Available',
-      variants: []
-    });
-    setShowProductForm(false);
-    loadData();
   };
 
   const handleEditProduct = (prod: any) => {
@@ -848,8 +859,15 @@ export default function AdminDashboard() {
 
   const handleDeleteProduct = async (prodId: string) => {
     if (confirm('Are you sure you want to delete this product?')) {
-      await supabase.from('products').delete().eq('id', prodId);
-      loadData();
+      try {
+        const { error } = await supabase.from('products').delete().eq('id', prodId);
+        if (error) throw error;
+        loadData();
+        alert('Product deleted successfully!');
+      } catch (err: any) {
+        console.error('Failed to delete product:', err);
+        alert('Failed to delete product: ' + err.message);
+      }
     }
   };
 
@@ -955,38 +973,62 @@ export default function AdminDashboard() {
   // Coupon Actions
   const handleSaveCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = {
-      code: couponForm.code.toUpperCase().trim(),
-      discount_percent: Number(couponForm.discount_percent),
-      flat_discount: Number(couponForm.flat_discount),
-      min_order_amount: Number(couponForm.min_order_amount),
-      expiry_date: couponForm.expiry_date,
-      usage_limit: Number(couponForm.usage_limit),
-      is_active: couponForm.is_active
-    };
+    try {
+      const payload = {
+        code: couponForm.code.toUpperCase().trim(),
+        discount_percent: Number(couponForm.discount_percent),
+        flat_discount: Number(couponForm.flat_discount),
+        min_order_amount: Number(couponForm.min_order_amount),
+        expiry_date: couponForm.expiry_date,
+        usage_limit: Number(couponForm.usage_limit),
+        is_active: couponForm.is_active
+      };
 
-    if (editingCoupon) {
-      await supabase.from('coupons').update(payload).eq('code', editingCoupon.code);
-    } else {
-      await supabase.from('coupons').insert(payload);
+      let res;
+      if (editingCoupon) {
+        res = await supabase.from('coupons').update(payload).eq('code', editingCoupon.code);
+      } else {
+        res = await supabase.from('coupons').insert(payload);
+      }
+
+      if (res.error) {
+        throw new Error(res.error.message);
+      }
+
+      setEditingCoupon(null);
+      setCouponForm({ code: '', discount_percent: 0, flat_discount: 0, min_order_amount: 0, expiry_date: '', usage_limit: 100, is_active: true });
+      setShowCouponForm(false);
+      loadData();
+      alert('Coupon saved successfully!');
+    } catch (err: any) {
+      console.error('Failed to save coupon:', err);
+      alert('Failed to save coupon: ' + err.message);
     }
-
-    setEditingCoupon(null);
-    setCouponForm({ code: '', discount_percent: 0, flat_discount: 0, min_order_amount: 0, expiry_date: '', usage_limit: 100, is_active: true });
-    setShowCouponForm(false);
-    loadData();
   };
 
   const handleDeleteCoupon = async (code: string) => {
     if (confirm(`Delete coupon ${code}?`)) {
-      await supabase.from('coupons').delete().eq('code', code);
-      loadData();
+      try {
+        const { error } = await supabase.from('coupons').delete().eq('code', code);
+        if (error) throw error;
+        loadData();
+        alert('Coupon deleted successfully!');
+      } catch (err: any) {
+        console.error('Failed to delete coupon:', err);
+        alert('Failed to delete coupon: ' + err.message);
+      }
     }
   };
 
   const handleToggleCoupon = async (code: string, currentStatus: boolean) => {
-    await supabase.from('coupons').update({ is_active: !currentStatus }).eq('code', code);
-    loadData();
+    try {
+      const { error } = await supabase.from('coupons').update({ is_active: !currentStatus }).eq('code', code);
+      if (error) throw error;
+      loadData();
+    } catch (err: any) {
+      console.error('Failed to toggle coupon status:', err);
+      alert('Failed to toggle coupon status: ' + err.message);
+    }
   };
 
   // Review Actions
@@ -1795,7 +1837,9 @@ export default function AdminDashboard() {
                 {/* B2B Wholesale Partners Directory */}
                 <div className="admin-section-card">
                   <h2 className="admin-section-title" style={{ marginBottom: '1.25rem' }}>B2B Wholesale Customers ({b2bUsers.length})</h2>
-                  <div className="admin-table-container">
+                  
+                  {/* Desktop layout */}
+                  <div className="admin-table-container admin-desktop-only">
                     <table className="admin-table">
                       <thead>
                         <tr>
@@ -1904,12 +1948,145 @@ export default function AdminDashboard() {
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Mobile layout */}
+                  <div className="admin-mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {b2bUsers.map(u => (
+                      <div key={u.id} className="admin-section-card" style={{ padding: '1rem', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '12px', backgroundColor: '#111111' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '0.5rem', marginBottom: '0.75rem' }}>
+                          <div>
+                            <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#ffffff' }}>{u.business_name || 'N/A'}</h3>
+                            <p style={{ fontSize: '0.8rem', color: '#888888', marginTop: '0.25rem' }}>👤 {u.full_name} | 📞 {u.phone}</p>
+                          </div>
+                          <div>
+                            {u.status === 'suspended' ? (
+                              <span className="admin-badge admin-badge-danger">Hold</span>
+                            ) : (u.outstanding_balance || 0) >= (u.credit_limit || 50000) ? (
+                              <span className="admin-badge admin-badge-warning">Exceeded</span>
+                            ) : (
+                              <span className="admin-badge admin-badge-success">Active</span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem', fontSize: '0.85rem' }}>
+                          <div>
+                            <span style={{ color: '#888888', display: 'block', fontSize: '0.75rem' }}>Credit Limit</span>
+                            {editingLimitUserId === u.id ? (
+                              <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', marginTop: '0.25rem' }}>
+                                <input 
+                                  type="number" 
+                                  className="admin-form-input" 
+                                  style={{ width: '80px', padding: '0.25rem', fontSize: '0.8rem' }}
+                                  value={newLimitAmount} 
+                                  onChange={e => setNewLimitAmount(Number(e.target.value))}
+                                  required 
+                                />
+                                <button onClick={() => handleUpdateCreditLimit(u.id, u.outstanding_balance || 0)} className="admin-btn admin-btn-sm admin-btn-success" style={{ padding: '0.25rem 0.5rem' }}>✓</button>
+                                <button onClick={() => setEditingLimitUserId(null)} className="admin-btn admin-btn-sm admin-btn-secondary" style={{ padding: '0.25rem 0.5rem' }}>✗</button>
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', marginTop: '0.25rem' }}>
+                                <strong style={{ color: '#ffffff' }}>₹{u.credit_limit || 0}</strong>
+                                <button 
+                                  onClick={() => {
+                                    setEditingLimitUserId(u.id);
+                                    setNewLimitAmount(u.credit_limit || 50000);
+                                  }} 
+                                  className="admin-btn admin-btn-sm admin-btn-secondary"
+                                  style={{ fontSize: '0.65rem', padding: '2px 4px' }}
+                                >
+                                  ✏️
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <span style={{ color: '#888888', display: 'block', fontSize: '0.75rem' }}>Outstanding</span>
+                            <strong style={{ color: (u.outstanding_balance || 0) > 0 ? 'var(--color-red)' : '#ffffff', marginTop: '0.25rem', display: 'inline-block' }}>
+                              ₹{u.outstanding_balance || 0}
+                            </strong>
+                          </div>
+                          <div>
+                            <span style={{ color: '#888888', display: 'block', fontSize: '0.75rem' }}>Available Credit</span>
+                            <strong style={{ color: '#059669', marginTop: '0.25rem', display: 'inline-block' }}>₹{u.credit_available || 0}</strong>
+                          </div>
+                          <div>
+                            <span style={{ color: '#888888', display: 'block', fontSize: '0.75rem' }}>Due Date</span>
+                            <span style={{ color: '#ffffff', marginTop: '0.25rem', display: 'inline-block' }}>{u.payment_due_date || '—'}</span>
+                          </div>
+                          <div style={{ gridColumn: 'span 2' }}>
+                            <span style={{ color: '#888888', display: 'block', fontSize: '0.75rem' }}>Last Payment</span>
+                            <span style={{ color: '#ffffff', marginTop: '0.25rem', display: 'inline-block' }}>{u.last_payment_date || '—'}</span>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '0.75rem' }}>
+                          <button 
+                            onClick={() => setSelectedB2BUserForPayment(u)} 
+                            className="admin-btn admin-btn-sm admin-btn-success"
+                            style={{ flex: '1 1 auto', justifyContent: 'center' }}
+                          >
+                            💳 Collection
+                          </button>
+                          <button 
+                            onClick={() => setSelectedB2BUserForLedger(u)} 
+                            className="admin-btn admin-btn-sm admin-btn-primary"
+                            style={{ flex: '1 1 auto', justifyContent: 'center' }}
+                          >
+                            📊 Ledger
+                          </button>
+                          <button 
+                            onClick={() => setSelectedB2BUserForHistory(u)} 
+                            className="admin-btn admin-btn-sm admin-btn-gold"
+                            style={{ flex: '1 1 auto', justifyContent: 'center' }}
+                          >
+                            Orders
+                          </button>
+                          <button 
+                            onClick={() => alert(`WhatsApp and SMS reminder sent to ${u.full_name} (${u.phone}) regarding outstanding dues of ₹${u.outstanding_balance || 0}.`)}
+                            className="admin-btn admin-btn-sm admin-btn-secondary"
+                            disabled={(u.outstanding_balance || 0) <= 0}
+                            style={{ flex: '1 1 auto', justifyContent: 'center', cursor: (u.outstanding_balance || 0) <= 0 ? 'not-allowed' : 'pointer' }}
+                          >
+                            🔔 Remind
+                          </button>
+                          {u.status === 'approved' ? (
+                            <button 
+                              onClick={() => handleUpdateUserStatus(u.id, 'suspended')} 
+                              className="admin-btn admin-btn-sm admin-btn-secondary"
+                              style={{ flex: '1 1 auto', justifyContent: 'center' }}
+                            >
+                              Hold
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => handleUpdateUserStatus(u.id, 'approved')} 
+                              className="admin-btn admin-btn-sm admin-btn-success"
+                              style={{ flex: '1 1 auto', justifyContent: 'center' }}
+                            >
+                              Unhold
+                            </button>
+                          )}
+                          <button 
+                            onClick={() => handleDeleteUser(u.id)} 
+                            className="admin-btn admin-btn-sm admin-btn-danger"
+                            style={{ flex: '0 0 auto', justifyContent: 'center' }}
+                          >
+                            Del
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 {/* B2C Retail Customers Directory */}
                 <div className="admin-section-card">
                   <h2 className="admin-section-title" style={{ marginBottom: '1.25rem' }}>B2C Retail Customers ({b2cUsers.length})</h2>
-                  <div className="admin-table-container">
+                  
+                  {/* Desktop layout */}
+                  <div className="admin-table-container admin-desktop-only">
                     <table className="admin-table">
                       <thead>
                         <tr>
@@ -1946,6 +2123,54 @@ export default function AdminDashboard() {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+
+                  {/* Mobile layout */}
+                  <div className="admin-mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {b2cUsers.map(u => (
+                      <div key={u.id} className="admin-section-card" style={{ padding: '1rem', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '12px', backgroundColor: '#111111' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                          <div>
+                            <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#ffffff' }}>{u.full_name}</h3>
+                            <p style={{ fontSize: '0.8rem', color: '#888888', marginTop: '0.25rem' }}>📞 {u.phone}</p>
+                          </div>
+                          <div>
+                            <span className={`admin-badge ${u.status === 'approved' ? 'admin-badge-success' : 'admin-badge-danger'}`}>
+                              {u.status === 'approved' ? 'Active' : 'Blocked'}
+                            </span>
+                          </div>
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: '#cccccc', marginBottom: '0.75rem' }}>
+                          <span>Email: </span><span style={{ color: '#ffffff' }}>{u.email}</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '0.75rem' }}>
+                          {u.status === 'approved' ? (
+                            <button 
+                              onClick={() => handleUpdateUserStatus(u.id, 'suspended')} 
+                              className="admin-btn admin-btn-sm admin-btn-danger"
+                              style={{ flex: 1, justifyContent: 'center' }}
+                            >
+                              Block Account
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => handleUpdateUserStatus(u.id, 'approved')} 
+                              className="admin-btn admin-btn-sm admin-btn-success"
+                              style={{ flex: 1, justifyContent: 'center' }}
+                            >
+                              Unblock
+                            </button>
+                          )}
+                          <button 
+                            onClick={() => handleDeleteUser(u.id)} 
+                            className="admin-btn admin-btn-sm admin-btn-secondary"
+                            style={{ flex: 1, justifyContent: 'center' }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
