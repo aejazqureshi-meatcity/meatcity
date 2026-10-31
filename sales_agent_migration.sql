@@ -6,16 +6,26 @@
 -- for the MeatCity AI Sales Agent.
 -- =========================================================================
 
--- 0. Ensure is_admin helper function exists (SECURITY DEFINER)
+-- 0. Ensure hardened is_admin security function exists
 CREATE OR REPLACE FUNCTION public.is_admin(user_id uuid)
-RETURNS boolean AS $$
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
 BEGIN
   RETURN EXISTS (
     SELECT 1 FROM public.users
-    WHERE id = user_id AND user_type = 'admin'
+    WHERE id = user_id 
+      AND user_type = 'admin' 
+      AND (status = 'active' OR status = 'approved' OR status IS NULL)
   );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
+
+-- Restrict unnecessary execution privileges
+REVOKE ALL ON FUNCTION public.is_admin(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_admin(uuid) TO authenticated, service_role;
 
 -- 1. Create B2B Leads Table
 CREATE TABLE IF NOT EXISTS public.sales_leads (
@@ -27,7 +37,7 @@ CREATE TABLE IF NOT EXISTS public.sales_leads (
     category text NOT NULL, -- Restaurant, Biryani Shop, Hotel, Caterer, Cloud Kitchen, Dhaba, Canteen, etc.
     area text NOT NULL,     -- Vashi, Nerul, Belapur, Turbhe, Kopar Khairane, Kharghar, Panvel, etc.
     address text,
-    source_url text,        -- Permitted public source / directory / referral / manual
+    source_url text,        -- Accessible source URL / directory / referral / verified record
     status text DEFAULT 'New', -- New, Contacted, Interested, Quoted, Trial Order, Active Customer, Not Interested, Opted Out
     estimated_daily_kg numeric DEFAULT 0,
     preferred_items text,

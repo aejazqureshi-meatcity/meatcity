@@ -362,7 +362,25 @@ export default function LeadFinder({
                 >
                   <div className="space-y-1.5">
                     <div className="flex items-start justify-between gap-2">
-                      <h4 className="text-white font-extrabold text-sm">{item.business_name}</h4>
+                      <div>
+                        <h4 className="text-white font-extrabold text-sm">{item.business_name}</h4>
+                        <div className="mt-1 flex items-center gap-1.5">
+                          {item.is_verified ? (
+                            <span className="px-2 py-0.5 rounded text-[9px] bg-emerald-500/20 text-emerald-400 font-extrabold border border-emerald-500/30">
+                              ✓ Verified Lead
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[9px] bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30">
+                              ⚠️ Unverified Suggestion
+                            </span>
+                          )}
+                          {item.verification_date && (
+                            <span className="text-[9px] text-gray-500">
+                              Verified: {new Date(item.verification_date).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                       <span className="px-2 py-0.5 rounded text-[10px] bg-[#D4AF37]/20 text-[#D4AF37] font-bold">
                         {item.area}
                       </span>
@@ -376,11 +394,19 @@ export default function LeadFinder({
                       Address: <span className="text-gray-300">{item.address}</span>
                     </div>
 
-                    {item.contact_person && (
-                      <div className="text-gray-400 text-xs">
-                        Contact: <span className="text-gray-200 font-semibold">{item.contact_person}</span> {item.phone ? `(${item.phone})` : ''}
-                      </div>
-                    )}
+                    <div className="text-gray-400 text-xs">
+                      Contact: {item.contact_person ? (
+                        <span className="text-gray-200 font-semibold">{item.contact_person}</span>
+                      ) : (
+                        <span className="text-gray-500 italic">No contact person recorded</span>
+                      )}
+                      {' • Phone: '}
+                      {item.phone ? (
+                        <span className="text-emerald-400 font-mono">{item.phone}</span>
+                      ) : (
+                        <span className="text-gray-500 italic">No phone on file (verification required)</span>
+                      )}
+                    </div>
 
                     <div className="text-gray-400 text-xs">
                       Est. Volume: <span className="text-emerald-400 font-bold">{item.estimated_daily_kg || 25} kg/day</span>

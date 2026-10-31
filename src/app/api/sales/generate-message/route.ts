@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { verifyAdminSession } from '@/lib/auth-server';
 
 interface GenerateRequest {
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
       optOut = false,
     } = body;
 
-    // 2. Strict Customer & Lead Opt-Out Enforcement (MEDIUM)
+    // 2. Strict Customer & Lead Opt-Out Enforcement against Database Records
     if (optOut) {
       return NextResponse.json(
         { error: 'Recipient has opted out of communications. Outbound message generation is blocked.' },
@@ -53,20 +54,73 @@ export async function POST(request: Request) {
     }
 
     const supabase = createClient();
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const dbClient = (serviceRoleKey && supabaseUrl)
+      ? createSupabaseClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } })
+      : supabase;
 
-    // Verify opt-out status in database if leadId is provided
+    // Verify opt-out status against sales_leads table by leadId
     if (leadId) {
-      const { data: leadRecord } = await supabase
-        .from('sales_leads')
-        .select('opt_out, status')
-        .eq('id', leadId)
-        .single();
+      try {
+        const { data: leadRecord } = await dbClient.from('sales_leads')
+          .select('opt_out, status')
+          .eq('id', leadId)
+          .single();
 
-      if (leadRecord && (leadRecord.opt_out === true || leadRecord.status === 'Opted Out')) {
-        return NextResponse.json(
-          { error: 'Recipient has opted out of communications. Outbound message generation is blocked.' },
-          { status: 400 }
-        );
+        if (leadRecord && (leadRecord.opt_out === true || leadRecord.status === 'Opted Out')) {
+          return NextResponse.json(
+            { error: 'Recipient has opted out of communications. Outbound message generation is blocked.' },
+            { status: 400 }
+          );
+        }
+      } catch {}
+    }
+
+    // Verify opt-out status against sales_leads table by recipient phone
+    if (recipientPhone) {
+      try {
+        const digits = recipientPhone.replace(/\D/g, '');
+        const last10 = digits.slice(-10);
+        if (last10.length === 10) {
+          const { data: matchedLeads } = await dbClient.from('sales_leads')
+            .select('opt_out, status')
+            .ilike('phone', `%${last10}%`)
+            .limit(5);
+
+          if (matchedLeads && matchedLeads.some((l: any) => l.opt_out === true || l.status === 'Opted Out')) {
+            return NextResponse.json(
+              { error: 'Recipient phone number has opted out of communications. Outbound message generation is blocked.' },
+              { status: 400 }
+            );
+          }
+        }
+      } catch {}
+    }
+
+    // Verify customer status against users table by customerId or phone
+    if (customerId || recipientPhone) {
+      try {
+        let userQuery = dbClient.from('users').select('status, phone');
+        if (customerId) {
+          userQuery = userQuery.eq('id', customerId);
+        } else if (recipientPhone) {
+          const last10 = recipientPhone.replace(/\D/g, '').slice(-10);
+          userQuery = userQuery.ilike('phone', `%${last10}%`);
+        }
+        const { data: userRecords, error: uErr } = await userQuery.limit(1);
+        if (uErr) {
+          console.warn('[Sales API] Customer opt-out check warning:', uErr.message);
+        }
+        const userRec = userRecords?.[0];
+        if (userRec && (userRec.status === 'opted_out' || userRec.status === 'suspended')) {
+          return NextResponse.json(
+            { error: 'Customer account is opted out or suspended. Outbound message generation is blocked.' },
+            { status: 400 }
+          );
+        }
+      } catch (err: any) {
+        console.warn('[Sales API] Failed to check customer opt-out:', err.message);
       }
     }
 
@@ -82,7 +136,7 @@ export async function POST(request: Request) {
       .from('products')
       .select('name, price_b2c, price_b2b, unit, category, is_available')
       .eq('is_available', true)
-      .limit(8);
+      .limit(10);
 
     const hasCatalog = Boolean(productsData && productsData.length > 0);
     const availableProducts = hasCatalog ? productsData! : [];
@@ -91,12 +145,39 @@ export async function POST(request: Request) {
     let catalogWarning = '';
 
     if (hasCatalog) {
-      catalogSummary = availableProducts
-        .map((p: any) => `- ${p.name}: Retail ₹${p.price_b2c}/${p.unit}, Wholesale ₹${p.price_b2b}/${p.unit}`)
-        .join('\n');
+      if (recipientType === 'b2b') {
+        // Filter strictly for products with valid positive B2B wholesale prices
+        const validB2bProducts = availableProducts.filter(
+          (p: any) => typeof p.price_b2b === 'number' && p.price_b2b > 0
+        );
+
+        if (validB2bProducts.length > 0) {
+          catalogSummary = validB2bProducts
+            .map((p: any) => `- ${p.name}: Wholesale ₹${p.price_b2b}/${p.unit}`)
+            .join('\n');
+        } else {
+          catalogWarning = 'No approved wholesale prices configured in catalog. Quotations require owner confirmation.';
+          catalogSummary = '- Custom wholesale rates and cut specifications confirmed via official quotation upon owner approval.';
+        }
+      } else {
+        // B2C: Use retail price only
+        const validB2cProducts = availableProducts.filter(
+          (p: any) => typeof p.price_b2c === 'number' && p.price_b2c > 0
+        );
+
+        if (validB2cProducts.length > 0) {
+          catalogSummary = validB2cProducts
+            .map((p: any) => `- ${p.name}: Retail ₹${p.price_b2c}/${p.unit}`)
+            .join('\n');
+        } else {
+          catalogSummary = '- Retail prices available on inquiry.';
+        }
+      }
     } else {
-      catalogWarning = 'Live product catalogue could not be verified from database. Outdated prices omitted.';
-      catalogSummary = '- Custom wholesale rates and cut specifications confirmed via official quotation.';
+      catalogWarning = 'Live product catalogue could not be verified from database. Numerical prices omitted.';
+      catalogSummary = recipientType === 'b2b'
+        ? '- Custom wholesale rates and cut specifications confirmed via official quotation only.'
+        : '- Retail pricing confirmed upon inquiry.';
     }
 
     // 4. Coupon Safety: Only mention coupons that exist, are active, and unexpired in database
@@ -118,13 +199,11 @@ export async function POST(request: Request) {
           activePromoCoupon = validCoupons[0];
         }
       }
-    } catch (e) {
-      // If coupons table isn't accessible, do NOT assume any coupon
+    } catch {
       activePromoCoupon = null;
     }
 
     // 5. Server-side Gemini API Key Resolution (Exclusively from server environment variables)
-    // Never query sales_settings or accept key from request body
     const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
 
     let generatedText = '';
@@ -213,8 +292,9 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     console.error('[Sales API] Server error:', error);
+    // Sanitize error: never leak internal SQL details or stack traces to client
     return NextResponse.json(
-      { error: error.message || 'Failed to generate message' },
+      { error: 'An internal server error occurred while processing the sales message request.' },
       { status: 500 }
     );
   }
@@ -263,6 +343,7 @@ STRICT SAFETY RULES:
    📞 Call/WhatsApp: +91 7977630912
    🌐 https://meatcity.in
 4. NEVER invent prices, coupons, or unsecured credit terms.
+5. For B2B recipients, use ONLY approved wholesale rates (price_b2b); NEVER substitute retail prices (price_b2c). If a wholesale price is unavailable, state that pricing is provided upon owner quotation.
 `.trim();
 }
 
@@ -284,13 +365,36 @@ function generateSafeRuleBasedTemplate(params: any): string {
   const targetBiz = businessName || `${recipientName}'s ${category || 'Kitchen'}`;
   const isHinglish = language === 'hinglish';
 
-  // Format verified catalogue pricing
+  // Format verified catalogue pricing with strict B2B vs B2C separation
   let pricingSection = '';
   if (hasCatalog && availableProducts.length > 0) {
-    const lines = availableProducts.slice(0, 3).map(
-      (p: any) => `• ${p.name}: ₹${p.price_b2b || p.price_b2c}/${p.unit}`
-    );
-    pricingSection = `\n✅ Approved Wholesale Slabs:\n${lines.join('\n')}\n`;
+    if (recipientType === 'b2b') {
+      // Use strictly valid B2B wholesale prices; NEVER substitute retail price_b2c
+      const validB2bProducts = availableProducts.filter(
+        (p: any) => typeof p.price_b2b === 'number' && p.price_b2b > 0
+      );
+
+      if (validB2bProducts.length > 0) {
+        const lines = validB2bProducts.slice(0, 3).map(
+          (p: any) => `• ${p.name}: ₹${p.price_b2b}/${p.unit}`
+        );
+        pricingSection = `\n✅ Approved Wholesale Slabs:\n${lines.join('\n')}\n`;
+      } else {
+        pricingSection = `\n✅ Wholesale Pricing: Customized wholesale slab rates provided upon owner quotation.\n`;
+      }
+    } else {
+      // B2C: Use retail price
+      const validB2cProducts = availableProducts.filter(
+        (p: any) => typeof p.price_b2c === 'number' && p.price_b2c > 0
+      );
+
+      if (validB2cProducts.length > 0) {
+        const lines = validB2cProducts.slice(0, 3).map(
+          (p: any) => `• ${p.name}: ₹${p.price_b2c}/${p.unit}`
+        );
+        pricingSection = `\n✅ Daily Retail Rates:\n${lines.join('\n')}\n`;
+      }
+    }
   }
 
   // Format verified coupon
