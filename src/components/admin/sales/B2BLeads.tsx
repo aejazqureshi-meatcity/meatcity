@@ -235,7 +235,13 @@ export default function B2BLeads({
                     <td className="p-4">
                       <select
                         value={lead.status}
-                        onChange={(e) => onUpdateLead(lead.id, { status: e.target.value as any })}
+                        onChange={(e) => {
+                          const newStatus = e.target.value as any;
+                          onUpdateLead(lead.id, {
+                            status: newStatus,
+                            opt_out: newStatus === 'Opted Out' ? true : (lead.opt_out && newStatus !== 'Opted Out' ? false : lead.opt_out),
+                          });
+                        }}
                         className={`px-2 py-1 rounded text-[11px] font-bold border outline-none bg-black/60 cursor-pointer ${
                           STATUS_COLORS[lead.status] || 'bg-white/10 text-white'
                         }`}
@@ -253,16 +259,26 @@ export default function B2BLeads({
 
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => {
-                            onSelectLeadForMessage(lead);
-                            onNavigateTab('generator');
-                          }}
-                          title="Generate AI Message"
-                          className="px-2.5 py-1.5 bg-[#D4AF37]/20 hover:bg-[#D4AF37] text-[#D4AF37] hover:text-black font-bold rounded text-[11px] transition-colors"
-                        >
-                          💬 AI Draft
-                        </button>
+                        {lead.opt_out || lead.status === 'Opted Out' ? (
+                          <button
+                            disabled
+                            title="Recipient has opted out of communications"
+                            className="px-2.5 py-1.5 bg-gray-800 text-gray-500 cursor-not-allowed font-bold rounded text-[11px]"
+                          >
+                            ⛔ Opted Out
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              onSelectLeadForMessage(lead);
+                              onNavigateTab('generator');
+                            }}
+                            title="Generate AI Message"
+                            className="px-2.5 py-1.5 bg-[#D4AF37]/20 hover:bg-[#D4AF37] text-[#D4AF37] hover:text-black font-bold rounded text-[11px] transition-colors"
+                          >
+                            💬 AI Draft
+                          </button>
+                        )}
 
                         <button
                           onClick={() => {
@@ -377,8 +393,13 @@ export default function B2BLeads({
                 </div>
                 <button
                   onClick={() => {
-                    onUpdateLead(activeLead.id, { opt_out: !activeLead.opt_out });
-                    setActiveLead({ ...activeLead, opt_out: !activeLead.opt_out });
+                    const newOptOut = !activeLead.opt_out;
+                    const updates: Partial<SalesLead> = {
+                      opt_out: newOptOut,
+                      status: newOptOut ? 'Opted Out' : (activeLead.status === 'Opted Out' ? 'New' : activeLead.status),
+                    };
+                    onUpdateLead(activeLead.id, updates);
+                    setActiveLead({ ...activeLead, ...updates });
                   }}
                   className={`px-3 py-1.5 rounded text-xs font-bold transition-colors ${
                     activeLead.opt_out ? 'bg-rose-500 text-white' : 'bg-white/10 hover:bg-white/20 text-gray-300'
@@ -403,16 +424,25 @@ export default function B2BLeads({
               </button>
 
               <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    onSelectLeadForMessage(activeLead);
-                    setActiveLead(null);
-                    onNavigateTab('generator');
-                  }}
-                  className="px-4 py-2 bg-[#D4AF37] hover:bg-[#b5952f] text-black rounded-lg font-extrabold text-xs transition-colors"
-                >
-                  Draft AI Message
-                </button>
+                {activeLead.opt_out || activeLead.status === 'Opted Out' ? (
+                  <button
+                    disabled
+                    className="px-4 py-2 bg-gray-800 text-gray-500 cursor-not-allowed rounded-lg font-extrabold text-xs"
+                  >
+                    ⛔ Message Blocked (Opted Out)
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      onSelectLeadForMessage(activeLead);
+                      setActiveLead(null);
+                      onNavigateTab('generator');
+                    }}
+                    className="px-4 py-2 bg-[#D4AF37] hover:bg-[#b5952f] text-black rounded-lg font-extrabold text-xs transition-colors"
+                  >
+                    Draft AI Message
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -534,6 +564,26 @@ export default function B2BLeads({
                   onChange={(e) => setEditingLead({ ...editingLead, notes: e.target.value })}
                   className="w-full bg-black/60 border border-white/10 text-white text-xs rounded-lg p-2.5 outline-none focus:border-[#D4AF37]"
                 />
+              </div>
+
+              <div className="flex items-center gap-2.5 p-3 bg-black/50 border border-white/10 rounded-lg">
+                <input
+                  type="checkbox"
+                  id="modal-optout-chk"
+                  checked={Boolean(editingLead.opt_out)}
+                  onChange={(e) => {
+                    const isChecked = e.target.checked;
+                    setEditingLead({
+                      ...editingLead,
+                      opt_out: isChecked,
+                      status: isChecked ? 'Opted Out' : (editingLead.status === 'Opted Out' ? 'New' : editingLead.status),
+                    });
+                  }}
+                  className="w-4 h-4 rounded text-rose-500 bg-black border-white/20 focus:ring-rose-500"
+                />
+                <label htmlFor="modal-optout-chk" className="text-gray-200 text-xs font-semibold cursor-pointer">
+                  Opted Out / Do Not Contact (Block all outbound AI messages & sales dispatch)
+                </label>
               </div>
 
               <div className="pt-3 border-t border-white/10 flex justify-end gap-2">

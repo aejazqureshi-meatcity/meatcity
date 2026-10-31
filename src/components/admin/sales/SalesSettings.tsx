@@ -22,7 +22,6 @@ export default function SalesSettings({
   const [deliverySlots, setDeliverySlots] = useState(
     settings.delivery_slots || 'Morning 6:00 AM - 8:00 AM (Turbhe Sector 20 Hub)'
   );
-  const [geminiApiKey, setGeminiApiKey] = useState(settings.gemini_api_key || '');
   const [isSaving, setIsSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
@@ -37,9 +36,6 @@ export default function SalesSettings({
       await onSaveSetting('min_b2b_order_kg', minB2bKg);
       await onSaveSetting('wholesale_payment_terms', wholesalePaymentTerms);
       await onSaveSetting('delivery_slots', deliverySlots);
-      if (geminiApiKey) {
-        await onSaveSetting('gemini_api_key', geminiApiKey);
-      }
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3000);
     } catch (err: any) {
@@ -49,52 +45,38 @@ export default function SalesSettings({
     }
   };
 
-  const hasApiKey = Boolean(geminiApiKey || process.env.NEXT_PUBLIC_HAS_GEMINI_KEY);
-
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-[#111111] border border-white/5 p-5 rounded-xl">
         <h2 className="text-white font-black text-lg">Sales Agent Configuration & Settings</h2>
         <p className="text-gray-400 text-xs mt-1">
-          Configure business operating parameters, wholesale terms, and Google Gemini API keys.
+          Configure business operating parameters, wholesale terms, and delivery schedules.
         </p>
       </div>
 
       <form onSubmit={handleSaveAll} className="space-y-6">
-        {/* Gemini API Key Box */}
+        {/* Secure Gemini Server Environment Status Box */}
         <div className="bg-[#141414] border border-[#D4AF37]/30 p-5 rounded-xl space-y-3 shadow-xl">
           <div className="flex items-center justify-between">
             <h3 className="text-white font-extrabold text-sm flex items-center gap-2">
-              <span>🤖</span> Google Gemini API Configuration
+              <span>🤖</span> Google Gemini AI Server Integration
             </h3>
-            <span
-              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                hasApiKey ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
-              }`}
-            >
-              {hasApiKey ? 'AI Connected' : 'Template Fallback Active'}
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              ✓ Server-Side Environment (.env.local)
             </span>
           </div>
 
-          <p className="text-gray-400 text-xs">
-            Enter your Google Gemini API key to enable dynamic AI message generation and market research. The free tier of Gemini 1.5 Flash provides fast, high-quality generation at zero monthly cost.
-          </p>
-
-          <div>
-            <label className="text-gray-300 text-xs font-semibold block mb-1">
-              Gemini API Key (Server-Side Storage Only)
-            </label>
-            <input
-              type="password"
-              placeholder="AIzaSy..."
-              value={geminiApiKey}
-              onChange={(e) => setGeminiApiKey(e.target.value)}
-              className="w-full bg-black/60 border border-white/10 text-white font-mono text-xs rounded-lg p-2.5 outline-none focus:border-[#D4AF37]"
-            />
-            <span className="text-gray-500 text-[11px] mt-1 block">
-              Leave blank to preserve current environment key if already configured in .env.local.
-            </span>
+          <div className="p-3 bg-black/40 rounded-lg text-xs text-gray-300 border border-white/5 space-y-1.5 leading-relaxed">
+            <div className="flex items-center gap-2 text-white font-semibold">
+              <span>🔒 Production Credential Security:</span>
+            </div>
+            <p className="text-gray-400 text-[11px]">
+              For strict security compliance, Google Gemini API credentials (<code className="text-[#D4AF37]">GEMINI_API_KEY</code>) are configured exclusively on the server in <code className="text-gray-300">.env.local</code>. API keys are never exposed in browser JavaScript, client state, or database tables.
+            </p>
+            <p className="text-gray-400 text-[11px]">
+              If no API key is set on the server, the AI Sales Agent automatically uses safe, grounded rule-based templates so message drafting is never interrupted.
+            </p>
           </div>
         </div>
 

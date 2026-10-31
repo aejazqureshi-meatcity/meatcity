@@ -124,7 +124,9 @@ export default function SalesAgentRoot({
       if (settingsData && settingsData.length > 0) {
         const map: any = {};
         settingsData.forEach((row: any) => {
-          map[row.key] = row.value;
+          if (row.key !== 'gemini_api_key') {
+            map[row.key] = row.value;
+          }
         });
         setSettings((prev) => ({ ...prev, ...map }));
       }
@@ -153,7 +155,11 @@ export default function SalesAgentRoot({
       if (storedFollowUps) setFollowUps(JSON.parse(storedFollowUps));
 
       const storedSettings = localStorage.getItem('meatcity_sales_settings');
-      if (storedSettings) setSettings(JSON.parse(storedSettings));
+      if (storedSettings) {
+        const parsed = JSON.parse(storedSettings);
+        delete parsed.gemini_api_key;
+        setSettings(parsed);
+      }
     } catch (err) {
       seedInitialLeads();
     }
@@ -458,6 +464,12 @@ export default function SalesAgentRoot({
 
   // Handler: Settings
   const handleSaveSetting = async (key: string, value: string) => {
+    // Security check: Never write API keys to settings or localStorage
+    if (key === 'gemini_api_key') {
+      console.warn('Blocked attempt to save API key in client settings.');
+      return;
+    }
+
     try {
       await supabase
         .from('sales_settings')
@@ -465,6 +477,7 @@ export default function SalesAgentRoot({
     } catch (e) {}
 
     const updated = { ...settings, [key]: value };
+    delete (updated as any).gemini_api_key;
     setSettings(updated);
     try {
       localStorage.setItem('meatcity_sales_settings', JSON.stringify(updated));
@@ -618,6 +631,7 @@ export default function SalesAgentRoot({
         {activeTab === 'approvals' && (
           <ApprovalQueue
             messages={messages}
+            leads={leads}
             onUpdateMessage={handleUpdateMessage}
             onDeleteMessage={handleDeleteMessage}
             onConfirmManualSend={handleConfirmManualSend}

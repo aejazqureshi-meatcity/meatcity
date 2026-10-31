@@ -108,8 +108,20 @@ export default function MessageGenerator({
     }
   };
 
+  // Opt-out detection
+  const currentLead = leads.find((l) => l.id === leadId) || (selectedLead?.id === leadId ? selectedLead : null);
+  const isOptedOut = recipientType === 'b2b' && Boolean(
+    (currentLead && (currentLead.opt_out === true || currentLead.status === 'Opted Out')) ||
+    (selectedLead && (selectedLead.opt_out === true || selectedLead.status === 'Opted Out'))
+  );
+
   // Trigger Gemini API generation
   const handleGenerate = async () => {
+    if (isOptedOut) {
+      alert('Recipient has opted out of communications. Outbound message generation is blocked.');
+      return;
+    }
+
     if (!recipientName) {
       alert('Please specify a recipient name or select a lead/customer.');
       return;
@@ -121,6 +133,8 @@ export default function MessageGenerator({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          leadId: recipientType === 'b2b' ? (leadId || undefined) : undefined,
+          customerId: recipientType === 'b2c' ? (customerId || undefined) : undefined,
           recipientType,
           recipientName,
           recipientPhone,
@@ -130,11 +144,12 @@ export default function MessageGenerator({
           purpose,
           language,
           customNotes,
+          optOut: isOptedOut,
         }),
       });
 
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         setGeneratedDraft(data.message);
         setGeneratorMeta(data.meta);
       } else {
@@ -149,6 +164,11 @@ export default function MessageGenerator({
 
   // Submit to Approval Queue
   const handleSubmitToQueue = async () => {
+    if (isOptedOut) {
+      alert('Recipient has opted out of communications. Submission to queue is blocked.');
+      return;
+    }
+
     if (!generatedDraft.trim()) {
       alert('Cannot submit empty message.');
       return;
@@ -227,6 +247,19 @@ export default function MessageGenerator({
             </div>
           </div>
 
+          {/* Opt-Out Alert Banner */}
+          {isOptedOut && (
+            <div className="p-3.5 bg-rose-950/60 border border-rose-500/80 rounded-xl text-rose-200 text-xs space-y-1.5 shadow-lg">
+              <div className="font-extrabold flex items-center gap-2 text-rose-300">
+                <span className="text-base">⛔</span>
+                <span>RECIPIENT HAS OPTED OUT OF COMMUNICATIONS</span>
+              </div>
+              <p className="text-[11px] text-rose-300 leading-relaxed">
+                This business contact is flagged as <strong>&quot;Opted Out&quot;</strong> or has requested Do Not Contact. Generating sales drafts and dispatching messages to this recipient are strictly blocked.
+              </p>
+            </div>
+          )}
+
           {/* Quick Select from CRM */}
           {recipientType === 'b2b' ? (
             <div>
@@ -241,7 +274,7 @@ export default function MessageGenerator({
                 <option value="">-- Choose Lead or Fill Manually Below --</option>
                 {leads.map((l) => (
                   <option key={l.id} value={l.id}>
-                    {l.business_name} ({l.area} • {l.category})
+                    {l.business_name} ({l.area} • {l.category}) {l.opt_out ? '[OPTED OUT]' : ''}
                   </option>
                 ))}
               </select>
@@ -382,7 +415,7 @@ export default function MessageGenerator({
             </label>
             <textarea
               rows={2}
-              placeholder="e.g. Mention 10% trial discount, morning 7 AM delivery, or specifically offer chicken boneless breast."
+              placeholder="e.g. Mention morning 7 AM delivery or specifically enquire about chicken boneless daily requirements."
               value={customNotes}
               onChange={(e) => setCustomNotes(e.target.value)}
               className="w-full bg-black/60 border border-white/10 text-white text-xs rounded-lg p-2.5 outline-none focus:border-[#D4AF37]"
@@ -393,16 +426,24 @@ export default function MessageGenerator({
           <div className="p-3 bg-black/40 rounded-xl border border-white/5 text-xs space-y-1">
             <span className="text-[#D4AF37] font-bold">🛒 Live Product Grounding:</span>
             <div className="text-gray-400 text-[11px]">
-              AI will only quote real MeatCity cuts from the database (e.g. Chicken Curry Cut, Boneless Breast, Mutton, Eggs) with owner-approved prices.
+              AI only quotes active MeatCity cuts from the Supabase database. If catalog pricing cannot be verified, rate numbers are omitted to prevent price discrepancies.
             </div>
           </div>
 
           <button
             onClick={handleGenerate}
-            disabled={isGenerating}
-            className="w-full py-3 bg-[#D4AF37] hover:bg-[#b5952f] disabled:opacity-50 text-black font-black text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg"
+            disabled={isGenerating || isOptedOut}
+            className={`w-full py-3 font-black text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg ${
+              isOptedOut
+                ? 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700'
+                : 'bg-[#D4AF37] hover:bg-[#b5952f] disabled:opacity-50 text-black'
+            }`}
           >
-            {isGenerating ? 'Drafting Message with Gemini...' : '⚡ Generate AI Sales Message'}
+            {isOptedOut
+              ? '⛔ Generation Blocked (Recipient Opted Out)'
+              : isGenerating
+              ? 'Drafting Message with Gemini...'
+              : '⚡ Generate AI Sales Message'}
           </button>
         </div>
 
@@ -443,10 +484,18 @@ export default function MessageGenerator({
 
             <button
               onClick={handleSubmitToQueue}
-              disabled={isSaving || !generatedDraft.trim()}
-              className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-black font-black text-xs rounded-lg transition-colors flex items-center justify-center gap-2"
+              disabled={isSaving || !generatedDraft.trim() || isOptedOut}
+              className={`w-full py-2.5 font-black text-xs rounded-lg transition-colors flex items-center justify-center gap-2 ${
+                isOptedOut
+                  ? 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700'
+                  : 'bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-black'
+              }`}
             >
-              {isSaving ? 'Submitting to Queue...' : '📥 Submit to Approval Queue'}
+              {isOptedOut
+                ? '⛔ Submission Blocked (Opted Out)'
+                : isSaving
+                ? 'Submitting to Queue...'
+                : '📥 Submit to Approval Queue'}
             </button>
           </div>
         </div>

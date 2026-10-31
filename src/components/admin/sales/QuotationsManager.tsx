@@ -3,6 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { SalesQuotation, QuotationItem, SalesLead } from './types';
 
+const APPROVED_PAYMENT_TERMS = [
+  'Cash / UPI on Delivery',
+  'Advance UPI / Bank Transfer',
+  '7-Day Approved Credit (Verified B2B Account Only)',
+  '15-Day Approved Credit (Verified Enterprise Account Only)',
+];
+
 interface QuotationsManagerProps {
   quotations: SalesQuotation[];
   leads: SalesLead[];
@@ -31,18 +38,20 @@ export default function QuotationsManager({
   const [customerName, setCustomerName] = useState(selectedLead?.business_name || '');
   const [customerPhone, setCustomerPhone] = useState(selectedLead?.phone || '');
   const [customerArea, setCustomerArea] = useState(selectedLead?.area || 'Vashi');
-  const [paymentTerms, setPaymentTerms] = useState('Cash / UPI on Delivery');
+  const [paymentTerms, setPaymentTerms] = useState<string>('Cash / UPI on Delivery');
+  const [creditApprovedConfirmed, setCreditApprovedConfirmed] = useState<boolean>(false);
   const [deliverySlot, setDeliverySlot] = useState('Morning 6:00 AM - 8:00 AM (Turbhe Sector 20 Hub)');
   const [notes, setNotes] = useState('Prices valid for 7 days. FSSAI certified fresh daily dressing.');
 
+  const initialRate = products[0]?.price_b2b || products[0]?.price_b2c || 0;
   const [items, setItems] = useState<QuotationItem[]>([
     {
       product_id: products[0]?.id || 'prod-1',
       name: products[0]?.name || 'Fresh Chicken Curry Cut',
       quantity: 15,
       unit: products[0]?.unit || 'kg',
-      price: products[0]?.price_b2b || 200,
-      total: (products[0]?.price_b2b || 200) * 15,
+      price: initialRate,
+      total: initialRate * 15,
     },
   ]);
 
@@ -73,16 +82,17 @@ export default function QuotationsManager({
 
   // Add Item
   const handleAddItem = () => {
-    const defaultProd = products[0] || { id: 'p1', name: 'Fresh Chicken Curry Cut', price_b2b: 200, unit: 'kg' };
+    const defaultProd = products[0];
+    const initialPrice = defaultProd ? (defaultProd.price_b2b || defaultProd.price_b2c || 0) : 0;
     setItems((prev) => [
       ...prev,
       {
-        product_id: defaultProd.id,
-        name: defaultProd.name,
+        product_id: defaultProd?.id || 'manual-item',
+        name: defaultProd?.name || 'Fresh Chicken Curry Cut',
         quantity: 10,
-        unit: defaultProd.unit || 'kg',
-        price: defaultProd.price_b2b || 200,
-        total: (defaultProd.price_b2b || 200) * 10,
+        unit: defaultProd?.unit || 'kg',
+        price: initialPrice,
+        total: initialPrice * 10,
       },
     ]);
   };
@@ -117,6 +127,10 @@ export default function QuotationsManager({
     }
     if (items.length === 0) {
       alert('Add at least one product item');
+      return;
+    }
+    if (paymentTerms.includes('Credit') && !creditApprovedConfirmed) {
+      alert('Credit terms require owner credit authorization confirmation. Please check the authorization box before submitting.');
       return;
     }
 
@@ -202,6 +216,42 @@ MeatCity Wholesale Supply Team
             <span className="text-[#D4AF37] text-xs font-semibold">MeatCity Turbhe Hub</span>
           </div>
 
+          {products.length === 0 && (
+            <div className="p-3 bg-amber-950/40 border border-amber-500/50 rounded-xl text-amber-200 text-xs space-y-1">
+              <div className="font-bold flex items-center gap-1.5 text-amber-300">
+                <span>⚠️</span>
+                <span>Live Product Catalogue Unavailable</span>
+              </div>
+              <p className="text-[11px] text-amber-300/90">
+                No active products were retrieved from the database. Line item prices must be manually verified against the official MeatCity management rate sheet.
+              </p>
+            </div>
+          )}
+
+          {paymentTerms.includes('Credit') && (
+            <div className="p-3.5 bg-amber-950/40 border border-amber-500/60 rounded-xl space-y-2 text-xs">
+              <div className="font-extrabold text-amber-300 flex items-center gap-1.5">
+                <span>⚠️</span>
+                <span>Credit Terms Policy Notice</span>
+              </div>
+              <p className="text-amber-200/90 text-[11px] leading-relaxed">
+                Credit terms are strictly restricted to verified B2B accounts with an approved trade arrangement. Unapproved credit quotations are not authorized.
+              </p>
+              <div className="flex items-center gap-2 pt-1 border-t border-amber-500/20">
+                <input
+                  type="checkbox"
+                  id="credit-auth-confirmed"
+                  checked={creditApprovedConfirmed}
+                  onChange={(e) => setCreditApprovedConfirmed(e.target.checked)}
+                  className="w-4 h-4 rounded text-amber-500 bg-black border-white/20 focus:ring-amber-500"
+                />
+                <label htmlFor="credit-auth-confirmed" className="text-white text-xs font-semibold cursor-pointer">
+                  Owner Credit Authorization Confirmed (Verified trade references & KYC on file)
+                </label>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div>
               <label className="text-gray-300 text-xs font-semibold block mb-1">Select B2B Lead</label>
@@ -273,11 +323,12 @@ MeatCity Wholesale Supply Team
                       onChange={(e) => {
                         const prod = products.find((p) => p.id === e.target.value);
                         if (prod) {
+                          const itemRate = prod.price_b2b || prod.price_b2c || 0;
                           handleUpdateItem(idx, {
                             product_id: prod.id,
                             name: prod.name,
                             unit: prod.unit || 'kg',
-                            price: prod.price_b2b || 200,
+                            price: itemRate,
                           });
                         }
                       }}
@@ -334,13 +385,23 @@ MeatCity Wholesale Supply Team
           {/* Pricing Adjustments */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-white/10">
             <div>
-              <label className="text-gray-300 text-xs font-semibold block mb-1">Payment Terms</label>
-              <input
-                type="text"
+              <label className="text-gray-300 text-xs font-semibold block mb-1">Payment Terms (Approved Options)</label>
+              <select
                 value={paymentTerms}
-                onChange={(e) => setPaymentTerms(e.target.value)}
+                onChange={(e) => {
+                  setPaymentTerms(e.target.value);
+                  if (!e.target.value.includes('Credit')) {
+                    setCreditApprovedConfirmed(false);
+                  }
+                }}
                 className="w-full bg-black/60 border border-white/10 text-white text-xs rounded-lg p-2.5 outline-none focus:border-[#D4AF37]"
-              />
+              >
+                {APPROVED_PAYMENT_TERMS.map((term) => (
+                  <option key={term} value={term}>
+                    {term}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>

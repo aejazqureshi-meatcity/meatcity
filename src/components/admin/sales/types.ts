@@ -88,5 +88,4 @@ export interface SalesSettingsMap {
   wholesale_payment_terms?: string;
   preferred_tone?: string;
   delivery_slots?: string;
-  gemini_api_key?: string;
 }

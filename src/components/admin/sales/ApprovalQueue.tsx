@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState } from 'react';
-import { SalesMessage } from './types';
+import { SalesMessage, SalesLead } from './types';
 
 interface ApprovalQueueProps {
   messages: SalesMessage[];
+  leads?: SalesLead[];
   onUpdateMessage: (id: string, updates: Partial<SalesMessage>) => Promise<void>;
   onDeleteMessage: (id: string) => Promise<void>;
   onConfirmManualSend: (message: SalesMessage) => Promise<void>;
@@ -21,6 +22,7 @@ const STATUS_TABS = [
 
 export default function ApprovalQueue({
   messages,
+  leads = [],
   onUpdateMessage,
   onDeleteMessage,
   onConfirmManualSend,
@@ -78,6 +80,8 @@ export default function ApprovalQueue({
     const fullPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
     return `https://wa.me/${fullPhone}?text=${encodeURIComponent(text || '')}`;
   };
+
+  const normalizePhone = (p?: string) => (p || '').replace(/\D/g, '');
 
   return (
     <div className="space-y-6">
@@ -141,11 +145,19 @@ export default function ApprovalQueue({
         <div className="space-y-4">
           {filtered.map((msg) => {
             const isEditing = editingMessageId === msg.id;
+            
+            // Check opt out against leads list
+            const relatedLead = leads.find(
+              (l) => l.id === msg.lead_id || (msg.recipient_phone && l.phone && normalizePhone(l.phone) === normalizePhone(msg.recipient_phone))
+            );
+            const isOptedOut = Boolean(relatedLead && (relatedLead.opt_out === true || relatedLead.status === 'Opted Out'));
 
             return (
               <div
                 key={msg.id}
-                className="bg-[#111111] border border-white/5 rounded-xl p-5 space-y-4 shadow-xl hover:border-white/10 transition-colors"
+                className={`bg-[#111111] border rounded-xl p-5 space-y-4 shadow-xl transition-colors ${
+                  isOptedOut ? 'border-rose-500/40 bg-rose-950/10' : 'border-white/5 hover:border-white/10'
+                }`}
               >
                 {/* Message Header */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-white/5">
@@ -164,6 +176,11 @@ export default function ApprovalQueue({
                         <span className="px-2 py-0.5 rounded text-[10px] bg-white/10 text-gray-300 uppercase font-semibold">
                           {msg.recipient_type}
                         </span>
+                        {isOptedOut && (
+                          <span className="px-2 py-0.5 rounded text-[10px] bg-rose-500/20 text-rose-400 font-extrabold border border-rose-500/30">
+                            OPTED OUT
+                          </span>
+                        )}
                       </div>
                       <div className="text-gray-400 text-xs mt-0.5">
                         Purpose: <span className="text-gray-200 font-semibold">{msg.purpose}</span> • Tone: {msg.language} • Channel: {msg.channel}
@@ -195,6 +212,19 @@ export default function ApprovalQueue({
                     )}
                   </div>
                 </div>
+
+                {/* Opt-out Warning Card */}
+                {isOptedOut && (
+                  <div className="p-3 bg-rose-950/40 border border-rose-500/50 rounded-xl text-xs text-rose-200 flex items-start gap-2.5">
+                    <span className="text-base text-rose-400">⛔</span>
+                    <div>
+                      <div className="font-bold text-rose-300">Recipient Opted Out / Do Not Contact</div>
+                      <p className="text-[11px] text-rose-400/90 mt-0.5">
+                        This contact has requested not to receive sales outreach. Outbound WhatsApp dispatch and manual send confirmation are blocked.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Message Content / Inline Editor */}
                 <div>
@@ -276,36 +306,68 @@ export default function ApprovalQueue({
                         >
                           ✕ Reject
                         </button>
-                        <button
-                          onClick={() => handleApprove(msg.id)}
-                          className="px-4 py-1.5 bg-[#D4AF37] hover:bg-[#b5952f] text-black rounded text-xs font-black transition-colors"
-                        >
-                          ✓ Approve Message
-                        </button>
+
+                        {isOptedOut ? (
+                          <button
+                            disabled
+                            className="px-4 py-1.5 bg-gray-800 text-gray-500 cursor-not-allowed rounded text-xs font-bold"
+                            title="Cannot approve message for opted-out recipient."
+                          >
+                            Cannot Approve (Opted Out)
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleApprove(msg.id)}
+                            className="px-4 py-1.5 bg-[#D4AF37] hover:bg-[#b5952f] text-black rounded text-xs font-black transition-colors"
+                          >
+                            ✓ Approve Message
+                          </button>
+                        )}
                       </>
                     )}
 
                     {(msg.status === 'APPROVED' || msg.status === 'PENDING_APPROVAL') && (
                       <>
-                        {msg.recipient_phone && (
-                          <a
-                            href={getWhatsAppUrl(msg.recipient_phone, msg.content)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-extrabold transition-colors flex items-center gap-1.5"
+                        {isOptedOut ? (
+                          <button
+                            disabled
+                            className="px-3 py-1.5 bg-gray-800 text-gray-500 cursor-not-allowed rounded text-xs font-bold flex items-center gap-1.5"
+                            title="Outbound messaging is blocked because recipient has opted out."
                           >
-                            <span>💬</span>
-                            <span>Open in WhatsApp</span>
-                          </a>
+                            <span>🚫</span>
+                            <span>WhatsApp Blocked</span>
+                          </button>
+                        ) : (
+                          msg.recipient_phone && (
+                            <a
+                              href={getWhatsAppUrl(msg.recipient_phone, msg.content)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-extrabold transition-colors flex items-center gap-1.5"
+                            >
+                              <span>💬</span>
+                              <span>Open in WhatsApp</span>
+                            </a>
+                          )
                         )}
 
-                        <button
-                          onClick={() => onConfirmManualSend(msg)}
-                          className="px-4 py-1.5 bg-emerald-400 hover:bg-emerald-300 text-black rounded text-xs font-black transition-colors"
-                          title="Confirm that you have manually sent this message"
-                        >
-                          ✓ Confirm Manually Sent
-                        </button>
+                        {isOptedOut ? (
+                          <button
+                            disabled
+                            className="px-4 py-1.5 bg-gray-800 text-gray-500 cursor-not-allowed rounded text-xs font-bold"
+                            title="Cannot confirm send for opted-out recipient."
+                          >
+                            Blocked (Opted Out)
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => onConfirmManualSend(msg)}
+                            className="px-4 py-1.5 bg-emerald-400 hover:bg-emerald-300 text-black rounded text-xs font-black transition-colors"
+                            title="Confirm that you have manually sent this message"
+                          >
+                            ✓ Confirm Manually Sent
+                          </button>
+                        )}
                       </>
                     )}
 

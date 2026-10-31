@@ -6,6 +6,17 @@
 -- for the MeatCity AI Sales Agent.
 -- =========================================================================
 
+-- 0. Ensure is_admin helper function exists (SECURITY DEFINER)
+CREATE OR REPLACE FUNCTION public.is_admin(user_id uuid)
+RETURNS boolean AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.users
+    WHERE id = user_id AND user_type = 'admin'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- 1. Create B2B Leads Table
 CREATE TABLE IF NOT EXISTS public.sales_leads (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -130,7 +141,7 @@ CREATE POLICY "sales_followups_admin_all" ON public.sales_follow_ups FOR ALL
   USING (public.is_admin(auth.uid()));
 
 
--- 5. Create Sales Settings Table
+-- 5. Create Sales Settings Table (Excludes API keys for credential security)
 CREATE TABLE IF NOT EXISTS public.sales_settings (
     key text PRIMARY KEY,
     value text,
@@ -144,7 +155,7 @@ DROP POLICY IF EXISTS "sales_settings_admin_all" ON public.sales_settings;
 CREATE POLICY "sales_settings_admin_all" ON public.sales_settings FOR ALL 
   USING (public.is_admin(auth.uid()));
 
--- Insert initial sales configuration defaults
+-- Insert initial sales configuration defaults (NO Gemini API key is stored)
 INSERT INTO public.sales_settings (key, value) VALUES
     ('business_name', 'MeatCity'),
     ('business_hub', 'Shop No.2, Sector 20, Turbhe, Navi Mumbai - 400705'),

@@ -206,7 +206,7 @@ export default function B2CCustomers({
                             }}
                             className="px-2.5 py-1.5 bg-[#D4AF37]/20 hover:bg-[#D4AF37] text-[#D4AF37] hover:text-black font-bold rounded text-[11px] transition-colors"
                           >
-                            🎁 Welcome Promo
+                            🎁 First-Order Welcome Offer
                           </button>
                         ) : cust.daysSinceLastOrder >= 14 ? (
                           <button

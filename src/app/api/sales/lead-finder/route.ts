@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { verifyAdminSession } from '@/lib/auth-server';
 
 interface SearchRequest {
   category?: string;
@@ -120,27 +121,20 @@ const NAVI_MUMBAI_DIRECTORY: Array<{
 
 export async function POST(request: Request) {
   try {
+    // 1. Server-side Supabase Admin Authentication Verification (CRITICAL)
+    const auth = await verifyAdminSession(request);
+    if (!auth.authorized) {
+      return NextResponse.json(
+        { error: auth.error || 'Authentication required' },
+        { status: auth.status || 401 }
+      );
+    }
+
     const body: SearchRequest = await request.json();
     const { category = 'All', area = 'All', keyword = '' } = body;
 
-    const supabase = createClient();
-
-    // Check if Gemini API key exists
-    let geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
-    if (!geminiApiKey) {
-      try {
-        const { data: settingRow } = await supabase
-          .from('sales_settings')
-          .select('value')
-          .eq('key', 'gemini_api_key')
-          .single();
-        if (settingRow?.value) {
-          geminiApiKey = settingRow.value;
-        }
-      } catch (e) {
-        // Continue to directory filter
-      }
-    }
+    // Use server environment variable only for Gemini API
+    const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
 
     let results = [];
 

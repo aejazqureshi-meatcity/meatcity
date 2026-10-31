@@ -31,8 +31,8 @@ export async function middleware(request: NextRequest) {
     const userRole = user?.user_metadata?.user_type || user?.user_type;
     const userStatus = user?.user_metadata?.status || user?.status;
 
-    // Protect Admin Route (except for admin-dev bypass)
-    if (request.nextUrl.pathname.startsWith('/admin') && request.nextUrl.pathname !== '/admin-dev') {
+    // Protect Admin Route
+    if (request.nextUrl.pathname.startsWith('/admin')) {
       if (userRole !== 'admin') {
         const dest = cookieStr ? '/' : '/login';
         return NextResponse.redirect(new URL(dest, request.url))
@@ -110,8 +110,8 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Protect Admin Route (except for admin-dev bypass)
-  if (request.nextUrl.pathname.startsWith('/admin') && request.nextUrl.pathname !== '/admin-dev') {
+  // Protect Admin Route
+  if (request.nextUrl.pathname.startsWith('/admin')) {
     if (userRole !== 'admin') {
       const dest = user ? '/' : '/login';
       return NextResponse.redirect(new URL(dest, request.url))
