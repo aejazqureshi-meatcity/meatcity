@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import SalesAgentRoot from '@/components/admin/sales/SalesAgentRoot';
 
 interface Product {
   id: string;
@@ -72,7 +73,7 @@ interface Order {
 }
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'approvals' | 'customers' | 'products' | 'categories' | 'orders' | 'deliveries' | 'analytics' | 'settings' | 'payments' | 'pincodes' | 'coupons' | 'reviews'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'approvals' | 'customers' | 'products' | 'categories' | 'orders' | 'deliveries' | 'analytics' | 'settings' | 'payments' | 'pincodes' | 'coupons' | 'reviews' | 'ai-sales'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const showToast = (message: string, type: 'success' | 'error') => {
@@ -1170,6 +1171,21 @@ export default function AdminDashboard() {
 
           <li className="admin-sidebar-menu-item">
             <div 
+              className={`admin-sidebar-link ${activeTab === 'ai-sales' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('ai-sales'); setIsSidebarOpen(false); }}
+            >
+              <span className="admin-sidebar-link-left">
+                <span style={{ fontSize: '16px', marginRight: '4px' }}>🤖</span>
+                AI Sales Agent
+              </span>
+              <span className="badge-count" style={{ backgroundColor: 'var(--color-gold)', color: 'black', fontWeight: 'bold' }}>
+                AI
+              </span>
+            </div>
+          </li>
+
+          <li className="admin-sidebar-menu-item">
+            <div 
               className={`admin-sidebar-link ${activeTab === 'approvals' ? 'active' : ''}`}
               onClick={() => { setActiveTab('approvals'); setIsSidebarOpen(false); }}
             >
@@ -1357,6 +1373,7 @@ export default function AdminDashboard() {
             <div className="admin-header-title-block">
                <h1>
                 {activeTab === 'dashboard' && 'Welcome, Admin Dashboard'}
+                {activeTab === 'ai-sales' && 'MeatCity AI Sales Agent & B2B Growth Engine'}
                 {activeTab === 'approvals' && 'B2B Approvals Queue'}
                 {activeTab === 'customers' && 'Customer Management'}
                 {activeTab === 'products' && 'Product CRUD Management'}
@@ -1369,6 +1386,7 @@ export default function AdminDashboard() {
               </h1>
               <p>
                 {activeTab === 'dashboard' && 'Visual overview of Meat City Turbhe sales performance.'}
+                {activeTab === 'ai-sales' && 'Discover Navi Mumbai food businesses, draft grounded wholesale proposals, and manage customer approvals.'}
                 {activeTab === 'approvals' && 'Review and approve wholesale partner credentials.'}
                 {activeTab === 'customers' && 'Manage B2C consumers and B2B credit accounts.'}
                 {activeTab === 'products' && 'Add, edit, adjust stock and configure dynamic price layers.'}
@@ -1394,6 +1412,14 @@ export default function AdminDashboard() {
         <div className="admin-content">
 
           {/* Tab 1: Dashboard */}
+          {activeTab === 'ai-sales' && (
+            <SalesAgentRoot
+              users={users}
+              orders={orders}
+              products={products}
+            />
+          )}
+
           {activeTab === 'dashboard' && (
             <div>
               {/* Summary Cards */}

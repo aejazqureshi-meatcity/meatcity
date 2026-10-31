@@ -37,6 +37,65 @@ export function readDb() {
         { key: 'free_delivery_above', value: '999' },
         { key: 'minimum_b2c_order', value: '200' },
         { key: 'minimum_b2b_order', value: '1000' }
+      ],
+      sales_leads: [
+        {
+          id: 'lead-1',
+          business_name: 'Noorani Biryani House',
+          contact_person: 'Mohsin Khan',
+          phone: '9820112233',
+          email: 'noorani.biryani@gmail.com',
+          category: 'Biryani Shop',
+          area: 'Vashi',
+          address: 'Sector 17, Near Vashi Plaza, Navi Mumbai',
+          source_url: 'Google Business Profile / Turbhe Market Referral',
+          status: 'New',
+          estimated_daily_kg: 35,
+          preferred_items: 'Chicken Curry Cut, Boneless Breast',
+          notes: 'High volume biryani vendor, looking for daily 7 AM delivery from Turbhe.',
+          opt_out: false,
+          created_at: new Date().toISOString()
+        },
+        {
+          id: 'lead-2',
+          business_name: 'Dawat Caterers & Events',
+          contact_person: 'Irfan Qureshi',
+          phone: '9833445566',
+          email: 'dawat.caterers@gmail.com',
+          category: 'Caterer',
+          area: 'Nerul',
+          address: 'Sector 20, Near Nerul Station East',
+          source_url: 'Navi Mumbai Caterers Directory',
+          status: 'Interested',
+          estimated_daily_kg: 50,
+          preferred_items: 'Fresh Mutton Cuts, Whole Cleaned Chicken',
+          notes: 'Weekend event catering. Needs bulk mutton rate confirmation.',
+          opt_out: false,
+          created_at: new Date().toISOString()
+        }
+      ],
+      sales_messages: [],
+      sales_quotations: [],
+      sales_follow_ups: [
+        {
+          id: 'fu-1',
+          lead_id: 'lead-2',
+          due_date: new Date().toISOString().split('T')[0],
+          title: 'Follow-up on weekend catering sample test',
+          notes: 'Call Irfan Bhai at 11 AM regarding mutton trial cut delivery.',
+          priority: 'High',
+          status: 'Pending',
+          created_at: new Date().toISOString()
+        }
+      ],
+      sales_settings: [
+        { key: 'business_name', value: 'MeatCity' },
+        { key: 'business_hub', value: 'Shop No.2, Sector 20, Turbhe, Navi Mumbai - 400705' },
+        { key: 'official_whatsapp', value: '917977630912' },
+        { key: 'min_b2b_order_kg', value: '10' },
+        { key: 'wholesale_payment_terms', value: 'Cash on Delivery / UPI / 7-Day Verified Credit' },
+        { key: 'preferred_tone', value: 'respectful_roman_hinglish' },
+        { key: 'delivery_slots', value: 'Morning 6:00 AM - 8:00 AM, Evening 4:00 PM - 6:00 PM' }
       ]
     };
 
@@ -59,6 +118,11 @@ export function readDb() {
     if (!parsed.serviceable_pincodes) { parsed.serviceable_pincodes = defaultDb.serviceable_pincodes; changed = true; }
     if (!parsed.reviews) { parsed.reviews = defaultDb.reviews; changed = true; }
     if (!parsed.admin_settings) { parsed.admin_settings = defaultDb.admin_settings; changed = true; }
+    if (!parsed.sales_leads) { parsed.sales_leads = defaultDb.sales_leads; changed = true; }
+    if (!parsed.sales_messages) { parsed.sales_messages = []; changed = true; }
+    if (!parsed.sales_quotations) { parsed.sales_quotations = []; changed = true; }
+    if (!parsed.sales_follow_ups) { parsed.sales_follow_ups = defaultDb.sales_follow_ups; changed = true; }
+    if (!parsed.sales_settings) { parsed.sales_settings = defaultDb.sales_settings; changed = true; }
 
     if (changed) {
       fs.writeFileSync(dbPath, JSON.stringify(parsed, null, 2), 'utf8');
