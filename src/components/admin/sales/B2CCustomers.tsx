@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface B2CCustomersProps {
   users: any[];
@@ -15,14 +15,32 @@ export default function B2CCustomers({
   onSelectCustomerForMessage,
   onNavigateTab,
 }: B2CCustomersProps) {
-  const [segment, setSegment] = useState<'all' | 'first-time' | 'regular' | 'dormant' | 'vip'>('all');
+  const [segment, setSegment] = useState<
+    'all' | 'first-time' | 'regular' | 'dormant' | 'vip' | 'expiring-points' | 'close-to-stamp' | 'close-to-tier'
+  >('all');
   const [search, setSearch] = useState('');
   const [activeCustomer, setActiveCustomer] = useState<any | null>(null);
+  const [loyaltyAccounts, setLoyaltyAccounts] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    fetch('/api/loyalty/admin/customers')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.customers) {
+          const map: Record<string, any> = {};
+          data.customers.forEach((c: any) => {
+            map[c.user_id] = c;
+          });
+          setLoyaltyAccounts(map);
+        }
+      })
+      .catch((err) => console.warn('Failed to load loyalty accounts for B2C customers:', err));
+  }, []);
 
   // Filter only B2C consumers
   const b2cUsers = users.filter((u) => u.user_type === 'b2c' || (!u.user_type && u.role !== 'admin'));
 
-  // Augment with order history metrics
+  // Augment with order history & loyalty metrics
   const now = new Date();
   const customerMetrics = b2cUsers.map((user) => {
     const userOrders = orders.filter((o) => o.user_id === user.id || o.customer_phone === user.phone || o.customer_phone === user.mobile);
@@ -38,6 +56,16 @@ export default function B2CCustomers({
       daysSinceLastOrder = Math.floor((now.getTime() - lastOrderDate.getTime()) / (1000 * 60 * 60 * 24));
     }
 
+    const loyalty = loyaltyAccounts[user.id] || {};
+    const pointsBalance = loyalty.points_balance || 0;
+    const tierId = loyalty.tier_id || 'silver';
+    const stampsCollected = loyalty.stamps_collected || 0;
+    const referralCode = loyalty.referral_code || '';
+
+    const hasExpiringPoints = pointsBalance >= 50 && daysSinceLastOrder >= 14;
+    const isCloseToStampReward = stampsCollected >= 7;
+    const isCloseToTierUpgrade = (totalSpend >= 3500 && totalSpend < 5000) || (totalSpend >= 12000 && totalSpend < 15000);
+
     return {
       ...user,
       displayName: user.full_name || user.name || 'Valued Customer',
@@ -47,6 +75,13 @@ export default function B2CCustomers({
       lastOrderDate,
       daysSinceLastOrder,
       recentOrders: userOrders.slice(0, 5),
+      loyaltyTier: tierId,
+      pointsBalance,
+      stampsCollected,
+      referralCode,
+      hasExpiringPoints,
+      isCloseToStampReward,
+      isCloseToTierUpgrade,
     };
   });
 
@@ -56,6 +91,9 @@ export default function B2CCustomers({
     if (segment === 'regular') return cust.orderCount >= 3;
     if (segment === 'dormant') return cust.daysSinceLastOrder >= 14 && cust.orderCount > 0;
     if (segment === 'vip') return cust.totalSpend >= 2000;
+    if (segment === 'expiring-points') return cust.hasExpiringPoints;
+    if (segment === 'close-to-stamp') return cust.isCloseToStampReward;
+    if (segment === 'close-to-tier') return cust.isCloseToTierUpgrade;
     return true;
   });
 
@@ -76,7 +114,7 @@ export default function B2CCustomers({
       <div className="bg-[#111111] border border-white/5 p-4 rounded-xl flex items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2 text-gray-300">
           <span className="text-emerald-400 font-bold">🛡️ Read-Only Integration:</span>
-          <span>Customer account data, addresses, and order records are strictly protected. AI can only draft outreach messages into the Approval Queue.</span>
+          <span>Customer account data, addresses, and order records are strictly protected. AI drafts retention and loyalty messages into the Approval Queue.</span>
         </div>
       </div>
 
@@ -98,7 +136,7 @@ export default function B2CCustomers({
               segment === 'first-time' ? 'bg-[#D4AF37] text-black font-extrabold' : 'bg-white/5 hover:bg-white/10 text-gray-300'
             }`}
           >
-            First-Time Buyers ({customerMetrics.filter((c) => c.orderCount === 1).length})
+            First-Time ({customerMetrics.filter((c) => c.orderCount === 1).length})
           </button>
 
           <button
@@ -107,7 +145,34 @@ export default function B2CCustomers({
               segment === 'regular' ? 'bg-[#D4AF37] text-black font-extrabold' : 'bg-white/5 hover:bg-white/10 text-gray-300'
             }`}
           >
-            Regular VIPs 3+ ({customerMetrics.filter((c) => c.orderCount >= 3).length})
+            Regulars ({customerMetrics.filter((c) => c.orderCount >= 3).length})
+          </button>
+
+          <button
+            onClick={() => setSegment('close-to-stamp')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+              segment === 'close-to-stamp' ? 'bg-[#D4AF37] text-black font-extrabold' : 'bg-white/5 hover:bg-white/10 text-amber-300 border border-amber-500/20'
+            }`}
+          >
+            🎫 Close to Stamp Reward ({customerMetrics.filter((c) => c.isCloseToStampReward).length})
+          </button>
+
+          <button
+            onClick={() => setSegment('expiring-points')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+              segment === 'expiring-points' ? 'bg-[#D4AF37] text-black font-extrabold' : 'bg-white/5 hover:bg-white/10 text-yellow-300 border border-yellow-500/20'
+            }`}
+          >
+            🪙 Expiring Points ({customerMetrics.filter((c) => c.hasExpiringPoints).length})
+          </button>
+
+          <button
+            onClick={() => setSegment('close-to-tier')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+              segment === 'close-to-tier' ? 'bg-[#D4AF37] text-black font-extrabold' : 'bg-white/5 hover:bg-white/10 text-purple-300 border border-purple-500/20'
+            }`}
+          >
+            👑 Close to Tier Upgrade ({customerMetrics.filter((c) => c.isCloseToTierUpgrade).length})
           </button>
 
           <button
@@ -116,7 +181,7 @@ export default function B2CCustomers({
               segment === 'dormant' ? 'bg-[#D4AF37] text-black font-extrabold' : 'bg-white/5 hover:bg-white/10 text-gray-300'
             }`}
           >
-            Dormant 14+ Days ({customerMetrics.filter((c) => c.daysSinceLastOrder >= 14 && c.orderCount > 0).length})
+            Dormant 14d+ ({customerMetrics.filter((c) => c.daysSinceLastOrder >= 14 && c.orderCount > 0).length})
           </button>
 
           <button
@@ -125,7 +190,7 @@ export default function B2CCustomers({
               segment === 'vip' ? 'bg-[#D4AF37] text-black font-extrabold' : 'bg-white/5 hover:bg-white/10 text-gray-300'
             }`}
           >
-            High Spend &gt; ₹2k ({customerMetrics.filter((c) => c.totalSpend >= 2000).length})
+            VIP &gt; ₹2k ({customerMetrics.filter((c) => c.totalSpend >= 2000).length})
           </button>
         </div>
 
@@ -145,17 +210,18 @@ export default function B2CCustomers({
             <thead>
               <tr className="bg-white/5 border-b border-white/5 text-gray-400 text-xs font-semibold uppercase tracking-wider">
                 <th className="p-4">Customer</th>
-                <th className="p-4">Mobile Number</th>
-                <th className="p-4">Total Orders</th>
+                <th className="p-4">Mobile</th>
+                <th className="p-4">Loyalty Tier & Points</th>
+                <th className="p-4">Stamp Progress</th>
                 <th className="p-4">Total Spend</th>
                 <th className="p-4">Last Order</th>
-                <th className="p-4 text-right">AI Engagement Actions</th>
+                <th className="p-4 text-right">AI Retention Outreach</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-xs text-gray-300">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-gray-500">
+                  <td colSpan={7} className="p-8 text-center text-gray-500">
                     No customers found in this segment.
                   </td>
                 </tr>
@@ -172,13 +238,28 @@ export default function B2CCustomers({
                     </td>
 
                     <td className="p-4">
-                      <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-white/10 text-white">
-                        {cust.orderCount} order{cust.orderCount === 1 ? '' : 's'}
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black uppercase border ${
+                        cust.loyaltyTier === 'platinum'
+                          ? 'bg-purple-950/40 text-purple-300 border-purple-500/30'
+                          : cust.loyaltyTier === 'gold'
+                          ? 'bg-amber-950/40 text-amber-300 border-amber-500/30'
+                          : 'bg-gray-800 text-gray-300 border-gray-600/30'
+                      }`}>
+                        {cust.loyaltyTier === 'platinum' ? '💎 Platinum' : cust.loyaltyTier === 'gold' ? '🥇 Gold' : '🥈 Silver'}
                       </span>
+                      <div className="text-[11px] text-white font-bold mt-1">
+                        {cust.pointsBalance} pts
+                      </div>
+                    </td>
+
+                    <td className="p-4">
+                      <span className="font-bold text-white text-xs">{cust.stampsCollected}/10</span>
+                      <span className="block text-[10px] text-text-secondary">active card</span>
                     </td>
 
                     <td className="p-4 font-black text-white">
                       ₹{cust.totalSpend.toLocaleString('en-IN')}
+                      <span className="block text-[10px] text-gray-400 font-normal">{cust.orderCount} orders</span>
                     </td>
 
                     <td className="p-4">
@@ -197,26 +278,56 @@ export default function B2CCustomers({
                     </td>
 
                     <td className="p-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {cust.orderCount === 0 ? (
+                      <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                        {cust.isCloseToStampReward ? (
+                          <button
+                            onClick={() => {
+                              onSelectCustomerForMessage(cust, 'Stamp Card Progress');
+                              onNavigateTab('generator');
+                            }}
+                            className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black font-bold rounded text-[11px] border border-amber-500/30 transition-colors"
+                          >
+                            🎫 Stamp Reward Nudge
+                          </button>
+                        ) : cust.hasExpiringPoints ? (
+                          <button
+                            onClick={() => {
+                              onSelectCustomerForMessage(cust, 'Points Expiry Reminder');
+                              onNavigateTab('generator');
+                            }}
+                            className="px-2.5 py-1 bg-yellow-500/20 hover:bg-yellow-500 text-yellow-300 hover:text-black font-bold rounded text-[11px] border border-yellow-500/30 transition-colors"
+                          >
+                            🪙 Points Expiry Reminder
+                          </button>
+                        ) : cust.isCloseToTierUpgrade ? (
+                          <button
+                            onClick={() => {
+                              onSelectCustomerForMessage(cust, 'Tier Upgrade Congratulations');
+                              onNavigateTab('generator');
+                            }}
+                            className="px-2.5 py-1 bg-purple-500/20 hover:bg-purple-500 text-purple-300 hover:text-white font-bold rounded text-[11px] border border-purple-500/30 transition-colors"
+                          >
+                            👑 Upgrade Nudge
+                          </button>
+                        ) : cust.daysSinceLastOrder >= 14 ? (
+                          <button
+                            onClick={() => {
+                              onSelectCustomerForMessage(cust, 'Win-back Inactive Customer');
+                              onNavigateTab('generator');
+                            }}
+                            className="px-2.5 py-1 bg-red-500/20 hover:bg-red-500 text-red-300 hover:text-white font-bold rounded text-[11px] border border-red-500/30 transition-colors"
+                          >
+                            🔄 Win-back Customer
+                          </button>
+                        ) : cust.orderCount === 0 ? (
                           <button
                             onClick={() => {
                               onSelectCustomerForMessage(cust, 'New Customer Promotion');
                               onNavigateTab('generator');
                             }}
-                            className="px-2.5 py-1.5 bg-[#D4AF37]/20 hover:bg-[#D4AF37] text-[#D4AF37] hover:text-black font-bold rounded text-[11px] transition-colors"
+                            className="px-2.5 py-1 bg-[#D4AF37]/20 hover:bg-[#D4AF37] text-[#D4AF37] hover:text-black font-bold rounded text-[11px] transition-colors"
                           >
-                            🎁 First-Order Welcome Offer
-                          </button>
-                        ) : cust.daysSinceLastOrder >= 14 ? (
-                          <button
-                            onClick={() => {
-                              onSelectCustomerForMessage(cust, 'Repeat Order Reminder');
-                              onNavigateTab('generator');
-                            }}
-                            className="px-2.5 py-1.5 bg-amber-500/20 hover:bg-amber-500 text-amber-400 hover:text-black font-bold rounded text-[11px] transition-colors"
-                          >
-                            🔄 Winback Reminder
+                            🎁 Welcome Offer
                           </button>
                         ) : (
                           <button
@@ -224,9 +335,9 @@ export default function B2CCustomers({
                               onSelectCustomerForMessage(cust, 'Repeat Order Reminder');
                               onNavigateTab('generator');
                             }}
-                            className="px-2.5 py-1.5 bg-purple-500/20 hover:bg-purple-500 text-purple-400 hover:text-white font-bold rounded text-[11px] transition-colors"
+                            className="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-white font-bold rounded text-[11px] transition-colors"
                           >
-                            💬 Weekend Feast Draft
+                            💬 Repeat Draft
                           </button>
                         )}
 
@@ -260,58 +371,53 @@ export default function B2CCustomers({
               </div>
               <button
                 onClick={() => setActiveCustomer(null)}
-                className="text-gray-400 hover:text-white text-lg font-bold"
+                className="text-gray-400 hover:text-white text-base"
               >
                 ✕
               </button>
             </div>
 
-            <div>
-              <h4 className="text-white font-bold text-xs uppercase text-gray-400 mb-2">Recent Order History</h4>
-              {activeCustomer.recentOrders.length === 0 ? (
-                <div className="p-4 bg-black/40 rounded-xl text-center text-xs text-gray-500 border border-white/5">
-                  No previous orders placed yet.
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {activeCustomer.recentOrders.map((ord: any) => (
-                    <div key={ord.id} className="p-3 bg-black/40 border border-white/5 rounded-lg text-xs space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-white font-bold">Order #{ord.id.slice(-6)}</span>
-                        <span className="text-emerald-400 font-bold">₹{ord.total}</span>
-                      </div>
-                      <div className="text-gray-400 text-[11px]">
-                        Status: <span className="text-gray-200">{ord.status}</span> • Date: {new Date(ord.created_at).toLocaleDateString()}
-                      </div>
-                      {ord.delivery_address && (
-                        <div className="text-gray-500 text-[10px] truncate">
-                          Address: {ord.delivery_address}
-                        </div>
-                      )}
+            <div className="bg-black/40 border border-white/5 rounded-xl p-3 grid grid-cols-3 gap-2 text-center text-xs">
+              <div>
+                <span className="text-text-secondary block text-[10px]">Tier</span>
+                <span className="font-black text-gold capitalize">{activeCustomer.loyaltyTier}</span>
+              </div>
+              <div>
+                <span className="text-text-secondary block text-[10px]">Points Balance</span>
+                <span className="font-black text-white">{activeCustomer.pointsBalance} pts</span>
+              </div>
+              <div>
+                <span className="text-text-secondary block text-[10px]">Stamps</span>
+                <span className="font-black text-emerald-400">{activeCustomer.stampsCollected}/10</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="text-xs uppercase font-bold text-gray-400">Recent Completed Orders</h4>
+              {activeCustomer.recentOrders && activeCustomer.recentOrders.length > 0 ? (
+                activeCustomer.recentOrders.map((o: any) => (
+                  <div key={o.id} className="bg-black/30 border border-white/5 p-3 rounded-lg flex justify-between items-center text-xs">
+                    <div>
+                      <span className="font-bold text-white">{o.id}</span>
+                      <span className="text-gray-400 block text-[10px]">{new Date(o.created_at).toLocaleDateString()}</span>
                     </div>
-                  ))}
-                </div>
+                    <div className="text-right">
+                      <span className="font-black text-white">₹{o.total}</span>
+                      <span className="text-emerald-400 block text-[10px]">{o.status}</span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-gray-500">No past orders found.</p>
               )}
             </div>
 
-            <div className="pt-3 border-t border-white/10 flex justify-end gap-2">
+            <div className="pt-2 flex justify-end">
               <button
-                type="button"
                 onClick={() => setActiveCustomer(null)}
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-lg transition-colors"
+                className="px-4 py-2 bg-neutral-800 text-white font-bold text-xs rounded-xl"
               >
                 Close
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onSelectCustomerForMessage(activeCustomer, 'Repeat Order Reminder');
-                  setActiveCustomer(null);
-                  onNavigateTab('generator');
-                }}
-                className="px-4 py-2 bg-[#D4AF37] hover:bg-[#b5952f] text-black text-xs font-extrabold rounded-lg transition-colors"
-              >
-                Draft AI Engagement
               </button>
             </div>
           </div>

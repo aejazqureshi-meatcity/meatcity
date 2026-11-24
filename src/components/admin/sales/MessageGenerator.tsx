@@ -26,6 +26,12 @@ const B2C_PURPOSES = [
   'Product Enquiry Reply',
   'New Customer Promotion',
   'Cart Recovery Draft',
+  'Points Expiry Reminder',
+  'Stamp Card Progress',
+  'Tier Upgrade Congratulations',
+  'Birthday Special Gift',
+  'Win-back Inactive Customer',
+  'Referral Invitation',
   'Repeat Order Reminder',
 ];
 

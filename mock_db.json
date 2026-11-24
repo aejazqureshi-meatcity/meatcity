@@ -2263,5 +2263,35 @@
   "sales_messages": [],
   "sales_quotations": [],
   "sales_follow_ups": [],
-  "sales_settings": []
+  "sales_settings": [],
+  "admin_settings": [
+    {
+      "key": "whatsapp_notifications_enabled",
+      "value": "true"
+    },
+    {
+      "key": "admin_whatsapp_number",
+      "value": "917977630912"
+    },
+    {
+      "key": "is_open",
+      "value": "true"
+    },
+    {
+      "key": "delivery_fee",
+      "value": "50"
+    },
+    {
+      "key": "free_delivery_above",
+      "value": "999"
+    },
+    {
+      "key": "minimum_b2c_order",
+      "value": "200"
+    },
+    {
+      "key": "minimum_b2b_order",
+      "value": "1000"
+    }
+  ]
 }

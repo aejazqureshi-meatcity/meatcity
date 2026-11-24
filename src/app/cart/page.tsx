@@ -79,6 +79,14 @@ export default function CartPage() {
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [couponError, setCouponError] = useState('');
 
+  // Loyalty Rewards State
+  const [loyaltyEstimate, setLoyaltyEstimate] = useState<any>(null);
+  const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
+  const [pointsToRedeem, setPointsToRedeem] = useState<number>(0);
+  const [loyaltyDiscount, setLoyaltyDiscount] = useState<number>(0);
+  const [reservationId, setReservationId] = useState<string | null>(null);
+  const [cartSessionId, setCartSessionId] = useState<string>('');
+
   // Payment State
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'UPI' | 'Razorpay' | 'Credit' | 'BankTransfer'>('COD');
   const [upiId, setUpiId] = useState('');
@@ -386,6 +394,64 @@ export default function CartPage() {
     setCouponCode('');
   };
 
+  // Loyalty Points estimate & management
+  useEffect(() => {
+    if (!cartSessionId) {
+      setCartSessionId('cs_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8));
+    }
+  }, [cartSessionId]);
+
+  useEffect(() => {
+    if (user && subtotal > 0) {
+      fetch('/api/loyalty/estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subtotal, role: userRole })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data && !data.error) {
+            setLoyaltyEstimate(data);
+            if (useLoyaltyPoints) {
+              const maxPts = data.maxPointsRedeemable || 0;
+              const nextPts = Math.min(pointsToRedeem || maxPts, maxPts);
+              setPointsToRedeem(nextPts);
+              setLoyaltyDiscount(Math.round(nextPts * (data.pointRupeeValue || 0.25)));
+            }
+          }
+        })
+        .catch(err => console.warn('Failed to estimate loyalty points:', err));
+    }
+  }, [user, userRole, subtotal]);
+
+  const handleToggleLoyaltyPoints = async (apply: boolean) => {
+    if (!apply) {
+      if (reservationId) {
+        fetch('/api/loyalty/release', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reservationId })
+        }).catch(err => console.warn('Failed to release reservation:', err));
+        setReservationId(null);
+      }
+      setUseLoyaltyPoints(false);
+      setPointsToRedeem(0);
+      setLoyaltyDiscount(0);
+      return;
+    }
+
+    if (!loyaltyEstimate || loyaltyEstimate.maxPointsRedeemable <= 0) {
+      alert('No redeemable loyalty points available for this order.');
+      return;
+    }
+
+    const pts = loyaltyEstimate.maxPointsRedeemable;
+    const discount = Math.round(pts * (loyaltyEstimate.pointRupeeValue || 0.25));
+    setPointsToRedeem(pts);
+    setLoyaltyDiscount(discount);
+    setUseLoyaltyPoints(true);
+  };
+
   // Cart calculations
   const cartItems = Object.entries(cart).map(([cartKey, qty]) => {
     const parts = cartKey.split('_');
@@ -443,7 +509,8 @@ export default function CartPage() {
   };
 
   const deliveryFee = getDynamicDeliveryFee();
-  const total = Math.max(0, subtotal - discountAmount + deliveryFee);
+  const activeLoyaltyDiscount = useLoyaltyPoints ? loyaltyDiscount : 0;
+  const total = Math.max(0, subtotal - discountAmount - activeLoyaltyDiscount + deliveryFee);
 
   // Credit limits checks
   const isCreditLimitExceeded = userRole === 'b2b' && 
@@ -693,6 +760,35 @@ export default function CartPage() {
       return;
     }
 
+    // Reserve loyalty points atomically if applied
+    let currentReservationId = reservationId;
+    if (useLoyaltyPoints && pointsToRedeem > 0) {
+      if (!currentReservationId) {
+        try {
+          const resRes = await fetch('/api/loyalty/reserve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              points: pointsToRedeem,
+              cartSessionId: cartSessionId || 'cs_' + Date.now()
+            })
+          });
+          const resData = await resRes.json();
+          if (!resRes.ok || resData.error || !resData.success) {
+            alert('Could not reserve loyalty points: ' + (resData.error || 'Insufficient points'));
+            setIsProcessingPayment(false);
+            return;
+          }
+          currentReservationId = resData.reservation_id;
+          setReservationId(currentReservationId);
+        } catch (rErr: any) {
+          alert('Error reserving points: ' + rErr.message);
+          setIsProcessingPayment(false);
+          return;
+        }
+      }
+    }
+
     const { data: freshProfile } = await supabase.from('users').select('*').eq('id', freshUser.id).single();
     const activeAddress = addresses.find(a => a.id === selectedAddressId);
     const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
@@ -745,6 +841,10 @@ export default function CartPage() {
       delivery_slot: deliverySlot,
       coupon_code: appliedCoupon ? appliedCoupon.code : null,
       coupon_discount: discountAmount,
+      points_earned: 0,
+      points_redeemed: useLoyaltyPoints ? pointsToRedeem : 0,
+      points_discount: activeLoyaltyDiscount,
+      stamp_awarded: false,
       items: cartItems.map(item => ({
         product_id: item.productId,
         name: item.product?.name,
@@ -776,15 +876,42 @@ export default function CartPage() {
       items: orderPayload.items,
       delivery_slot: orderPayload.delivery_slot,
       coupon_code: orderPayload.coupon_code,
-      coupon_discount: orderPayload.coupon_discount
+      coupon_discount: orderPayload.coupon_discount,
+      points_earned: orderPayload.points_earned,
+      points_redeemed: orderPayload.points_redeemed,
+      points_discount: orderPayload.points_discount,
+      stamp_awarded: orderPayload.stamp_awarded
     };
 
     const { error } = await supabase.from('orders').insert(dbOrderPayload);
     setIsProcessingPayment(false);
 
     if (error) {
+      // Release reservation if insert failed
+      if (currentReservationId) {
+        fetch('/api/loyalty/release', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reservationId: currentReservationId })
+        }).catch(console.warn);
+        setReservationId(null);
+      }
       alert('Failed to place order: ' + error.message);
       return;
+    }
+
+    // Commit loyalty reservation if points were used
+    if (currentReservationId) {
+      try {
+        await fetch('/api/loyalty/commit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reservationId: currentReservationId, orderId })
+        });
+      } catch (commitErr) {
+        console.warn('Failed to commit loyalty points redemption:', commitErr);
+      }
+      setReservationId(null);
     }
 
     try {
@@ -852,6 +979,14 @@ export default function CartPage() {
 
       const verifyData = await verifyRes.json();
       if (verifyRes.ok && verifyData.success) {
+        if (orderPayload?.reservation_id) {
+          fetch('/api/loyalty/commit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reservationId: orderPayload.reservation_id, orderId: orderPayload.id })
+          }).catch(console.warn);
+          setReservationId(null);
+        }
         localStorage.removeItem('meatcity_cart');
         setCart({});
         if (typeof window !== 'undefined') {
@@ -894,6 +1029,35 @@ export default function CartPage() {
       const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
       const activeRole = freshProfile?.user_type || freshUser.user_metadata?.user_type || userRole;
 
+      // Reserve points atomically if applied
+      let currentReservationId = reservationId;
+      if (useLoyaltyPoints && pointsToRedeem > 0) {
+        if (!currentReservationId) {
+          try {
+            const resRes = await fetch('/api/loyalty/reserve', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                points: pointsToRedeem,
+                cartSessionId: cartSessionId || 'cs_' + Date.now()
+              })
+            });
+            const resData = await resRes.json();
+            if (!resRes.ok || resData.error || !resData.success) {
+              alert('Could not reserve loyalty points: ' + (resData.error || 'Insufficient points'));
+              setIsProcessingPayment(false);
+              return;
+            }
+            currentReservationId = resData.reservation_id;
+            setReservationId(currentReservationId);
+          } catch (rErr: any) {
+            alert('Error reserving points: ' + rErr.message);
+            setIsProcessingPayment(false);
+            return;
+          }
+        }
+      }
+
       const orderPayload = {
         id: orderId,
         order_id: orderId,
@@ -913,6 +1077,11 @@ export default function CartPage() {
         payment_method: 'Online (Razorpay)',
         payment_status: 'Pending Verification',
         status: 'New',
+        points_earned: 0,
+        points_redeemed: useLoyaltyPoints ? pointsToRedeem : 0,
+        points_discount: activeLoyaltyDiscount,
+        stamp_awarded: false,
+        reservation_id: currentReservationId,
         items: cartItems.map(item => ({
           product_id: item.product?.id,
           name: item.product?.name,
@@ -2165,6 +2334,60 @@ export default function CartPage() {
                 </div>
               )}
 
+              {/* 4b. MeatCity Loyalty Points & Rewards */}
+              {loyaltyEstimate && loyaltyEstimate.isEnabled && (
+                <div className="bg-gradient-to-br from-neutral-900 via-neutral-900 to-amber-950/20 border border-amber-500/20 rounded-[16px] p-4 flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">👑</span>
+                      <h3 className="text-white text-xs font-extrabold uppercase tracking-wide">
+                        MeatCity Loyalty Points
+                      </h3>
+                    </div>
+                    <span className="text-[10px] bg-gold/10 text-gold px-2 py-0.5 rounded-full font-black border border-gold/20">
+                      Balance: {loyaltyEstimate.availablePoints} pts
+                    </span>
+                  </div>
+
+                  {loyaltyEstimate.maxPointsRedeemable > 0 ? (
+                    <div className="flex items-center justify-between bg-black/40 border border-white/5 rounded-[12px] p-3">
+                      <div className="flex flex-col">
+                        <span className="text-xs text-white font-bold">
+                          Redeem {loyaltyEstimate.maxPointsRedeemable} points
+                        </span>
+                        <span className="text-[10px] text-gold font-bold">
+                          Get flat ₹{loyaltyEstimate.maxRupeeDiscount} off this order
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleLoyaltyPoints(!useLoyaltyPoints)}
+                        className={`px-3.5 py-1.5 rounded-[10px] text-xs font-black uppercase transition-all ${
+                          useLoyaltyPoints
+                            ? 'bg-red-600/20 text-red-400 border border-red-500/30'
+                            : 'bg-gold text-black shadow-md shadow-gold/20 active:scale-95'
+                        }`}
+                      >
+                        {useLoyaltyPoints ? 'Remove' : 'Apply'}
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-[10px] text-text-secondary leading-relaxed">
+                      {loyaltyEstimate.availablePoints < (loyaltyEstimate.minPointsForRedemption || 100)
+                        ? `Minimum ${loyaltyEstimate.minPointsForRedemption || 100} points required to redeem on orders (Current: ${loyaltyEstimate.availablePoints} pts).`
+                        : `No points eligible for redemption on this order.`}
+                    </p>
+                  )}
+
+                  {loyaltyEstimate.estimatedPointsEarned > 0 && (
+                    <div className="text-[10px] text-emerald-400 flex items-center gap-1.5 font-bold pt-1 border-t border-white/5">
+                      <span>✨</span>
+                      <span>You'll earn +{loyaltyEstimate.estimatedPointsEarned} points upon successful delivery!</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* 5. Bill Details */}
               <div className="bg-neutral-900 border border-white/5 rounded-[16px] p-4 flex flex-col gap-3.5">
                 <h3 className="text-white text-xs font-extrabold uppercase tracking-wide pb-1 border-b border-white/5">
@@ -2179,6 +2402,12 @@ export default function CartPage() {
                     <div className="flex justify-between text-emerald-400 font-bold">
                       <span>Discount ({appliedCoupon?.code})</span>
                       <span>-₹{discountAmount}</span>
+                    </div>
+                  )}
+                  {activeLoyaltyDiscount > 0 && (
+                    <div className="flex justify-between text-gold font-bold">
+                      <span>Loyalty Points ({pointsToRedeem} pts)</span>
+                      <span>-₹{activeLoyaltyDiscount}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-text-secondary">
@@ -2353,7 +2582,17 @@ export default function CartPage() {
               <div className="grid grid-cols-2 gap-3 mt-2">
                 <button 
                   type="button"
-                  onClick={() => setShowRazorpayModal(false)}
+                  onClick={() => {
+                    if (reservationId) {
+                      fetch('/api/loyalty/release', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ reservationId })
+                      }).catch(console.warn);
+                      setReservationId(null);
+                    }
+                    setShowRazorpayModal(false);
+                  }}
                   disabled={isProcessingPayment}
                   className="py-2.5 bg-neutral-855 text-white font-bold text-xs rounded-[10px] border border-white/5 active:scale-95"
                 >

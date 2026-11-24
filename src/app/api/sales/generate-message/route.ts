@@ -551,6 +551,43 @@ MeatCity Wholesale Supply Team
       : `Hello ${recipientName}, you left fresh cuts in your MeatCity cart! Complete your order now for fresh express delivery to your doorstep: https://meatcity.in/cart. Support: +91 7977630912.`;
   }
 
+  // Retention & Loyalty Templates
+  if (purpose === 'Points Expiry Reminder') {
+    return isHinglish
+      ? `Namaste ${recipientName} ji! 🪙\n\nMeatCity Rewards reminder: Aapke loyalty points balance ki validity jald hi expire ho rahi hai. Inhe apne next fresh chicken ya mutton order pe seedhe checkout pe redeem karein aur instant discount payein!\n\nOrder Now: https://meatcity.in/cart\nMeatCity Turbhe: +91 7977630912`
+      : `Dear ${recipientName},\n\nFriendly reminder from MeatCity Rewards! 🪙 Your loyalty points balance is nearing expiration. You can easily redeem your points for an instant discount on your next fresh meat order at checkout.\n\nShop Fresh Today: https://meatcity.in/cart\nMeatCity Team: +91 7977630912`;
+  }
+
+  if (purpose === 'Stamp Card Progress') {
+    return isHinglish
+      ? `Hello ${recipientName}! 🎫\n\nAapka MeatCity Digital Stamp Card progress bohot achha chal raha hai! Aap apne agle reward voucher (Flat ₹100 Off) ke bohot kareeb hain. Aaj hi fresh cuts order karein aur agla stamp collect karein!\n\nView Card: https://meatcity.in/rewards\nMeatCity Turbhe: +91 7977630912`
+      : `Hello ${recipientName}! 🎫\n\nYou're making great progress on your MeatCity Digital Stamp Card! You are just steps away from unlocking your Flat ₹100 Off reward voucher. Order your favorite fresh cuts today to claim your next stamp!\n\nTrack Your Rewards: https://meatcity.in/rewards\nMeatCity Team: +91 7977630912`;
+  }
+
+  if (purpose === 'Tier Upgrade Congratulations') {
+    return isHinglish
+      ? `Badhaai ho ${recipientName} ji! 👑\n\nAapka MeatCity loyalty tier upgrade ho chuka hai! Ab se aapko har fresh order pe milega accelerated points multiplier aur priority customer support. MeatCity ke saath banne rehne ke liye bohot bohot shukriya!\n\nExplore Perks: https://meatcity.in/rewards\nMeatCity Turbhe: +91 7977630912`
+      : `Congratulations ${recipientName}! 👑\n\nYou have officially reached a higher tier in the MeatCity Loyalty Program! Enjoy accelerated point multipliers and exclusive member benefits on all future orders.\n\nThank you for choosing MeatCity!\nExplore Rewards: https://meatcity.in/rewards\nMeatCity Team: +91 7977630912`;
+  }
+
+  if (purpose === 'Birthday Special Gift') {
+    return isHinglish
+      ? `Janamdin Mubarak ${recipientName} ji! 🎂🎉\n\nMeatCity parivaar ki taraf se aapko bohot bohot shubhkaamnaayein. Aapke is khaas din ko celebrate karne ke liye humne aapke account me special birthday rewards unlock kiye hain. Weekend feast plan karein fresh cuts ke saath!\n\nClaim Treat: https://meatcity.in/rewards\nMeatCity Turbhe: +91 7977630912`
+      : `Happy Birthday ${recipientName}! 🎂🎉\n\nWarmest wishes from the entire MeatCity team! To celebrate your special day, we've added a special celebratory reward to your loyalty account. Treat yourself and your family to a fresh gourmet feast!\n\nEnjoy Your Treat: https://meatcity.in/rewards\nMeatCity Team: +91 7977630912`;
+  }
+
+  if (purpose === 'Win-back Inactive Customer') {
+    return isHinglish
+      ? `Hello ${recipientName}! Hum aapko MeatCity pe miss kar rahe hain. 🍗\n\nNavi Mumbai me hamare Turbhe hub se roz subah fresh, hygienic aur Halal chicken, tender mutton aur eggs dispatch hote hain. Aaj hi order karein aur taaza meat ka anand lein!\n\nOrder Now: https://meatcity.in\nSupport: +91 7977630912`
+      : `Hello ${recipientName}, we've missed you at MeatCity! 🍗\n\nOur Turbhe Hub is stocked daily with the freshest farm-grade chicken, mutton, and eggs, delivered straight to your door with care.\n\nRediscover fresh taste today: https://meatcity.in\nMeatCity Team: +91 7977630912`;
+  }
+
+  if (purpose === 'Referral Invitation') {
+    return isHinglish
+      ? `Hello ${recipientName}! 🤝\n\nKya aapko MeatCity ka fresh meat pasand aaya? Apne doston aur family ke saath apna unique referral code share karein. Jab wo apna pehla order karenge, aapko milenge bonus loyalty points aur unhe milega welcome discount!\n\nShare Code: https://meatcity.in/rewards\nMeatCity Team: +91 7977630912`
+      : `Hello ${recipientName}! 🤝\n\nLoving your fresh cuts from MeatCity? Invite your friends and family with your personal referral code! When they place their first qualifying order, you earn bonus points and they get an exclusive welcome discount.\n\nFind Your Code: https://meatcity.in/rewards\nMeatCity Team: +91 7977630912`;
+  }
+
   // B2C Repeat
   return isHinglish
     ? `Namaste ${recipientName} ji! MeatCity se reminder: Weekend feast ke liye fresh mutton aur chicken available hain. Order online: https://meatcity.in ya WhatsApp karein: +91 7977630912.`

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import SalesAgentRoot from '@/components/admin/sales/SalesAgentRoot';
+import LoyaltyRoot from '@/components/admin/loyalty/LoyaltyRoot';
 
 interface Product {
   id: string;
@@ -73,7 +74,7 @@ interface Order {
 }
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'approvals' | 'customers' | 'products' | 'categories' | 'orders' | 'deliveries' | 'analytics' | 'settings' | 'payments' | 'pincodes' | 'coupons' | 'reviews' | 'ai-sales'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'approvals' | 'customers' | 'products' | 'categories' | 'orders' | 'deliveries' | 'analytics' | 'settings' | 'payments' | 'pincodes' | 'coupons' | 'reviews' | 'ai-sales' | 'loyalty'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const showToast = (message: string, type: 'success' | 'error') => {
@@ -759,6 +760,29 @@ export default function AdminDashboard() {
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
     await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
     
+    // Process loyalty points and stamps if delivered or cancelled
+    if (newStatus === 'Delivered') {
+      try {
+        fetch('/api/loyalty/award-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId, action: 'award' })
+        }).catch(err => console.warn('Failed to award loyalty points:', err));
+      } catch (lErr) {
+        console.warn('Loyalty awarding trigger failed:', lErr);
+      }
+    } else if (newStatus === 'Cancelled') {
+      try {
+        fetch('/api/loyalty/award-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId, action: 'reverse', reason: 'Order cancelled by Admin' })
+        }).catch(err => console.warn('Failed to reverse loyalty points:', err));
+      } catch (lErr) {
+        console.warn('Loyalty reversal trigger failed:', lErr);
+      }
+    }
+
     const orderObj = orders.find(o => o.id === orderId);
     if (orderObj) {
       triggerWhatsAppCustomerNotification(orderObj, newStatus);
@@ -1186,6 +1210,21 @@ export default function AdminDashboard() {
 
           <li className="admin-sidebar-menu-item">
             <div 
+              className={`admin-sidebar-link ${activeTab === 'loyalty' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('loyalty'); setIsSidebarOpen(false); }}
+            >
+              <span className="admin-sidebar-link-left">
+                <span style={{ fontSize: '16px', marginRight: '4px' }}>👑</span>
+                Loyalty & Rewards
+              </span>
+              <span className="badge-count" style={{ backgroundColor: '#D4AF37', color: 'black', fontWeight: 'bold' }}>
+                PTS
+              </span>
+            </div>
+          </li>
+
+          <li className="admin-sidebar-menu-item">
+            <div 
               className={`admin-sidebar-link ${activeTab === 'approvals' ? 'active' : ''}`}
               onClick={() => { setActiveTab('approvals'); setIsSidebarOpen(false); }}
             >
@@ -1374,6 +1413,7 @@ export default function AdminDashboard() {
                <h1>
                 {activeTab === 'dashboard' && 'Welcome, Admin Dashboard'}
                 {activeTab === 'ai-sales' && 'MeatCity AI Sales Agent & B2B Growth Engine'}
+                {activeTab === 'loyalty' && 'MeatCity Customer Loyalty, Rewards & Retention'}
                 {activeTab === 'approvals' && 'B2B Approvals Queue'}
                 {activeTab === 'customers' && 'Customer Management'}
                 {activeTab === 'products' && 'Product CRUD Management'}
@@ -1387,6 +1427,7 @@ export default function AdminDashboard() {
               <p>
                 {activeTab === 'dashboard' && 'Visual overview of Meat City Turbhe sales performance.'}
                 {activeTab === 'ai-sales' && 'Discover Navi Mumbai food businesses, draft grounded wholesale proposals, and manage customer approvals.'}
+                {activeTab === 'loyalty' && 'Configure points earn & burn rates, 10-stamp digital cards, tier levels, reward vouchers, and customer retention.'}
                 {activeTab === 'approvals' && 'Review and approve wholesale partner credentials.'}
                 {activeTab === 'customers' && 'Manage B2C consumers and B2B credit accounts.'}
                 {activeTab === 'products' && 'Add, edit, adjust stock and configure dynamic price layers.'}
@@ -1418,6 +1459,10 @@ export default function AdminDashboard() {
               orders={orders}
               products={products}
             />
+          )}
+
+          {activeTab === 'loyalty' && (
+            <LoyaltyRoot />
           )}
 
           {activeTab === 'dashboard' && (

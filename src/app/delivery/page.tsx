@@ -99,6 +99,15 @@ export default function DeliveryDashboard() {
       orderStatus = 'Delivered';
       updatePayload.payment_status = 'Paid';
       triggerNotification(`Order ${orderId} successfully delivered! Admin dashboard updated.`);
+      try {
+        fetch('/api/loyalty/award-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId, action: 'award' })
+        }).catch(err => console.warn('Failed to award loyalty points:', err));
+      } catch (lErr) {
+        console.warn('Loyalty awarding trigger failed:', lErr);
+      }
     } else if (nextStatus === 'failed_delivery') {
       orderStatus = 'Processing'; // returns to branch processing
       triggerNotification(`Delivery failed for Order ${orderId}. Returned to Turbhe branch.`);

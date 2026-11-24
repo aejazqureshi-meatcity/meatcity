@@ -181,3 +181,75 @@ export async function verifyAdminSession(request: Request | NextRequest): Promis
     };
   }
 }
+
+/**
+ * Server-side helper to verify that an incoming API request is from an authenticated user (customer or admin).
+ */
+export async function verifyUserSession(request: Request | NextRequest): Promise<AuthCheckResult> {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  const hasValidSupabaseConfig = Boolean(
+    supabaseUrl &&
+    supabaseAnonKey &&
+    !supabaseUrl.includes('your_supabase_project_url_here')
+  );
+
+  // 1. Mock mode fallback if permitted and live DB not available
+  const allowMock = !isProduction && process.env.NEXT_PUBLIC_USE_MOCK_DB === 'true';
+  if (allowMock && !hasValidSupabaseConfig) {
+    let cookieStr: string | null = null;
+    const cookieHeader = request.headers.get('cookie') || '';
+    const match = cookieHeader.match(/meatcity_session=([^;]+)/);
+    if (match) {
+      cookieStr = decodeURIComponent(match[1]);
+    }
+    if (cookieStr) {
+      try {
+        const parsed = JSON.parse(cookieStr);
+        if (parsed?.id) {
+          return { authorized: true, user: parsed };
+        }
+      } catch {}
+    }
+    return { authorized: false, status: 401, error: 'Unauthorized: Session required' };
+  }
+
+  // 2. Live Supabase Session Verification
+  try {
+    const supabase = createServerSupabase();
+    let { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.replace('Bearer ', '').trim();
+        const { data: tokenData, error: tokenError } = await supabase.auth.getUser(token);
+        if (!tokenError && tokenData?.user) {
+          user = tokenData.user;
+        }
+      }
+    }
+
+    if (!user) {
+      return { authorized: false, status: 401, error: 'Unauthorized: Please log in to view rewards.' };
+    }
+
+    // Fetch DB profile if service role available
+    let dbProfile = null;
+    if (serviceRoleKey && supabaseUrl) {
+      const dbClient = createSupabaseClient(supabaseUrl, serviceRoleKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+      const { data } = await dbClient.from('users').select('*').eq('id', user.id).single();
+      dbProfile = data;
+    }
+
+    return { authorized: true, user: { ...user, ...(dbProfile || {}) } };
+  } catch (err: any) {
+    console.error('[AUTH] User verification error:', err);
+    return { authorized: false, status: 500, error: 'Authentication check failed' };
+  }
+}

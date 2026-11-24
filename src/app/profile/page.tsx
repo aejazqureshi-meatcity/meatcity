@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useTheme } from '@/context/ThemeContext';
+import RewardsDashboard from '@/components/rewards/RewardsDashboard';
 
 interface UserProfile {
   id: string;
@@ -39,7 +40,7 @@ export default function ProfilePage() {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'addresses' | 'support'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'rewards' | 'addresses' | 'support'>('profile');
 
   // Address CRUD States
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -75,6 +76,8 @@ export default function ProfilePage() {
         setActiveTab('orders');
       } else if (tabParam === 'addresses') {
         setActiveTab('addresses');
+      } else if (tabParam === 'rewards') {
+        setActiveTab('rewards');
       }
     }
   }, []);
@@ -457,8 +460,8 @@ export default function ProfilePage() {
       </div>
 
       {/* Tabs Menu */}
-      <div className="grid grid-cols-4 gap-1.5 p-1 bg-surface border border-border rounded-[14px] text-center text-xs shadow-xs">
-        {(['profile', 'orders', 'addresses', 'support'] as const).map(tab => (
+      <div className="grid grid-cols-5 gap-1 p-1 bg-surface border border-border rounded-[14px] text-center text-xs shadow-xs">
+        {(['profile', 'orders', 'rewards', 'addresses', 'support'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => {
@@ -466,7 +469,7 @@ export default function ProfilePage() {
               setShowAddEditAddress(false);
               setEditingAddressId(null);
             }}
-            className={`py-2 rounded-[10px] font-black uppercase tracking-tight transition-all ${
+            className={`py-2 rounded-[10px] font-black uppercase tracking-tight text-[11px] transition-all ${
               activeTab === tab 
                 ? 'bg-primary text-white shadow-sm' 
                 : 'text-text-secondary hover:text-text-primary'
@@ -474,7 +477,8 @@ export default function ProfilePage() {
           >
             {tab === 'profile' && 'Profile'}
             {tab === 'orders' && 'Orders'}
-            {tab === 'addresses' && 'Addresses'}
+            {tab === 'rewards' && 'Rewards'}
+            {tab === 'addresses' && 'Address'}
             {tab === 'support' && 'Support'}
           </button>
         ))}
@@ -567,6 +571,11 @@ export default function ProfilePage() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Rewards Tab */}
+      {activeTab === 'rewards' && (
+        <RewardsDashboard user={user} onNavigateTab={setActiveTab} />
       )}
 
       {/* Orders Tab */}

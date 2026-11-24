@@ -81,7 +81,11 @@ export async function POST(request: Request) {
         items: secureOrderPayload.items,
         delivery_slot: secureOrderPayload.delivery_slot,
         coupon_code: secureOrderPayload.coupon_code,
-        coupon_discount: secureOrderPayload.coupon_discount
+        coupon_discount: secureOrderPayload.coupon_discount,
+        points_earned: secureOrderPayload.points_earned || 0,
+        points_redeemed: secureOrderPayload.points_redeemed || 0,
+        points_discount: secureOrderPayload.points_discount || 0,
+        stamp_awarded: false
       };
 
       // Write order directly to database
@@ -89,6 +93,18 @@ export async function POST(request: Request) {
       if (orderError) {
         console.error('Failed to save verified order:', orderError);
         return NextResponse.json({ error: 'Failed to write order: ' + orderError.message }, { status: 500 });
+      }
+
+      // If loyalty points were reserved for this order, commit the reservation
+      if (secureOrderPayload.reservation_id) {
+        try {
+          await supabase.rpc('commit_loyalty_redemption', {
+            p_reservation_id: secureOrderPayload.reservation_id,
+            p_order_id: secureOrderPayload.id
+          });
+        } catch (loyaltyErr) {
+          console.warn('[Payments Verify] Failed to commit loyalty points redemption:', loyaltyErr);
+        }
       }
 
       // Insert notifications for user and admin
