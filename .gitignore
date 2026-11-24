@@ -38,3 +38,8 @@ yarn-error.log*
 /meatcity-deploy/
 /meatcity-deploy.zip
 .env*
+
+# database backups (contains production data - never commit)
+/backups/
+backups/
+*.backup.json

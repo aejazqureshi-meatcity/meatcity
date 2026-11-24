@@ -52,6 +52,27 @@ export default function ApprovalQueue({
   };
 
   const handleApprove = async (msgId: string) => {
+    const msg = messages.find((m) => m.id === msgId);
+    if (!msg) return;
+    const relatedLead = leads.find(
+      (l) => l.id === msg.lead_id || (msg.recipient_phone && l.phone && normalizePhone(l.phone) === normalizePhone(msg.recipient_phone))
+    );
+    const isOptedOut = Boolean(relatedLead && (relatedLead.opt_out === true || relatedLead.status === 'Opted Out'));
+    const isLeadVerified = msg.recipient_type !== 'b2b' || Boolean(
+      relatedLead && (
+        relatedLead.is_verified === true ||
+        relatedLead.status === 'Verified' ||
+        Boolean(relatedLead.verified_at && relatedLead.verified_by)
+      )
+    );
+    if (isOptedOut) {
+      alert('Cannot approve message: Recipient has opted out.');
+      return;
+    }
+    if (!isLeadVerified) {
+      alert('Cannot approve message: B2B recipient contact is unverified by business owner. Verification required before approval.');
+      return;
+    }
     await onUpdateMessage(msgId, {
       status: 'APPROVED',
       approved_at: new Date().toISOString(),
@@ -153,6 +174,13 @@ export default function ApprovalQueue({
             const isOptedOut = Boolean(relatedLead && (relatedLead.opt_out === true || relatedLead.status === 'Opted Out'));
             const phoneDigits = (msg.recipient_phone || '').replace(/\D/g, '');
             const hasValidPhone = phoneDigits.length >= 10;
+            const isLeadVerified = msg.recipient_type !== 'b2b' || Boolean(
+              relatedLead && (
+                relatedLead.is_verified === true ||
+                relatedLead.status === 'Verified' ||
+                Boolean(relatedLead.verified_at && relatedLead.verified_by)
+              )
+            );
 
             return (
               <div
@@ -223,6 +251,19 @@ export default function ApprovalQueue({
                       <div className="font-bold text-rose-300">Recipient Opted Out / Do Not Contact</div>
                       <p className="text-[11px] text-rose-400/90 mt-0.5">
                         This contact has requested not to receive sales outreach. Outbound WhatsApp dispatch and manual send confirmation are blocked.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Unverified Lead Warning Card */}
+                {!isLeadVerified && !isOptedOut && (
+                  <div className="p-3 bg-amber-950/40 border border-amber-500/50 rounded-xl text-xs text-amber-200 flex items-start gap-2.5">
+                    <span className="text-base text-amber-400">🛡️</span>
+                    <div>
+                      <div className="font-bold text-amber-300">Unverified B2B Lead Contact</div>
+                      <p className="text-[11px] text-amber-400/90 mt-0.5">
+                        This contact has not received explicit owner verification. Outbound messaging, approval, and manual dispatch confirmation are blocked until verified.
                       </p>
                     </div>
                   </div>
@@ -330,6 +371,14 @@ export default function ApprovalQueue({
                           >
                             Cannot Approve (Opted Out)
                           </button>
+                        ) : !isLeadVerified ? (
+                          <button
+                            disabled
+                            className="px-4 py-1.5 bg-gray-800 text-gray-500 cursor-not-allowed rounded text-xs font-bold"
+                            title="Cannot approve message: B2B lead contact is unverified by owner."
+                          >
+                            Cannot Approve (Unverified Lead)
+                          </button>
                         ) : !hasValidPhone ? (
                           <button
                             disabled
@@ -360,6 +409,15 @@ export default function ApprovalQueue({
                             <span>🚫</span>
                             <span>WhatsApp Blocked</span>
                           </button>
+                        ) : !isLeadVerified ? (
+                          <button
+                            disabled
+                            className="px-3 py-1.5 bg-gray-800 text-gray-500 cursor-not-allowed rounded text-xs font-bold flex items-center gap-1.5"
+                            title="Outreach blocked: B2B lead contact is unverified by business owner."
+                          >
+                            <span>🚫</span>
+                            <span>Unverified Lead</span>
+                          </button>
                         ) : !hasValidPhone ? (
                           <button
                             disabled
@@ -389,6 +447,14 @@ export default function ApprovalQueue({
                           >
                             Blocked (Opted Out)
                           </button>
+                        ) : !isLeadVerified ? (
+                          <button
+                            disabled
+                            className="px-4 py-1.5 bg-gray-800 text-gray-500 cursor-not-allowed rounded text-xs font-bold"
+                            title="Outreach blocked: B2B lead contact is unverified by business owner."
+                          >
+                            Blocked (Unverified Lead)
+                          </button>
                         ) : !hasValidPhone ? (
                           <button
                             disabled
@@ -399,7 +465,13 @@ export default function ApprovalQueue({
                           </button>
                         ) : (
                           <button
-                            onClick={() => onConfirmManualSend(msg)}
+                            onClick={() => {
+                              if (!isLeadVerified) {
+                                alert('Outreach blocked: B2B lead contact is unverified by owner.');
+                                return;
+                              }
+                              onConfirmManualSend(msg);
+                            }}
                             className="px-4 py-1.5 bg-emerald-400 hover:bg-emerald-300 text-black rounded text-xs font-black transition-colors"
                             title="Confirm that you have manually sent this message"
                           >

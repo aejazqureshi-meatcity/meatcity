@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     if (leadId) {
       try {
         const { data: leadRecord, error: leadErr } = await dbClient.from('sales_leads')
-          .select('opt_out, status')
+          .select('opt_out, status, is_verified, verified_at, verified_by')
           .eq('id', leadId)
           .single();
 
@@ -82,6 +82,24 @@ export async function POST(request: Request) {
             { status: 400 }
           );
         }
+
+        // Enforce server-side explicit owner verification for B2B outreach
+        if (recipientType === 'b2b') {
+          const hasOwnerVerification = Boolean(
+            leadRecord && (
+              leadRecord.is_verified === true ||
+              leadRecord.status === 'Verified' ||
+              Boolean(leadRecord.verified_at && leadRecord.verified_by)
+            )
+          );
+
+          if (!hasOwnerVerification) {
+            return NextResponse.json(
+              { error: 'Security check failed: B2B outreach requires explicit owner verification. Unverified leads cannot receive generated sales outreach.' },
+              { status: 400 }
+            );
+          }
+        }
       } catch (err: any) {
         console.error('[Sales API] Exception during lead opt-out check:', err);
         return NextResponse.json(
@@ -98,7 +116,7 @@ export async function POST(request: Request) {
         const last10 = digits.slice(-10);
         if (last10.length === 10) {
           const { data: matchedLeads, error: phoneErr } = await dbClient.from('sales_leads')
-            .select('opt_out, status')
+            .select('opt_out, status, is_verified, verified_at, verified_by')
             .ilike('phone', `%${last10}%`)
             .limit(5);
 
@@ -115,6 +133,23 @@ export async function POST(request: Request) {
               { error: 'Recipient phone number has opted out of communications. Outbound message generation is blocked.' },
               { status: 400 }
             );
+          }
+
+          // If B2B outreach without explicit leadId, verify matching lead has owner verification
+          if (recipientType === 'b2b' && !leadId) {
+            const hasVerifiedMatch = Boolean(
+              matchedLeads && matchedLeads.some((l: any) =>
+                l.is_verified === true ||
+                l.status === 'Verified' ||
+                Boolean(l.verified_at && l.verified_by)
+              )
+            );
+            if (!hasVerifiedMatch) {
+              return NextResponse.json(
+                { error: 'Security check failed: B2B outreach requires an existing verified lead record with explicit owner verification. A valid phone number alone does not grant outreach eligibility.' },
+                { status: 400 }
+              );
+            }
           }
         }
       } catch (err: any) {
