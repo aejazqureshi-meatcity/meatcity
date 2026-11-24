@@ -38,56 +38,10 @@ export function readDb() {
         { key: 'minimum_b2c_order', value: '200' },
         { key: 'minimum_b2b_order', value: '1000' }
       ],
-      sales_leads: [
-        {
-          id: 'lead-1',
-          business_name: 'Noorani Biryani House',
-          contact_person: 'Mohsin Khan',
-          phone: '9820112233',
-          email: 'noorani.biryani@gmail.com',
-          category: 'Biryani Shop',
-          area: 'Vashi',
-          address: 'Sector 17, Near Vashi Plaza, Navi Mumbai',
-          source_url: 'Google Business Profile / Turbhe Market Referral',
-          status: 'New',
-          estimated_daily_kg: 35,
-          preferred_items: 'Chicken Curry Cut, Boneless Breast',
-          notes: 'High volume biryani vendor, looking for daily 7 AM delivery from Turbhe.',
-          opt_out: false,
-          created_at: new Date().toISOString()
-        },
-        {
-          id: 'lead-2',
-          business_name: 'Dawat Caterers & Events',
-          contact_person: 'Irfan Qureshi',
-          phone: '9833445566',
-          email: 'dawat.caterers@gmail.com',
-          category: 'Caterer',
-          area: 'Nerul',
-          address: 'Sector 20, Near Nerul Station East',
-          source_url: 'Navi Mumbai Caterers Directory',
-          status: 'Interested',
-          estimated_daily_kg: 50,
-          preferred_items: 'Fresh Mutton Cuts, Whole Cleaned Chicken',
-          notes: 'Weekend event catering. Needs bulk mutton rate confirmation.',
-          opt_out: false,
-          created_at: new Date().toISOString()
-        }
-      ],
+      sales_leads: [],
       sales_messages: [],
       sales_quotations: [],
-      sales_follow_ups: [
-        {
-          id: 'fu-1',
-          lead_id: 'lead-2',
-          due_date: new Date().toISOString().split('T')[0],
-          title: 'Follow-up on weekend catering sample test',
-          notes: 'Call Irfan Bhai at 11 AM regarding mutton trial cut delivery.',
-          priority: 'High',
-          status: 'Pending',
-          created_at: new Date().toISOString()
-        }
-      ],
+      sales_follow_ups: [],
       sales_settings: [
         { key: 'business_name', value: 'MeatCity' },
         { key: 'business_hub', value: 'Shop No.2, Sector 20, Turbhe, Navi Mumbai - 400705' },

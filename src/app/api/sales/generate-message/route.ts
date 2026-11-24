@@ -60,13 +60,24 @@ export async function POST(request: Request) {
       ? createSupabaseClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } })
       : supabase;
 
+    const isPendingMigrationError = (err: any) =>
+      Boolean(err && (err.code === 'PGRST205' || err.message?.includes('schema cache') || err.message?.includes('does not exist')));
+
     // Verify opt-out status against sales_leads table by leadId
     if (leadId) {
       try {
-        const { data: leadRecord } = await dbClient.from('sales_leads')
+        const { data: leadRecord, error: leadErr } = await dbClient.from('sales_leads')
           .select('opt_out, status')
           .eq('id', leadId)
           .single();
+
+        if (leadErr && !isPendingMigrationError(leadErr) && leadErr.code !== 'PGRST116') {
+          console.error('[Sales API] Database error during lead opt-out check:', leadErr);
+          return NextResponse.json(
+            { error: 'Security check failed: Unable to verify lead opt-out status due to a database service error. Outbound message generation is blocked.' },
+            { status: 503 }
+          );
+        }
 
         if (leadRecord && (leadRecord.opt_out === true || leadRecord.status === 'Opted Out')) {
           return NextResponse.json(
@@ -74,7 +85,15 @@ export async function POST(request: Request) {
             { status: 400 }
           );
         }
-      } catch {}
+      } catch (err: any) {
+        if (!isPendingMigrationError(err)) {
+          console.error('[Sales API] Exception during lead opt-out check:', err);
+          return NextResponse.json(
+            { error: 'Security check failed: Unable to verify lead opt-out status. Outbound message generation is blocked.' },
+            { status: 503 }
+          );
+        }
+      }
     }
 
     // Verify opt-out status against sales_leads table by recipient phone
@@ -83,10 +102,18 @@ export async function POST(request: Request) {
         const digits = recipientPhone.replace(/\D/g, '');
         const last10 = digits.slice(-10);
         if (last10.length === 10) {
-          const { data: matchedLeads } = await dbClient.from('sales_leads')
+          const { data: matchedLeads, error: phoneErr } = await dbClient.from('sales_leads')
             .select('opt_out, status')
             .ilike('phone', `%${last10}%`)
             .limit(5);
+
+          if (phoneErr && !isPendingMigrationError(phoneErr)) {
+            console.error('[Sales API] Database error during phone opt-out check:', phoneErr);
+            return NextResponse.json(
+              { error: 'Security check failed: Unable to verify phone opt-out status due to a database service error. Outbound message generation is blocked.' },
+              { status: 503 }
+            );
+          }
 
           if (matchedLeads && matchedLeads.some((l: any) => l.opt_out === true || l.status === 'Opted Out')) {
             return NextResponse.json(
@@ -95,10 +122,18 @@ export async function POST(request: Request) {
             );
           }
         }
-      } catch {}
+      } catch (err: any) {
+        if (!isPendingMigrationError(err)) {
+          console.error('[Sales API] Exception during phone opt-out check:', err);
+          return NextResponse.json(
+            { error: 'Security check failed: Unable to verify phone opt-out status. Outbound message generation is blocked.' },
+            { status: 503 }
+          );
+        }
+      }
     }
 
-    // Verify customer status against users table by customerId or phone
+    // Verify customer status against users table by customerId or phone (fails closed on DB error)
     if (customerId || recipientPhone) {
       try {
         let userQuery = dbClient.from('users').select('status, phone');
@@ -110,7 +145,11 @@ export async function POST(request: Request) {
         }
         const { data: userRecords, error: uErr } = await userQuery.limit(1);
         if (uErr) {
-          console.warn('[Sales API] Customer opt-out check warning:', uErr.message);
+          console.error('[Sales API] Database error during customer status check:', uErr);
+          return NextResponse.json(
+            { error: 'Security check failed: Unable to verify customer account status due to a database service error. Outbound message generation is blocked.' },
+            { status: 503 }
+          );
         }
         const userRec = userRecords?.[0];
         if (userRec && (userRec.status === 'opted_out' || userRec.status === 'suspended')) {
@@ -120,7 +159,11 @@ export async function POST(request: Request) {
           );
         }
       } catch (err: any) {
-        console.warn('[Sales API] Failed to check customer opt-out:', err.message);
+        console.error('[Sales API] Exception during customer opt-out check:', err);
+        return NextResponse.json(
+          { error: 'Security check failed: Unable to verify customer account status. Outbound message generation is blocked.' },
+          { status: 503 }
+        );
       }
     }
 

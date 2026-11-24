@@ -76,19 +76,17 @@ export async function POST(request: Request) {
         // Exclude opted-out contacts
         if (lead.opt_out === true || lead.status === 'Opted Out') continue;
 
-        // A lead is marked verified only with an actual accessible source URL or owner confirmation
-        const hasAccessibleSourceUrl = Boolean(
-          lead.source_url &&
-          (lead.source_url.startsWith('http://') || lead.source_url.startsWith('https://'))
-        );
-        const hasOwnerConfirmation = Boolean(
+        // A lead is marked verified only with genuine owner verification or confirmed commercial relationship.
+        // An arbitrary HTTP/HTTPS source URL alone does NOT grant verified status.
+        const hasOwnerVerification = Boolean(
+          lead.is_verified === true ||
           lead.status === 'Active Customer' ||
           lead.status === 'Quoted' ||
           lead.status === 'Trial Order' ||
-          lead.status === 'Interested'
+          lead.status === 'Verified'
         );
 
-        const isVerified = Boolean(hasAccessibleSourceUrl || hasOwnerConfirmation);
+        const isVerified = hasOwnerVerification;
 
         verifiedLeads.push({
           id: lead.id,
@@ -102,10 +100,10 @@ export async function POST(request: Request) {
           estimated_daily_kg: Number(lead.estimated_daily_kg) || 0,
           preferred_items: lead.preferred_items || '',
           source_url: lead.source_url || '',
-          verification_date: lead.updated_at || lead.created_at,
+          verification_date: isVerified ? (lead.updated_at || lead.created_at) : undefined,
           is_verified: isVerified,
           verification_status: isVerified ? 'Verified Lead' : 'Unverified Lead (Pending Verification)',
-          notes: lead.notes || (isVerified ? 'Verified lead.' : 'Unverified suggestion. Confirm contact details before outreach.')
+          notes: lead.notes || (isVerified ? 'Verified commercial account.' : 'Unverified lead. Confirm contact and business details before outreach.')
         });
       }
     }

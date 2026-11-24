@@ -13,6 +13,8 @@ export interface SalesLead {
   preferred_items?: string;
   notes?: string;
   opt_out?: boolean;
+  is_verified?: boolean;
+  verification_status?: string;
   last_contacted_at?: string;
   created_at: string;
   updated_at?: string;

@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS public.sales_leads (
     preferred_items text,
     notes text,
     opt_out boolean DEFAULT false,
+    is_verified boolean DEFAULT false,
     last_contacted_at timestamp with time zone,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -51,6 +52,7 @@ CREATE TABLE IF NOT EXISTS public.sales_leads (
 CREATE INDEX IF NOT EXISTS idx_sales_leads_area ON public.sales_leads(area);
 CREATE INDEX IF NOT EXISTS idx_sales_leads_status ON public.sales_leads(status);
 CREATE INDEX IF NOT EXISTS idx_sales_leads_category ON public.sales_leads(category);
+CREATE INDEX IF NOT EXISTS idx_sales_leads_verified ON public.sales_leads(is_verified);
 CREATE INDEX IF NOT EXISTS idx_sales_leads_created_at ON public.sales_leads(created_at DESC);
 
 -- Enable RLS

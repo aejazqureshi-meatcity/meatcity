@@ -43,7 +43,7 @@ export default function QuotationsManager({
   const [deliverySlot, setDeliverySlot] = useState('Morning 6:00 AM - 8:00 AM (Turbhe Sector 20 Hub)');
   const [notes, setNotes] = useState('Prices valid for 7 days. FSSAI certified fresh daily dressing.');
 
-  const initialRate = products[0]?.price_b2b || products[0]?.price_b2c || 0;
+  const initialRate = typeof products[0]?.price_b2b === 'number' && products[0]?.price_b2b > 0 ? products[0].price_b2b : 0;
   const [items, setItems] = useState<QuotationItem[]>([
     {
       product_id: products[0]?.id || 'prod-1',
@@ -83,7 +83,7 @@ export default function QuotationsManager({
   // Add Item
   const handleAddItem = () => {
     const defaultProd = products[0];
-    const initialPrice = defaultProd ? (defaultProd.price_b2b || defaultProd.price_b2c || 0) : 0;
+    const initialPrice = typeof defaultProd?.price_b2b === 'number' && defaultProd?.price_b2b > 0 ? defaultProd.price_b2b : 0;
     setItems((prev) => [
       ...prev,
       {
@@ -323,7 +323,7 @@ MeatCity Wholesale Supply Team
                       onChange={(e) => {
                         const prod = products.find((p) => p.id === e.target.value);
                         if (prod) {
-                          const itemRate = prod.price_b2b || prod.price_b2c || 0;
+                          const itemRate = typeof prod.price_b2b === 'number' && prod.price_b2b > 0 ? prod.price_b2b : 0;
                           handleUpdateItem(idx, {
                             product_id: prod.id,
                             name: prod.name,
@@ -336,7 +336,7 @@ MeatCity Wholesale Supply Team
                     >
                       {products.map((p) => (
                         <option key={p.id} value={p.id}>
-                          {p.name} (Wholesale: ₹{p.price_b2b}/{p.unit})
+                          {p.name} (Wholesale: {typeof p.price_b2b === 'number' && p.price_b2b > 0 ? `₹${p.price_b2b}/${p.unit}` : 'Quote on Confirmation'})
                         </option>
                       ))}
                     </select>

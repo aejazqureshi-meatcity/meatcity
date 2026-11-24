@@ -143,7 +143,7 @@ export default function SalesAgentRoot({
     try {
       const storedLeads = localStorage.getItem('meatcity_sales_leads');
       if (storedLeads) setLeads(JSON.parse(storedLeads));
-      else seedInitialLeads();
+      else setLeads([]);
 
       const storedMessages = localStorage.getItem('meatcity_sales_messages');
       if (storedMessages) setMessages(JSON.parse(storedMessages));
@@ -161,90 +161,43 @@ export default function SalesAgentRoot({
         setSettings(parsed);
       }
     } catch (err) {
-      seedInitialLeads();
+      setLeads([]);
     }
-  };
-
-  const seedInitialLeads = () => {
-    const seeds: SalesLead[] = [
-      {
-        id: 'seed-1',
-        business_name: 'Noorani Biryani House',
-        contact_person: 'Mohsin Khan',
-        phone: '9820112233',
-        email: 'noorani.vashi@gmail.com',
-        category: 'Biryani Shop',
-        area: 'Vashi',
-        address: 'Sector 17, Opp. Vashi Plaza, Vashi, Navi Mumbai',
-        source_url: 'Sector 17 Commercial Hub',
-        status: 'New',
-        estimated_daily_kg: 35,
-        preferred_items: 'Chicken Curry Cut, Boneless Breast',
-        notes: 'High volume biryani vendor, looking for daily 7 AM delivery from Turbhe.',
-        opt_out: false,
-        created_at: new Date().toISOString(),
-      },
-      {
-        id: 'seed-2',
-        business_name: 'Dawat Caterers & Events',
-        contact_person: 'Irfan Qureshi',
-        phone: '9833445566',
-        email: 'dawat.caterers@gmail.com',
-        category: 'Caterer',
-        area: 'Nerul',
-        address: 'Sector 20, Near Nerul Station East',
-        source_url: 'Navi Mumbai Caterers Directory',
-        status: 'Interested',
-        estimated_daily_kg: 50,
-        preferred_items: 'Fresh Mutton Cuts, Whole Cleaned Chicken',
-        notes: 'Weekend event catering. Needs bulk mutton rate confirmation.',
-        opt_out: false,
-        created_at: new Date().toISOString(),
-      },
-      {
-        id: 'seed-3',
-        business_name: 'Al-Madina Darbar Restaurant',
-        contact_person: 'Rizwan Shaikh',
-        phone: '9892001122',
-        category: 'Restaurant',
-        area: 'Turbhe',
-        address: 'Near Turbhe Naka, Sector 20, Turbhe',
-        source_url: 'Turbhe Market Merchant Network',
-        status: 'Contacted',
-        estimated_daily_kg: 30,
-        preferred_items: 'Chicken Curry Cut, Farm Eggs (Crates)',
-        notes: 'Within walking distance of Turbhe processing hub.',
-        opt_out: false,
-        created_at: new Date().toISOString(),
-      },
-    ];
-    setLeads(seeds);
-    try {
-      localStorage.setItem('meatcity_sales_leads', JSON.stringify(seeds));
-    } catch (e) {}
   };
 
   useEffect(() => {
     loadSalesData();
   }, []);
 
+  // Helper for valid UUID generation
+  const generateUuid = () => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  };
+
   // CRUD Handler: Leads
   const handleAddLead = async (leadData: Omit<SalesLead, 'id' | 'created_at'>) => {
-    const newLead: SalesLead = {
-      ...leadData,
-      id: 'lead-' + Date.now(),
-      created_at: new Date().toISOString(),
-    };
-
     try {
-      const { data, error } = await supabase.from('sales_leads').insert([newLead]).select();
+      const { data, error } = await supabase.from('sales_leads').insert([leadData]).select();
       if (!error && data && data.length > 0) {
         setLeads((prev) => [data[0], ...prev]);
         return;
       }
+      if (error) console.warn('sales_leads insert warning:', error.message);
     } catch (e) {}
 
-    // Fallback local update
+    // Fallback local update with valid UUID
+    const newLead: SalesLead = {
+      ...leadData,
+      id: generateUuid(),
+      created_at: new Date().toISOString(),
+    };
     const updated = [newLead, ...leads];
     setLeads(updated);
     try {
@@ -253,19 +206,20 @@ export default function SalesAgentRoot({
   };
 
   const handleBulkAddLeads = async (newLeadsData: Array<Omit<SalesLead, 'id' | 'created_at'>>) => {
-    const stamped = newLeadsData.map((l, idx) => ({
-      ...l,
-      id: `lead-${Date.now()}-${idx}`,
-      created_at: new Date().toISOString(),
-    }));
-
     try {
-      const { data, error } = await supabase.from('sales_leads').insert(stamped).select();
+      const { data, error } = await supabase.from('sales_leads').insert(newLeadsData).select();
       if (!error && data && data.length > 0) {
         setLeads((prev) => [...data, ...prev]);
         return;
       }
+      if (error) console.warn('sales_leads bulk insert warning:', error.message);
     } catch (e) {}
+
+    const stamped = newLeadsData.map((l) => ({
+      ...l,
+      id: generateUuid(),
+      created_at: new Date().toISOString(),
+    }));
 
     const updated = [...stamped, ...leads];
     setLeads(updated);
@@ -300,19 +254,20 @@ export default function SalesAgentRoot({
 
   // CRUD Handler: Messages
   const handleSaveMessage = async (msgData: Omit<SalesMessage, 'id' | 'created_at'>) => {
-    const newMsg: SalesMessage = {
-      ...msgData,
-      id: 'msg-' + Date.now(),
-      created_at: new Date().toISOString(),
-    };
-
     try {
-      const { data, error } = await supabase.from('sales_messages').insert([newMsg]).select();
+      const { data, error } = await supabase.from('sales_messages').insert([msgData]).select();
       if (!error && data && data.length > 0) {
         setMessages((prev) => [data[0], ...prev]);
         return;
       }
+      if (error) console.warn('sales_messages insert warning:', error.message);
     } catch (e) {}
+
+    const newMsg: SalesMessage = {
+      ...msgData,
+      id: generateUuid(),
+      created_at: new Date().toISOString(),
+    };
 
     const updated = [newMsg, ...messages];
     setMessages(updated);
@@ -364,14 +319,8 @@ export default function SalesAgentRoot({
 
   // CRUD Handler: Quotations
   const handleAddQuotation = async (qData: Omit<SalesQuotation, 'id' | 'created_at'>) => {
-    const newQ: SalesQuotation = {
-      ...qData,
-      id: 'quote-' + Date.now(),
-      created_at: new Date().toISOString(),
-    };
-
     try {
-      const { data, error } = await supabase.from('sales_quotations').insert([newQ]).select();
+      const { data, error } = await supabase.from('sales_quotations').insert([qData]).select();
       if (!error && data && data.length > 0) {
         setQuotations((prev) => [data[0], ...prev]);
         if (qData.lead_id) {
@@ -379,7 +328,14 @@ export default function SalesAgentRoot({
         }
         return;
       }
+      if (error) console.warn('sales_quotations insert warning:', error.message);
     } catch (e) {}
+
+    const newQ: SalesQuotation = {
+      ...qData,
+      id: generateUuid(),
+      created_at: new Date().toISOString(),
+    };
 
     const updated = [newQ, ...quotations];
     setQuotations(updated);
@@ -417,19 +373,20 @@ export default function SalesAgentRoot({
 
   // CRUD Handler: Follow-ups
   const handleAddFollowUp = async (fuData: Omit<SalesFollowUp, 'id' | 'created_at'>) => {
-    const newFu: SalesFollowUp = {
-      ...fuData,
-      id: 'fu-' + Date.now(),
-      created_at: new Date().toISOString(),
-    };
-
     try {
-      const { data, error } = await supabase.from('sales_follow_ups').insert([newFu]).select();
+      const { data, error } = await supabase.from('sales_follow_ups').insert([fuData]).select();
       if (!error && data && data.length > 0) {
         setFollowUps((prev) => [data[0], ...prev]);
         return;
       }
+      if (error) console.warn('sales_follow_ups insert warning:', error.message);
     } catch (e) {}
+
+    const newFu: SalesFollowUp = {
+      ...fuData,
+      id: generateUuid(),
+      created_at: new Date().toISOString(),
+    };
 
     const updated = [newFu, ...followUps];
     setFollowUps(updated);
