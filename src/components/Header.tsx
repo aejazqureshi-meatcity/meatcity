@@ -167,13 +167,14 @@ export default function Header() {
     <>
       <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#0B0B0B]/95 text-gray-900 dark:text-white backdrop-blur-md border-b border-gray-100 dark:border-white/10 py-2.5 px-4 flex items-center justify-between transition-colors duration-200 select-none print:hidden">
         {/* Left Side: Hamburger Drawer Icon */}
+        {/* Mobile Hamburger Drawer Trigger (44px min touch target) */}
         <button
           onClick={() => setIsDrawerOpen(true)}
-          className="w-9 h-9 rounded-full flex items-center justify-center bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-200 text-lg active:scale-95 transition-transform"
+          className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-200 active:scale-95 transition-transform"
           aria-label="Open navigation menu"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16M4 18h16" />
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 8h16M4 16h16" />
           </svg>
         </button>
 
@@ -204,7 +205,7 @@ export default function Header() {
             onClick={toggleTheme}
             title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
             aria-label="Toggle theme"
-            className="w-9 h-9 rounded-full flex items-center justify-center bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-200 text-sm active:scale-90 transition-transform"
+            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center bg-gray-100 dark:bg-[#1A1A1A] border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-200 text-base active:scale-90 transition-transform shadow-xs"
           >
             {isDark ? '☀️' : '🌙'}
           </button>
@@ -212,14 +213,18 @@ export default function Header() {
           {/* Cart Icon / Bag */}
           <Link 
             href="/cart"
-            className="w-9 h-9 rounded-full flex items-center justify-center bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-800 dark:text-white relative text-base active:scale-95 transition-transform"
+            className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center relative active:scale-95 transition-all shadow-xs ${
+              userRole === 'b2b'
+                ? 'bg-white dark:bg-[#1A1A1A] border-2 border-gold/70 dark:border-gold/60 text-gray-900 dark:text-white ring-2 ring-gold/25'
+                : 'bg-white dark:bg-[#1A1A1A] border-2 border-gray-300 dark:border-white/20 text-gray-900 dark:text-white hover:border-gray-400 dark:hover:border-white/40'
+            }`}
             aria-label="View shopping cart"
           >
-            <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
             </svg>
             {cartCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-[#D60000] text-white text-[9px] font-black h-4.5 w-4.5 rounded-full flex items-center justify-center border-2 border-white dark:border-black animate-pulse shadow-sm">
+              <span className="absolute -top-1 -right-1 bg-[#D60000] text-white text-[10px] font-black min-w-[20px] h-[20px] px-1 rounded-full flex items-center justify-center border-2 border-white dark:border-[#111111] shadow-md pointer-events-none z-10 animate-pulse">
                 {cartCount > 99 ? '99+' : cartCount}
               </span>
             )}

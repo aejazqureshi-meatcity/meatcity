@@ -31,7 +31,7 @@ export default function HeroCarousel() {
       subtitle: "Hand-carved & tender daily.",
       ctaText: "Order Now",
       bgGradient: "from-[#5B0606] via-[#7A0B0B] to-[#450303]",
-      image: "https://images.unsplash.com/photo-1603048588665-791ca8aea617?w=500&auto=format&fit=crop&q=80",
+      image: "https://images.unsplash.com/photo-1558030006-450675393462?w=500&auto=format&fit=crop&q=80",
       imageAlt: "Fresh Goat Mutton"
     },
     {

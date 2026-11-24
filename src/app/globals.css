@@ -9,7 +9,7 @@ html, body {
   padding: 0;
   font-family: var(--font-primary), var(--font-secondary), system-ui, sans-serif;
   background-color: var(--color-background);
-  color: var(--color-white);
+  color: var(--color-text-primary);
   overflow-x: hidden;
 }
 

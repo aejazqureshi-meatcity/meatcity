@@ -288,18 +288,18 @@ export default function ProductDetailPage() {
         </div>
       )}
 
-      {/* Product Hero Image */}
-      <div className="relative w-full aspect-square sm:aspect-[4/3] bg-neutral-950 overflow-hidden flex items-center justify-center">
-        <img
-          src={product.image_url || 'https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=800&auto=format&fit=crop&q=80'}
-          alt={product.name}
-          className="w-full h-full object-cover"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1608039829572-78524f79c4c7?w=800&auto=format&fit=crop&q=80";
-          }}
-        />
-        {/* Soft bottom vignette for seamless flow */}
-        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background to-transparent" />
+      {/* Product Hero Image inside card container */}
+      <div className="px-4 pt-2">
+        <div className="relative w-full aspect-square sm:aspect-[4/3] rounded-[24px] overflow-hidden bg-neutral-950 flex items-center justify-center shadow-sm border border-border">
+          <img
+            src={product.image_url || 'https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=800&auto=format&fit=crop&q=80'}
+            alt={product.name}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1608039829572-78524f79c4c7?w=800&auto=format&fit=crop&q=80";
+            }}
+          />
+        </div>
       </div>
 
       {/* Content Body */}
@@ -345,10 +345,10 @@ export default function ProductDetailPage() {
 
         {/* Select Weight Section */}
         <div className="flex flex-col gap-2.5 pt-2 border-t border-border">
-          <label className="text-xs font-extrabold text-text-primary tracking-tight uppercase">
+          <label className="text-xs font-extrabold text-text-primary tracking-tight">
             Select weight
           </label>
-          <div className="flex flex-wrap gap-2.5">
+          <div className="flex flex-wrap gap-4 items-center">
             {weightOptions.map((w) => {
               const isSelected = selectedWeight === w;
               return (
@@ -356,18 +356,14 @@ export default function ProductDetailPage() {
                   key={w}
                   type="button"
                   onClick={() => setSelectedWeight(w)}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-full border text-xs font-bold transition-all ${
-                    isSelected
-                      ? 'bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-black dark:border-white shadow-sm'
-                      : 'bg-surface text-text-secondary border-border hover:border-primary/40'
-                  }`}
+                  className="flex items-center gap-2 cursor-pointer select-none text-xs font-bold text-text-primary hover:text-primary transition-colors focus:outline-none"
                 >
-                  <span className={`w-3 h-3 rounded-full border flex items-center justify-center ${
-                    isSelected 
-                      ? 'border-white dark:border-black bg-white dark:bg-black' 
-                      : 'border-border'
+                  <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${
+                    isSelected
+                      ? 'border-neutral-900 dark:border-white bg-transparent'
+                      : 'border-neutral-400 dark:border-neutral-600'
                   }`}>
-                    {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-black dark:bg-white" />}
+                    {isSelected && <span className="w-2 h-2 rounded-full bg-neutral-900 dark:bg-white" />}
                   </span>
                   <span>{w}</span>
                 </button>
@@ -378,7 +374,7 @@ export default function ProductDetailPage() {
 
         {/* Cutting Preference Section */}
         <div className="flex flex-col gap-2.5 pt-2 border-t border-border">
-          <label className="text-xs font-extrabold text-text-primary tracking-tight uppercase">
+          <label className="text-xs font-extrabold text-text-primary tracking-tight">
             Cutting preference
           </label>
           <div className="flex gap-2">
@@ -389,10 +385,10 @@ export default function ProductDetailPage() {
                   key={cut}
                   type="button"
                   onClick={() => setCuttingPreference(cut)}
-                  className={`flex-1 py-2 px-3 rounded-full text-xs font-bold transition-all border ${
+                  className={`flex-1 py-2 px-3 rounded-full text-xs font-bold transition-all ${
                     isSelected
-                      ? 'bg-neutral-200 dark:bg-neutral-800 text-text-primary border-neutral-300 dark:border-neutral-700 font-black shadow-xs'
-                      : 'bg-surface text-text-secondary border-border hover:border-primary/30'
+                      ? 'bg-neutral-200 dark:bg-neutral-800 text-text-primary font-black shadow-xs'
+                      : 'bg-transparent text-text-secondary hover:text-text-primary'
                   }`}
                 >
                   {cut}
@@ -475,8 +471,8 @@ export default function ProductDetailPage() {
           {/* Feature 4 */}
           <div className="bg-surface border border-border p-3.5 rounded-[16px] flex flex-col items-center justify-center text-center gap-1.5 shadow-xs">
             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-              <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-1.41-1.41L13.17 14H8v-2h5.17l-2.58-2.59L12 8l5 5z" />
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v18M3 12h18M6 6l12 12M6 18L18 6" />
               </svg>
             </div>
             <span className="text-xs font-bold text-text-primary">Storage guidance</span>
@@ -485,7 +481,7 @@ export default function ProductDetailPage() {
 
         {/* Special Cutting Instructions Input */}
         <div className="flex flex-col gap-2 pt-2 border-t border-border">
-          <label className="text-xs font-extrabold text-text-primary tracking-tight uppercase">
+          <label className="text-xs font-extrabold text-text-primary tracking-tight">
             Special cutting instructions
           </label>
           <input
@@ -513,11 +509,8 @@ export default function ProductDetailPage() {
           <button
             onClick={handleAddToCart}
             disabled={isOutOfStock}
-            className="flex-1 py-3 px-6 bg-primary hover:bg-[#B80000] active:scale-95 disabled:opacity-40 disabled:pointer-events-none text-white text-xs font-black uppercase tracking-wider rounded-[14px] shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2"
+            className="flex-1 py-3 px-6 bg-primary hover:bg-[#B80000] active:scale-95 disabled:opacity-40 disabled:pointer-events-none text-white text-sm font-black uppercase tracking-wider rounded-[14px] shadow-lg shadow-primary/20 transition-all text-center"
           >
-            <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-              <path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z" />
-            </svg>
             Add to Cart
           </button>
         </div>

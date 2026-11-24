@@ -56,7 +56,7 @@ interface UserProfile {
 export default function Home() {
   const [showSplash, setShowSplash] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<string[]>(['Chicken', 'Mutton', 'Seafood', 'Eggs', 'Ready To Cook']);
+  const [categories, setCategories] = useState<string[]>(['Chicken', 'Mutton', 'Eggs', 'Seafood', 'Ready To Cook']);
   const [activeTab, setActiveTab] = useState<string>('Chicken');
   const [searchQuery, setSearchQuery] = useState('');
   const [userRole, setUserRole] = useState<'guest' | 'b2c' | 'b2b'>('guest');
@@ -1006,7 +1006,7 @@ export default function Home() {
         <SearchBar 
           value={searchQuery} 
           onChange={setSearchQuery} 
-          placeholder="Search Chicken, Mutton, Fish, Eggs..."
+          placeholder="Search chicken, mutton, eggs..."
         />
       </div>
 
@@ -1073,67 +1073,23 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Bestsellers Section */}
+          {/* Bestsellers Section (2-column grid matching mobile design) */}
           {bestSellers.length > 0 && !searchQuery && (
             <section className="flex flex-col gap-3">
               <h2 className="text-text-primary text-base font-black tracking-tight">Bestsellers</h2>
-              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory">
-                {bestSellers.map(product => (
-                  <div key={product.id} className="min-w-[155px] max-w-[155px] snap-start bg-surface border border-border p-2.5 rounded-[18px] flex flex-col gap-2 justify-between shadow-xs hover:shadow-sm transition-all group">
-                    <Link href={`/product/${product.id}`} className="block">
-                      <div className="relative aspect-square rounded-[14px] bg-neutral-100 dark:bg-neutral-900 overflow-hidden flex items-center justify-center p-1.5">
-                        {product.image_url ? (
-                          <img src={product.image_url} alt={product.name} className="w-full h-full object-cover rounded-[10px] group-hover:scale-105 transition-transform duration-300" />
-                        ) : (
-                          <span className="text-2xl">🥩</span>
-                        )}
-                        <span className="absolute top-2 left-2 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 rounded-full backdrop-blur-md">
-                          Halal
-                        </span>
-                      </div>
-                    </Link>
-                    <div>
-                      <Link href={`/product/${product.id}`}>
-                        <h4 className="text-text-primary text-xs font-black tracking-tight truncate leading-tight group-hover:text-primary transition-colors">
-                          {product.name}
-                        </h4>
-                        <p className="text-[10px] text-text-secondary font-medium truncate mt-0.5">
-                          {product.unit || '1 kg'}
-                        </p>
-                      </Link>
-                      <div className="flex justify-between items-center mt-2 pt-1.5 border-t border-border">
-                        <span className="text-text-primary font-black text-xs">
-                          ₹{userRole === 'b2b' ? product.price_b2b : product.price_b2c}
-                        </span>
-                        {cart[product.id] ? (
-                          <div className="flex items-center bg-primary text-white rounded-[8px] p-0.5">
-                            <button 
-                              onClick={() => handleDecrement(product.id)}
-                              className="w-5 h-5 flex items-center justify-center font-black text-xs active:scale-75"
-                            >
-                              -
-                            </button>
-                            <span className="px-1 text-[10px] font-black min-w-[14px] text-center">
-                              {cart[product.id]}
-                            </span>
-                            <button 
-                              onClick={() => handleIncrement(product.id)}
-                              className="w-5 h-5 flex items-center justify-center font-black text-xs active:scale-75"
-                            >
-                              +
-                            </button>
-                          </div>
-                        ) : (
-                          <button 
-                            onClick={() => handleAddToCart(product.id)}
-                            className="px-2.5 py-1 bg-primary hover:bg-[#B80000] text-white text-[10px] font-black rounded-[8px] active:scale-95 transition-all shadow-xs"
-                          >
-                            + ADD
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+              <div className="grid grid-cols-2 gap-3.5">
+                {bestSellers.slice(0, 4).map(product => (
+                  <ProductCard
+                    key={`bestseller-${product.id}`}
+                    product={product}
+                    userRole={userRole}
+                    cart={cart}
+                    onIncrement={handleIncrement}
+                    onDecrement={handleDecrement}
+                    onAddToCart={handleAddToCart}
+                    isWishlisted={wishlist.includes(product.id)}
+                    onToggleWishlist={() => handleToggleWishlist(product.id)}
+                  />
                 ))}
               </div>
             </section>

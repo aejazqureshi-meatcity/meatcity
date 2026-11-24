@@ -62,8 +62,8 @@ export default function BottomNav() {
     };
   }, []);
 
-  // Do not show bottom nav on admin routes
-  if (pathname.startsWith('/admin') || pathname.startsWith('/admin-dev')) {
+  // Do not show bottom nav on admin routes or product details page (which has its own sticky add-to-cart bar)
+  if (pathname.startsWith('/admin') || pathname.startsWith('/admin-dev') || pathname.startsWith('/product/')) {
     return null;
   }
 

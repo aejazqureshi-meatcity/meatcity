@@ -18,7 +18,7 @@ export default function CategoryCard({ name, isActive, onClick, imageUrl }: Cate
       return "https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=240&auto=format&fit=crop&q=80";
     }
     if (norm.includes('mutton')) {
-      return "https://images.unsplash.com/photo-1603048588665-791ca8aea617?w=240&auto=format&fit=crop&q=80";
+      return "https://images.unsplash.com/photo-1558030006-450675393462?w=240&auto=format&fit=crop&q=80";
     }
     if (norm.includes('egg')) {
       return "https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=240&auto=format&fit=crop&q=80";

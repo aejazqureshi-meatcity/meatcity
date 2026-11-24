@@ -73,6 +73,8 @@ export default function CartPage() {
   const [deliverySlot, setDeliverySlot] = useState<string>('ASAP');
   const [adminWhatsapp, setAdminWhatsapp] = useState<string>('917977630912');
   const [whatsappEnabled, setWhatsappEnabled] = useState<boolean>(true);
+  const [minB2BOrder, setMinB2BOrder] = useState<number>(1000);
+  const [minB2COrder, setMinB2COrder] = useState<number>(200);
 
   // Coupon State
   const [couponCode, setCouponCode] = useState('');
@@ -157,7 +159,30 @@ export default function CartPage() {
       let finalRole: 'guest' | 'b2c' | 'b2b' = 'guest';
       let profile: UserProfile | null = null;
 
-      if (currentUser) {
+      // Check query parameter or demo override first (for testing & previews)
+      const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const requestedRole = searchParams?.get('role') || (typeof localStorage !== 'undefined' ? localStorage.getItem('meatcity_demo_role') : null);
+
+      if (requestedRole === 'b2b') {
+        finalRole = 'b2b';
+        setUserRole('b2b');
+        const mockB2BProfile = {
+          id: currentUser?.id || 'preview-b2b-partner',
+          email: currentUser?.email || 'partner@meatcity.in',
+          full_name: 'Premium Kitchens (B2B Partner)',
+          phone: '9876543210',
+          user_type: 'b2b',
+          status: 'approved',
+          business_name: 'Premium Kitchens Wholesale',
+          credit_limit: 50000,
+          credit_used: 7500,
+          credit_available: 42500,
+          outstanding_balance: 7500,
+          payment_due_date: 'Due in 7 days'
+        };
+        profile = mockB2BProfile;
+        setUserProfile(mockB2BProfile);
+      } else if (currentUser) {
         const { data: dbProfile } = await supabase.from('users').select('*').eq('id', currentUser.id).single();
         if (dbProfile) {
           profile = dbProfile;
@@ -235,6 +260,12 @@ export default function CartPage() {
           }
           if (settingsObj.delivery_fee !== undefined) {
             setDefaultDeliveryFee(Number(settingsObj.delivery_fee));
+          }
+          if (settingsObj.minimum_b2b_order !== undefined) {
+            setMinB2BOrder(Number(settingsObj.minimum_b2b_order));
+          }
+          if (settingsObj.minimum_b2c_order !== undefined) {
+            setMinB2COrder(Number(settingsObj.minimum_b2c_order));
           }
         }
       } catch (settingsErr) {
@@ -319,6 +350,86 @@ export default function CartPage() {
     }
     saveCartToStorage(updated);
   };
+
+  const handleRemoveItem = (key: string) => {
+    const updated = { ...cart };
+    delete updated[key];
+    saveCartToStorage(updated);
+  };
+
+  // Cart calculations (declared before hooks/effects that depend on subtotal & total)
+  const cartItems = Object.entries(cart).map(([cartKey, qty]) => {
+    const parts = cartKey.split('_');
+    const id = parts[0];
+    const variantWeight = parts[1];
+
+    const prod = products.find(p => p.id === id);
+    let price = 0;
+    let displayName = prod?.name || '';
+
+    if (prod) {
+      price = userRole === 'b2b' ? prod.price_b2b : prod.price_b2c;
+      if (variantWeight && prod.variants) {
+        const variantsList = typeof prod.variants === 'string' ? JSON.parse(prod.variants) : prod.variants;
+        const variant = variantsList?.find((v: any) => v.weight === variantWeight);
+        if (variant) {
+          price = userRole === 'b2b' ? Number(variant.price_b2b) : Number(variant.price_b2c);
+          displayName = `${prod.name} (${variantWeight})`;
+        }
+      }
+    }
+
+    return {
+      cartKey,
+      productId: id,
+      variantWeight,
+      product: prod ? { ...prod, name: displayName } : undefined,
+      quantity: qty,
+      price
+    };
+  }).filter(item => item.product !== undefined);
+
+  const subtotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  const discountAmount = appliedCoupon 
+    ? (appliedCoupon.discountPercent > 0 
+        ? Math.round((subtotal * appliedCoupon.discountPercent) / 100) 
+        : appliedCoupon.flatDiscount) 
+    : 0;
+
+  const getDynamicDeliveryFee = () => {
+    if (userRole === 'b2b') {
+      return 0; // Free commercial delivery for B2B wholesale
+    }
+    const activeAddress = addresses.find(a => a.id === selectedAddressId);
+    if (!activeAddress || activeAddress.addressLine === 'Store Pickup') {
+      return 0;
+    }
+    if (subtotal >= freeDeliveryAbove) {
+      return 0;
+    }
+    const activePincode = activeAddress.pincode || (activeAddress.addressLine.match(/\b\d{6}\b/)?.[0]) || '';
+    if (activePincode && pincodeCharges[activePincode] !== undefined) {
+      return pincodeCharges[activePincode];
+    }
+    return defaultDeliveryFee;
+  };
+
+  const deliveryFee = getDynamicDeliveryFee();
+  const activeLoyaltyDiscount = useLoyaltyPoints ? loyaltyDiscount : 0;
+  const total = Math.max(0, subtotal - discountAmount - activeLoyaltyDiscount + deliveryFee);
+
+  // Credit limits checks - only active when userProfile is loaded & has positive dues
+  const isCreditLimitExceeded = userRole === 'b2b' && !!userProfile && 
+    (userProfile.outstanding_balance || 0) > 0 && 
+    (userProfile.outstanding_balance || 0) >= (userProfile.credit_limit || 50000);
+
+  const isCreditInsufficient = userRole === 'b2b' && !isCreditLimitExceeded && paymentMethod === 'Credit' && 
+    !!userProfile && (userProfile.credit_available !== undefined && userProfile.credit_available < total);
+
+  const isCreditBlocked = userRole === 'b2b' && paymentMethod === 'Credit' && 
+    (isCreditLimitExceeded || (userProfile?.credit_available !== undefined && userProfile.credit_available < total));
+
+  const hasCreditDues = userRole === 'b2b' && !!userProfile && (userProfile.outstanding_balance || 0) > 0;
 
   // Address Management
   const handleAddAddress = (e: React.FormEvent) => {
@@ -451,74 +562,6 @@ export default function CartPage() {
     setLoyaltyDiscount(discount);
     setUseLoyaltyPoints(true);
   };
-
-  // Cart calculations
-  const cartItems = Object.entries(cart).map(([cartKey, qty]) => {
-    const parts = cartKey.split('_');
-    const id = parts[0];
-    const variantWeight = parts[1];
-
-    const prod = products.find(p => p.id === id);
-    let price = 0;
-    let displayName = prod?.name || '';
-
-    if (prod) {
-      price = userRole === 'b2b' ? prod.price_b2b : prod.price_b2c;
-      if (variantWeight && prod.variants) {
-        const variantsList = typeof prod.variants === 'string' ? JSON.parse(prod.variants) : prod.variants;
-        const variant = variantsList?.find((v: any) => v.weight === variantWeight);
-        if (variant) {
-          price = userRole === 'b2b' ? Number(variant.price_b2b) : Number(variant.price_b2c);
-          displayName = `${prod.name} (${variantWeight})`;
-        }
-      }
-    }
-
-    return {
-      cartKey,
-      productId: id,
-      variantWeight,
-      product: prod ? { ...prod, name: displayName } : undefined,
-      quantity: qty,
-      price
-    };
-  }).filter(item => item.product !== undefined);
-
-  const subtotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-  const discountAmount = appliedCoupon 
-    ? (appliedCoupon.discountPercent > 0 
-        ? Math.round((subtotal * appliedCoupon.discountPercent) / 100) 
-        : appliedCoupon.flatDiscount) 
-    : 0;
-  const getDynamicDeliveryFee = () => {
-    if (userRole === 'b2b') {
-      return 0;
-    }
-    const activeAddress = addresses.find(a => a.id === selectedAddressId);
-    if (!activeAddress || activeAddress.addressLine === 'Store Pickup') {
-      return 0;
-    }
-    if (subtotal >= freeDeliveryAbove) {
-      return 0;
-    }
-    const activePincode = activeAddress.pincode || (activeAddress.addressLine.match(/\b\d{6}\b/)?.[0]) || '';
-    if (activePincode && pincodeCharges[activePincode] !== undefined) {
-      return pincodeCharges[activePincode];
-    }
-    return defaultDeliveryFee;
-  };
-
-  const deliveryFee = getDynamicDeliveryFee();
-  const activeLoyaltyDiscount = useLoyaltyPoints ? loyaltyDiscount : 0;
-  const total = Math.max(0, subtotal - discountAmount - activeLoyaltyDiscount + deliveryFee);
-
-  // Credit limits checks
-  const isCreditLimitExceeded = userRole === 'b2b' && 
-    ((userProfile?.outstanding_balance || 0) >= (userProfile?.credit_limit || 50000) || (userProfile?.credit_available || 0) <= 0);
-
-  const isCreditInsufficient = userRole === 'b2b' && !isCreditLimitExceeded && (userProfile?.credit_available || 0) < total;
-  const showCreditDuesScreen = userRole === 'b2b' && (isCreditLimitExceeded || isCreditInsufficient);
-  const isCreditBlocked = userRole === 'b2b' && (isCreditLimitExceeded || (userProfile?.credit_available || 0) < total);
 
   // Advanced B2B Credit payment handlers
   const verifyRepaymentRecord = async (
@@ -1171,6 +1214,13 @@ export default function CartPage() {
       return;
     }
 
+    // Validate minimum order threshold
+    const requiredMinOrder = userRole === 'b2b' ? minB2BOrder : minB2COrder;
+    if (subtotal < requiredMinOrder) {
+      alert(`Minimum order amount for ${userRole === 'b2b' ? 'wholesale B2B' : 'retail'} is ₹${requiredMinOrder.toLocaleString('en-IN')}. Please add more items to your cart.`);
+      return;
+    }
+
     // Validate serviceable pincode
     const activeAddress = addresses.find(a => a.id === selectedAddressId);
     if (activeAddress && activeAddress.addressLine !== 'Store Pickup') {
@@ -1181,18 +1231,16 @@ export default function CartPage() {
       }
     }
 
-    if (userRole === 'b2b') {
+    if (userRole === 'b2b' && paymentMethod === 'Credit') {
       if (isCreditLimitExceeded) {
-        alert('Credit limit exceeded. Please clear outstanding balance before placing a new order.');
+        alert('Credit limit reached. Please clear your outstanding balance or choose another payment method (UPI / Bank Transfer / COD).');
         return;
       }
 
-      if (paymentMethod === 'Credit' || paymentMethod === 'COD') {
-        const availableCredit = userProfile?.credit_available || 0;
-        if (total > availableCredit) {
-          alert(`Your available credit is ₹${availableCredit}. Please clear pending balance or contact admin to place this ${paymentMethod} order.`);
-          return;
-        }
+      const availableCredit = userProfile?.credit_available || 0;
+      if (total > availableCredit) {
+        alert(`Your available credit is ₹${availableCredit.toLocaleString('en-IN')}. Please clear dues or choose another payment method (UPI / Bank Transfer / COD).`);
+        return;
       }
     }
 
@@ -1244,574 +1292,119 @@ export default function CartPage() {
     window.open(`https://wa.me/${adminWhatsapp}?text=${encoded}`, '_blank');
   };
 
-  const renderCreditDuesScreen = () => {
-    if (!userProfile) return null;
+  const renderB2BCreditBanner = () => {
+    if (userRole !== 'b2b' || !userProfile) return null;
 
     const outstanding = userProfile.outstanding_balance || 0;
     const limit = userProfile.credit_limit || 50000;
     const available = userProfile.credit_available || 0;
-    const minPaymentNeeded = Math.max(0, total - available);
 
-    if (paymentSuccess) {
+    if (outstanding <= 0 && !isCreditLimitExceeded) {
       return (
-        <div className="bg-[#111111] border border-white/5 rounded-[16px] p-6 text-center flex flex-col items-center justify-center gap-4">
-          <div className="text-5xl animate-bounce">⏳</div>
-          <h3 className="text-gold text-lg font-black tracking-tight">Payment Submitted</h3>
-          <p className="text-text-secondary text-xs leading-relaxed max-w-[280px]">
-            Your repayment of <strong>₹{onlinePayAmount}</strong> has been registered and is pending administrator review. Available credit will update once approved.
-          </p>
-          <div className="grid grid-cols-2 gap-4 bg-white/5 border border-white/5 p-4 rounded-[12px] w-full text-left mt-2">
+        <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-300 dark:border-emerald-500/20 rounded-[14px] p-3.5 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <span className="text-xl">✅</span>
             <div>
-              <span className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold block">Outstanding</span>
-              <strong className="text-white text-base font-extrabold">₹{outstanding}</strong>
-            </div>
-            <div>
-              <span className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold block">Available Credit</span>
-              <strong className="text-emerald-400 text-base font-extrabold">₹{available}</strong>
+              <span className="text-xs font-black text-emerald-800 dark:text-emerald-300 block">Credit Account in Good Standing</span>
+              <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold">
+                Available Credit: ₹{available.toLocaleString('en-IN')} of ₹{limit.toLocaleString('en-IN')}
+              </span>
             </div>
           </div>
-          <button 
+          <button
             type="button"
-            onClick={() => {
-              setPaymentSuccess(false);
-              setShowOnlinePaymentModal(false);
-            }} 
-            className="w-full mt-4 py-3.5 bg-primary text-white font-extrabold text-sm uppercase rounded-[12px] shadow-lg transition-transform active:scale-[0.98]"
+            onClick={() => setShowLedgerModal(true)}
+            className="text-[10px] text-emerald-800 dark:text-emerald-300 font-extrabold uppercase hover:underline"
           >
-            Got It
+            Statement →
           </button>
         </div>
       );
     }
 
-    if (showOnlinePaymentModal) {
-      return (
-        <div className="bg-[#111111] border border-white/5 rounded-[16px] p-5 flex flex-col gap-4">
-          <div className="flex justify-between items-center pb-2 border-b border-white/5">
-            <span className="font-extrabold text-white text-sm">💳 Pay Outstanding Online</span>
-            <button 
-              type="button"
-              onClick={() => setShowOnlinePaymentModal(false)}
-              className="text-gold text-xs font-bold uppercase hover:underline"
-            >
-              ← Back
-            </button>
-          </div>
-
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <label className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold">Select Method</label>
-              <div className="grid grid-cols-2 gap-2">
-                {(['UPI', 'Razorpay', 'NetBanking', 'Card'] as const).map(method => (
-                  <button 
-                    key={method}
-                    type="button"
-                    onClick={() => setOnlinePaymentMethod(method)}
-                    className={`p-3 rounded-[12px] text-xs font-extrabold text-center border transition-all ${
-                      onlinePaymentMethod === method 
-                        ? 'bg-gold/15 border-gold text-gold' 
-                        : 'bg-white/5 border-white/5 text-white'
-                    }`}
-                  >
-                    {method === 'UPI' && '📱 UPI'}
-                    {method === 'Razorpay' && '💳 Razorpay'}
-                    {method === 'NetBanking' && '🏦 Net Banking'}
-                    {method === 'Card' && '🎴 Card'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold">Payment Amount (₹)</label>
-              <div className="flex flex-wrap gap-2 mb-1">
-                {[5000, 10000].map(amt => (
-                  <button
-                    key={amt}
-                    type="button"
-                    onClick={() => setOnlinePayAmount(amt)}
-                    className="px-2.5 py-1.5 bg-neutral-800 text-[10px] font-bold rounded-[8px] text-white border border-white/5"
-                    disabled={amt > outstanding}
-                  >
-                    ₹{amt.toLocaleString()}
-                  </button>
-                ))}
-                {minPaymentNeeded > 0 && minPaymentNeeded !== outstanding && (
-                  <button
-                    key="needed"
-                    type="button"
-                    onClick={() => setOnlinePayAmount(minPaymentNeeded)}
-                    className="px-2.5 py-1.5 bg-gold/15 text-gold border border-gold/30 text-[10px] font-bold rounded-[8px]"
-                  >
-                    Pay Needed (₹{minPaymentNeeded})
-                  </button>
-                )}
-                <button
-                  key="full"
-                  type="button"
-                  onClick={() => setOnlinePayAmount(outstanding)}
-                  className="px-2.5 py-1.5 bg-primary/15 text-primary border border-primary/30 text-[10px] font-bold rounded-[8px]"
-                >
-                  Pay Full (₹{outstanding})
-                </button>
-              </div>
-
-              <input 
-                type="number" 
-                placeholder="Enter custom amount"
-                value={onlinePayAmount || ''}
-                onChange={e => setOnlinePayAmount(Math.min(outstanding, Math.max(0, Number(e.target.value))))}
-                className="w-full bg-[#1E2020] border border-white/5 rounded-[12px] px-4 py-3 text-white text-xs outline-none focus:border-gold/50"
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={() => handleOnlineCreditPayment(onlinePayAmount)}
-              disabled={isProcessingPayment || onlinePayAmount <= 0}
-              className="w-full py-3.5 bg-primary text-white font-extrabold text-sm uppercase rounded-[12px] shadow-lg disabled:opacity-50 transition-all active:scale-[0.98] mt-2"
-            >
-              {isProcessingPayment ? 'Processing Online Payment...' : `Confirm & Pay ₹${onlinePayAmount}`}
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    if (showUpiRepayModal) {
-      const upiUrl = `upi://pay?pa=meatcity@ybl&pn=Meat%20City&am=${onlinePayAmount}&cu=INR&tn=B2B%20Payment&tr=${repayUpiTxRef}`;
-      return (
-        <div className="bg-[#111111] border border-white/5 rounded-[16px] p-5 flex flex-col gap-4 text-center">
-          <div className="flex justify-between items-center pb-2 border-b border-white/5 text-left">
-            <span className="font-extrabold text-white text-sm">📱 UPI Dynamic Pay</span>
-            {!isSubmittingRepayUpi && (
-              <button 
-                type="button"
-                onClick={() => setShowUpiRepayModal(false)}
-                className="text-text-secondary hover:text-white font-bold text-xs"
-              >
-                ✕ Close
-              </button>
-            )}
-          </div>
-
-          {repayUpiSuccess ? (
-            <div className="flex flex-col items-center gap-4 py-4 animate-in fade-in duration-300">
-              <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-3xl animate-bounce">
-                ✓
-              </div>
-              <div>
-                <h4 className="text-white text-base font-extrabold">Repayment Submitted!</h4>
-                <p className="text-text-secondary text-[11px] mt-1 max-w-[240px] mx-auto leading-relaxed">
-                  Your repayment of <strong>₹{onlinePayAmount}</strong> has been submitted successfully and is pending administrator approval.
-                </p>
-              </div>
-              <button 
-                type="button"
-                onClick={() => {
-                  setShowUpiRepayModal(false);
-                  setRepayUpiSuccess(false);
-                }} 
-                className="w-full mt-2 py-3 bg-emerald-500 text-white font-bold text-xs uppercase rounded-[12px] active:scale-95 transition-all shadow-md"
-              >
-                Done
-              </button>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-4">
-              <p className="text-text-secondary text-[11px] leading-relaxed text-left">
-                Scan the dynamic QR code or open UPI apps to complete payment, then enter the 12-digit UTR reference ID below.
-              </p>
-
-              {/* QR Code Container */}
-              <div className="flex flex-col items-center gap-2.5 p-3.5 bg-white/5 border border-white/5 rounded-[12px]">
-                <div className="w-[160px] h-[160px] border border-white/10 rounded-[8px] p-2 bg-white flex justify-center items-center relative">
-                  <img 
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(upiUrl)}`} 
-                    alt="Dynamic UPI QR" 
-                    className="w-full h-full object-contain" 
-                  />
-                </div>
-                <div>
-                  <span className="text-[9px] text-text-secondary uppercase font-bold block">UPI ID (Store Handle)</span>
-                  <strong className="text-white text-xs font-extrabold">meatcity@ybl</strong>
-                </div>
-              </div>
-
-              {/* Payment Details */}
-              <div className="grid grid-cols-2 gap-3 bg-white/5 border border-white/5 p-3 rounded-[12px] text-left text-xs">
-                <div>
-                  <span className="text-[9px] text-text-secondary uppercase font-bold block">Amount Owed</span>
-                  <strong className="text-gold font-extrabold">₹{onlinePayAmount}</strong>
-                </div>
-                <div>
-                  <span className="text-[9px] text-text-secondary uppercase font-bold block">Transaction Ref</span>
-                  <strong className="text-white font-extrabold text-[10px] truncate block max-w-[120px]">{repayUpiTxRef}</strong>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText('meatcity@ybl');
-                    alert('UPI ID copied to clipboard!');
-                  }}
-                  className="py-2.5 bg-neutral-800 border border-white/5 hover:border-white/10 text-white font-bold text-xs rounded-[12px] active:scale-95 transition-all flex items-center justify-center gap-1.5"
-                >
-                  📋 Copy ID
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    window.location.href = upiUrl;
-                  }}
-                  className="py-2.5 bg-gold hover:bg-yellow-600 text-black font-extrabold text-xs rounded-[12px] active:scale-95 transition-all flex items-center justify-center gap-1.5"
-                >
-                  🚀 Open Apps
-                </button>
-              </div>
-
-              {/* UTR reference ID / Transaction reference input */}
-              <div className="flex flex-col gap-1.5 text-left">
-                <label className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold">Transaction Reference ID / UTR</label>
-                <input 
-                  type="text" 
-                  required
-                  value={repayUpiUtrInput}
-                  onChange={e => setRepayUpiUtrInput(e.target.value)}
-                  placeholder="12-digit reference number"
-                  className="bg-neutral-800 border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
-                />
-              </div>
-
-              {/* Payment Screenshot (Optional) */}
-              <div className="flex flex-col gap-1.5 text-left">
-                <label className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold">Payment Screenshot (Optional)</label>
-                <input 
-                  type="file" 
-                  accept="image/*"
-                  onChange={e => {
-                    if (e.target.files && e.target.files[0]) {
-                      setRepayUpiScreenshot(e.target.files[0].name);
-                    }
-                  }}
-                  className="bg-neutral-800 border border-white/5 text-white rounded-[12px] p-2 text-xs outline-none"
-                />
-                {repayUpiScreenshot && <span className="text-[10px] text-emerald-400 font-bold block mt-1">✓ {repayUpiScreenshot} selected</span>}
-              </div>
-
-              {/* Submission and Cancel Buttons */}
-              <div className="grid grid-cols-2 gap-3 mt-1.5">
-                <button 
-                  type="button"
-                  onClick={() => setShowUpiRepayModal(false)}
-                  disabled={isSubmittingRepayUpi}
-                  className="py-2.5 bg-[#1E2020] text-white font-bold text-xs rounded-[12px] border border-white/5 active:scale-95"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => submitCartUpiRepayment(onlinePayAmount)}
-                  disabled={isSubmittingRepayUpi || !repayUpiUtrInput}
-                  className="py-2.5 bg-primary hover:bg-red-700 disabled:opacity-40 disabled:pointer-events-none text-white font-black text-xs rounded-[12px] active:scale-95 shadow-md"
-                >
-                  {isSubmittingRepayUpi ? 'Submitting...' : 'I Have Paid'}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    if (showCashCollectionModal) {
-      return (
-        <div className="bg-[#111111] border border-white/5 rounded-[16px] p-5 flex flex-col gap-4">
-          <div className="flex justify-between items-center pb-2 border-b border-white/5">
-            <span className="font-extrabold text-white text-sm">🛵 Request Cash Collection</span>
-            <button 
-              type="button"
-              onClick={() => {
-                setShowCashCollectionModal(false);
-                setCashRequestSuccess(false);
-              }}
-              className="text-gold text-xs font-bold uppercase hover:underline"
-            >
-              ← Back
-            </button>
-          </div>
-
-          {cashRequestSuccess ? (
-            <div className="text-center py-4 flex flex-col items-center gap-3">
-              <div className="text-5xl">📥</div>
-              <h4 className="font-black text-gold text-sm uppercase tracking-wide">Request Submitted</h4>
-              <p className="text-text-secondary text-[11px] leading-relaxed max-w-[280px]">
-                Your cash collection request of <strong>₹{cashRequestAmount}</strong> has been registered. The Turbhe branch admin has been notified. Your order remains blocked until this payment is approved.
-              </p>
-              <button 
-                type="button"
-                onClick={() => {
-                  setShowCashCollectionModal(false);
-                  setCashRequestSuccess(false);
-                }} 
-                className="w-full mt-2 py-3 bg-neutral-800 text-white font-bold text-xs rounded-[12px] border border-white/5 active:scale-95"
-              >
-                Return to Credit Screen
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleRequestCashCollection} className="flex flex-col gap-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold">Preferred Date</label>
-                  <input 
-                    type="date" 
-                    required
-                    value={cashRequestDate}
-                    min={new Date().toISOString().split('T')[0]}
-                    onChange={e => setCashRequestDate(e.target.value)}
-                    className="bg-neutral-800 border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold">Request Amount</label>
-                  <input 
-                    type="number" 
-                    required
-                    value={cashRequestAmount || ''}
-                    min={1}
-                    max={outstanding}
-                    onChange={e => setCashRequestAmount(Math.min(outstanding, Math.max(0, Number(e.target.value))))}
-                    placeholder="Amount to collect"
-                    className="bg-neutral-800 border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                {minPaymentNeeded > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setCashRequestAmount(minPaymentNeeded)}
-                    className="px-2.5 py-1.5 bg-gold/15 text-gold border border-gold/30 text-[10px] font-bold rounded-[8px]"
-                  >
-                    Pay Needed (₹{minPaymentNeeded})
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setCashRequestAmount(outstanding)}
-                  className="px-2.5 py-1.5 bg-neutral-800 text-[10px] font-bold rounded-[8px] text-white border border-white/5"
-                >
-                  Pay Full (₹{outstanding})
-                </button>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold">Instructions for Agent</label>
-                <textarea 
-                  required
-                  value={cashRequestRemarks}
-                  onChange={e => setCashRequestRemarks(e.target.value)}
-                  placeholder="e.g. Please collect cash after 3 PM. Call before arriving."
-                  className="bg-neutral-800 border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none min-h-[70px]"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isProcessingPayment || cashRequestAmount <= 0}
-                className="w-full py-3.5 bg-primary text-white font-extrabold text-sm uppercase rounded-[12px] shadow-lg disabled:opacity-50 transition-all active:scale-[0.98] mt-2"
-              >
-                {isProcessingPayment ? 'Submitting Request...' : `Submit Collection Request`}
-              </button>
-            </form>
-          )}
-        </div>
-      );
-    }
-
-    if (showLedgerModal) {
-      return (
-        <div className="bg-[#111111] border border-white/5 rounded-[16px] p-5 flex flex-col gap-4">
-          <div className="flex justify-between items-center pb-2 border-b border-white/5">
-            <span className="font-extrabold text-white text-sm">📋 Account Statement</span>
-            <button 
-              type="button"
-              onClick={() => setShowLedgerModal(false)}
-              className="text-gold text-xs font-bold uppercase hover:underline"
-            >
-              ← Back
-            </button>
-          </div>
-          
-          <div className="max-h-[300px] overflow-y-auto flex flex-col gap-3 pr-1">
-            {userProfile.ledger && userProfile.ledger.map((entry: any, idx: number) => (
-              <div key={idx} className="bg-white/5 border border-white/5 p-3 rounded-[12px] flex flex-col gap-2">
-                <div className="flex justify-between items-start">
-                  <span className="text-[10px] text-text-secondary font-bold">{new Date(entry.date).toLocaleDateString()}</span>
-                  <span className="text-white font-extrabold text-xs">Bal: ₹{entry.balance}</span>
-                </div>
-                <div className="flex justify-between items-end">
-                  <span className="text-white font-bold text-xs">{entry.description}</span>
-                  {entry.debit > 0 ? (
-                    <span className="text-primary font-black text-xs">Dr: +₹{entry.debit}</span>
-                  ) : entry.credit > 0 ? (
-                    <span className="text-emerald-400 font-black text-xs">Cr: -₹{entry.credit}</span>
-                  ) : (
-                    <span className="text-text-secondary text-xs">—</span>
-                  )}
-                </div>
-              </div>
-            ))}
-            {(!userProfile.ledger || userProfile.ledger.length === 0) && (
-              <div className="text-center py-6 text-xs text-text-secondary font-bold">No statement records yet.</div>
-            )}
-          </div>
-        </div>
-      );
-    }
-
-    if (isCreditLimitExceeded) {
-      return (
-        <div className="bg-[#111111] border-l-4 border-primary border border-white/5 rounded-[16px] p-5 flex flex-col gap-4">
-          <div className="flex gap-3 items-center">
-            <span className="text-3xl">⚠️</span>
+    return (
+      <div className={`rounded-[14px] p-4 flex flex-col gap-3 border ${
+        isCreditLimitExceeded 
+          ? 'bg-red-50 dark:bg-red-950/20 border-red-300 dark:border-red-500/30' 
+          : 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-500/30'
+      }`}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">{isCreditLimitExceeded ? '⛔' : '⚠️'}</span>
             <div>
-              <h3 className="text-white text-base font-extrabold tracking-tight">Credit Limit Reached</h3>
-              <p className="text-text-secondary text-[11px] leading-relaxed mt-0.5">
-                Please clear outstanding balance before placing a new order.
+              <h4 className={`text-xs font-black uppercase tracking-wide ${
+                isCreditLimitExceeded ? 'text-red-800 dark:text-red-400' : 'text-amber-800 dark:text-amber-400'
+              }`}>
+                {isCreditLimitExceeded ? 'Credit Limit Reached' : 'Outstanding Balance Notice'}
+              </h4>
+              <p className="text-[11px] text-gray-700 dark:text-gray-300 font-bold mt-0.5 leading-tight">
+                {isCreditLimitExceeded 
+                  ? 'Pay Later (Credit) is temporarily locked. Clear balance to unlock or pay this order via UPI / Bank Transfer / COD.'
+                  : `You have an outstanding balance of ₹${outstanding.toLocaleString('en-IN')}.`
+                }
               </p>
             </div>
           </div>
+          <button 
+            type="button"
+            onClick={() => setShowLedgerModal(true)}
+            className="text-[10px] font-black uppercase text-gold hover:underline whitespace-nowrap"
+          >
+            Ledger →
+          </button>
+        </div>
 
-          <div className="grid grid-cols-2 gap-4 bg-white/5 border border-white/5 p-4 rounded-[12px] mt-1">
-            <div>
-              <span className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold block">Outstanding</span>
-              <strong className="text-primary text-base font-extrabold">₹{outstanding}</strong>
-            </div>
-            <div>
-              <span className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold block">Available Credit</span>
-              <strong className="text-text-secondary text-base font-extrabold">₹{available}</strong>
-            </div>
-            <div className="col-span-2 pt-2 border-t border-white/5 text-[10px] font-bold text-text-secondary">
-              Total Credit Limit: <strong className="text-white">₹{limit}</strong>
-            </div>
+        <div className="grid grid-cols-2 gap-2 bg-white/80 dark:bg-black/30 p-2.5 rounded-[10px] border border-gray-200/50 dark:border-white/5 text-xs">
+          <div>
+            <span className="text-[9px] uppercase font-bold text-gray-500 dark:text-gray-400 block">Outstanding</span>
+            <strong className="text-primary font-black text-sm">₹{outstanding.toLocaleString('en-IN')}</strong>
           </div>
-
-          <div className="flex flex-col gap-2.5 mt-2">
-            <button 
-              type="button"
-              onClick={() => {
-                setOnlinePayAmount(outstanding);
-                setShowOnlinePaymentModal(true);
-              }} 
-              className="w-full py-3 bg-gold hover:bg-yellow-600 text-black text-xs font-extrabold rounded-[12px] transition-all duration-200 active:scale-95 shadow-md"
-            >
-              💳 Pay Outstanding Online
-            </button>
-            <button 
-              type="button"
-              onClick={() => {
-                setCashRequestAmount(outstanding);
-                setShowCashCollectionModal(true);
-              }} 
-              className="w-full py-3 bg-primary hover:bg-red-700 text-white text-xs font-extrabold rounded-[12px] transition-all duration-200 active:scale-95 shadow-md"
-            >
-              🛵 Request Cash Collection
-            </button>
-            <button 
-              type="button"
-              onClick={() => setShowLedgerModal(true)} 
-              className="w-full py-3 bg-neutral-800 text-white text-xs font-extrabold rounded-[12px] border border-white/5 transition-all duration-200 active:scale-95"
-            >
-              📄 View Account Statement
-            </button>
+          <div>
+            <span className="text-[9px] uppercase font-bold text-gray-500 dark:text-gray-400 block">Available Credit</span>
+            <strong className="text-gray-900 dark:text-white font-black text-sm">₹{available.toLocaleString('en-IN')}</strong>
           </div>
         </div>
-      );
-    }
 
-    if (isCreditInsufficient) {
-      return (
-        <div className="bg-[#111111] border-l-4 border-gold border border-white/5 rounded-[16px] p-5 flex flex-col gap-4">
-          <div className="flex gap-3 items-center">
-            <span className="text-3xl">⚠️</span>
-            <div>
-              <h3 className="text-white text-base font-extrabold tracking-tight">Insufficient Available Credit</h3>
-              <p className="text-text-secondary text-[11px] leading-relaxed mt-0.5">
-                You need at least <strong>₹{total.toLocaleString()}</strong> credit to place this order.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 bg-white/5 border border-white/5 p-4 rounded-[12px] mt-1">
-            <div>
-              <span className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold block">Available Credit</span>
-              <strong className="text-emerald-400 text-base font-extrabold">₹{available}</strong>
-            </div>
-            <div>
-              <span className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold block">Required Order</span>
-              <strong className="text-primary text-base font-extrabold">₹{total}</strong>
-            </div>
-            <div className="col-span-2 pt-2 border-t border-white/5 flex justify-between text-[10px] font-bold text-text-secondary">
-              <span>Suggested Payment: <strong className="text-white">₹{minPaymentNeeded}</strong></span>
-              <span>Outstanding Owed: <strong className="text-white">₹{outstanding}</strong></span>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2.5 mt-2">
-            <button 
-              type="button"
-              onClick={() => {
-                setOnlinePayAmount(minPaymentNeeded);
-                setShowOnlinePaymentModal(true);
-              }} 
-              className="w-full py-3 bg-gold hover:bg-yellow-600 text-black text-xs font-extrabold rounded-[12px] transition-all duration-200 active:scale-95 shadow-md"
-            >
-              💳 Pay ₹{minPaymentNeeded.toLocaleString()} Online Now
-            </button>
-            <button 
-              type="button"
-              onClick={() => {
-                setOnlinePayAmount(outstanding);
-                setShowOnlinePaymentModal(true);
-              }} 
-              className="w-full py-3 bg-neutral-800 text-white text-xs font-extrabold rounded-[12px] border border-white/5 transition-all duration-200 active:scale-95"
-            >
-              💳 Pay Full Outstanding (₹{outstanding.toLocaleString()})
-            </button>
-            <button 
-              type="button"
-              onClick={() => {
-                setCashRequestAmount(minPaymentNeeded);
-                setShowCashCollectionModal(true);
-              }} 
-              className="w-full py-3 bg-primary hover:bg-red-700 text-white text-xs font-extrabold rounded-[12px] transition-all duration-200 active:scale-95 shadow-md"
-            >
-              🛵 Request Cash Collection (₹{minPaymentNeeded.toLocaleString()})
-            </button>
-            <button 
-              type="button"
-              onClick={() => setShowLedgerModal(true)} 
-              className="w-full py-3 bg-neutral-800 text-white text-xs font-extrabold rounded-[12px] border border-white/5 transition-all duration-200 active:scale-95"
-            >
-              📄 View Account Statement
-            </button>
-          </div>
+        <div className="flex flex-wrap gap-2 pt-1">
+          <button
+            type="button"
+            onClick={() => {
+              setOnlinePayAmount(outstanding);
+              setShowOnlinePaymentModal(true);
+            }}
+            className="flex-1 min-w-[120px] py-2 bg-gold hover:bg-[#c5a028] text-black font-black text-[11px] rounded-[10px] active:scale-95 transition-all text-center shadow-xs"
+          >
+            💳 Pay Online (₹{outstanding.toLocaleString('en-IN')})
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setRepayUpiTxRef('MC_REPAY_' + Date.now().toString().slice(-6));
+              setOnlinePayAmount(outstanding);
+              setShowUpiRepayModal(true);
+            }}
+            className="flex-1 min-w-[100px] py-2 bg-gray-900 dark:bg-white/10 text-white font-black text-[11px] rounded-[10px] active:scale-95 transition-all border border-gray-700 dark:border-white/10"
+          >
+            📱 UPI Pay
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setCashRequestAmount(outstanding);
+              setShowCashCollectionModal(true);
+            }}
+            className="flex-1 min-w-[120px] py-2 bg-gray-200 dark:bg-white/5 text-gray-800 dark:text-gray-200 font-bold text-[11px] rounded-[10px] active:scale-95 transition-all border border-gray-300 dark:border-white/10"
+          >
+            🛵 Request Cash Pickup
+          </button>
         </div>
-      );
-    }
-
-    return null;
+      </div>
+    );
   };
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[80vh] gap-3">
+      <div className="flex flex-col items-center justify-center min-h-[80vh] gap-3 bg-background text-text-primary">
         <div className="relative w-16 h-16 animate-bounce">
           <svg className="w-full h-full" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="50" cy="50" r="45" stroke="#D4AF37" strokeWidth="3" fill="#111" />
@@ -1828,24 +1421,24 @@ export default function CartPage() {
       <div className="flex flex-col items-center justify-center min-h-screen text-center px-6 py-8 bg-background text-text-primary font-primary">
         <div className="text-6xl mb-6 animate-pulse">🎉</div>
         <h2 className="text-primary text-2xl font-black tracking-tight mb-2">Order Confirmed!</h2>
-        <p className="text-text-primary font-extrabold text-sm tracking-wide bg-surface border border-border px-4 py-2 rounded-full mb-4">
+        <p className="text-gray-900 dark:text-white font-extrabold text-sm tracking-wide bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 px-4 py-2 rounded-full mb-4 shadow-xs">
           Order ID: {placedOrderId}
         </p>
-        <p className="text-text-secondary text-xs leading-relaxed max-w-[320px] mb-8">
+        <p className="text-gray-600 dark:text-gray-400 text-xs leading-relaxed max-w-[320px] mb-8">
           Your order has been recorded in our branch database. For rapid dispatch and delivery notifications, click below to confirm details with our Turbhe branch manager on WhatsApp.
         </p>
 
         {whatsappEnabled ? (
           <button 
             onClick={handleWhatsAppRedirect} 
-            className="w-full py-4 bg-[#25D366] text-white font-black text-sm uppercase tracking-wider rounded-[14px] shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-[0.98] mb-6"
+            className="w-full max-w-[360px] py-4 bg-[#25D366] text-white font-black text-sm uppercase tracking-wider rounded-[14px] shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-[0.98] mb-6"
           >
             <span>💬</span> Confirm on WhatsApp
           </button>
         ) : (
           <Link 
             href="/profile?tab=orders" 
-            className="w-full py-4 bg-primary text-white font-black text-sm uppercase rounded-[14px] shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-[0.98] mb-6 text-center"
+            className="w-full max-w-[360px] py-4 bg-primary text-white font-black text-sm uppercase rounded-[14px] shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-[0.98] mb-6 text-center"
           >
             📦 View Order History
           </Link>
@@ -1853,7 +1446,7 @@ export default function CartPage() {
 
         <Link 
           href="/" 
-          className="text-text-secondary hover:text-primary text-xs font-bold tracking-wide uppercase hover:underline"
+          className="text-gray-600 dark:text-gray-400 hover:text-primary text-xs font-bold tracking-wide uppercase hover:underline"
         >
           ← Back to Catalog
         </Link>
@@ -1864,597 +1457,1107 @@ export default function CartPage() {
   return (
     <div className="flex flex-col bg-background min-h-screen text-text-primary font-primary pb-[100px]">
       {/* Top Sticky Header */}
-      <div className="sticky top-0 z-40 bg-surface/90 backdrop-blur-md border-b border-border px-4 py-3.5 flex items-center gap-3">
-        <Link 
-          href="/" 
-          className="w-10 h-10 rounded-full flex items-center justify-center bg-surface border border-border text-lg text-text-primary active:scale-95 transition-all shadow-xs"
-        >
-          ←
-        </Link>
-        <div className="flex flex-col">
-          <span className="text-text-primary text-sm font-black tracking-tight leading-none uppercase">Secure Checkout</span>
-          <span className="text-[10px] text-text-secondary uppercase font-bold tracking-widest mt-1">
-            Meat City Turbhe
-          </span>
+      <div className="sticky top-0 z-40 bg-surface/90 backdrop-blur-md border-b border-border px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Link 
+            href="/" 
+            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center bg-surface border border-border text-lg text-text-primary active:scale-95 transition-all shadow-xs"
+            aria-label="Back to home"
+          >
+            ←
+          </Link>
+          <div className="flex flex-col">
+            <span className="text-text-primary text-sm font-black tracking-tight leading-none uppercase">
+              {userRole === 'b2b' ? 'B2B Wholesale Cart' : 'Shopping Cart'}
+            </span>
+            <span className="text-[10px] text-text-secondary uppercase font-bold tracking-widest mt-1">
+              Meat City Turbhe
+            </span>
+          </div>
         </div>
+
+        {userRole === 'b2b' ? (
+          <span className="text-[10px] bg-gold/15 text-gold border border-gold/30 font-black px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1 shadow-xs">
+            <span>🏢</span> Wholesale
+          </span>
+        ) : (
+          <span className="text-[10px] bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-white/10 font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
+            🍗 Retail
+          </span>
+        )}
       </div>
 
       {cartItems.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center text-center px-6 py-12">
-          <span className="text-6xl">🛒</span>
-          <h3 className="mt-6 text-white text-lg font-black tracking-tight">Your Cart is Empty</h3>
-          <p className="text-text-secondary text-xs leading-relaxed max-w-[240px] mt-2">
-            Looks like you haven't added any fresh halal cuts to your basket yet.
+        <div className="flex-1 flex flex-col items-center justify-center text-center px-6 py-16">
+          <span className="text-6xl mb-2">🛒</span>
+          <h3 className="mt-4 text-gray-900 dark:text-white text-lg font-black tracking-tight">Your Basket is Empty</h3>
+          <p className="text-gray-500 dark:text-gray-400 text-xs leading-relaxed max-w-[260px] mt-2">
+            {userRole === 'b2b'
+              ? 'Add fresh wholesale cuts to meet minimum commercial order requirement.'
+              : "Looks like you haven't added any fresh halal cuts to your basket yet."}
           </p>
           <Link 
             href="/" 
-            className="mt-6 px-6 py-3.5 bg-primary hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-[12px] shadow-lg active:scale-95 transition-all text-center"
+            className="mt-6 px-6 py-3.5 bg-primary hover:bg-[#B80000] text-white font-extrabold text-xs uppercase tracking-wider rounded-[12px] shadow-lg active:scale-95 transition-all text-center"
           >
             Browse Fresh Meat
           </Link>
         </div>
       ) : (
-        <div className="px-4 py-4 flex flex-col gap-5">
-          {showCreditDuesScreen ? (
-            renderCreditDuesScreen()
-          ) : (
-            <>
-              {/* 1. Address Section */}
-              <div className="bg-neutral-900 border border-white/5 rounded-[16px] p-4 flex flex-col gap-3.5">
-                <div className="flex justify-between items-center pb-2 border-b border-white/5">
-                  <h3 className="text-white text-xs font-extrabold uppercase tracking-wide">📍 Delivery Address</h3>
-                  <button 
-                    onClick={() => setShowAddAddress(!showAddAddress)} 
-                    className="text-primary text-xs font-bold uppercase hover:underline"
-                  >
-                    {showAddAddress ? 'Close Panel' : '+ Add Address'}
-                  </button>
-                </div>
-
-                {showAddAddress && (
-                  <form onSubmit={handleAddAddress} className="bg-white/5 border border-white/5 p-4 rounded-[12px] flex flex-col gap-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold">Label</label>
-                        <input 
-                          type="text" 
-                          required 
-                          value={newAddress.name} 
-                          onChange={e => setNewAddress({...newAddress, name: e.target.value})} 
-                          placeholder="Home / Shop"
-                          className="bg-[#1E2020] border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold">Recipient Mobile</label>
-                        <input 
-                          type="tel" 
-                          required 
-                          value={newAddress.phone} 
-                          onChange={e => setNewAddress({...newAddress, phone: e.target.value})} 
-                          placeholder="10-digit number"
-                          className="bg-[#1E2020] border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold">Room / Shop / Flat Number *</label>
-                      <input 
-                        type="text" 
-                        required 
-                        value={newAddress.roomNumber} 
-                        onChange={e => setNewAddress({...newAddress, roomNumber: e.target.value})} 
-                        placeholder="e.g. Shop No. 2, Room No. 126"
-                        className="bg-[#1E2020] border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold">Sector / Area *</label>
-                      <input 
-                        type="text" 
-                        required 
-                        value={newAddress.sectorArea} 
-                        onChange={e => setNewAddress({...newAddress, sectorArea: e.target.value})} 
-                        placeholder="e.g. Sector 20, Turbhe"
-                        className="bg-[#1E2020] border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold">Pincode *</label>
-                      <input 
-                        type="text" 
-                        required 
-                        value={newAddress.pincode} 
-                        onChange={e => setNewAddress({...newAddress, pincode: e.target.value})} 
-                        placeholder="e.g. 400705"
-                        className="bg-[#1E2020] border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
-                      />
-                    </div>
-                    
-                    <button type="submit" className="w-full mt-1.5 py-2.5 bg-primary text-white text-xs font-extrabold uppercase rounded-[10px] active:scale-95 transition-all">
-                      Save Delivery Address
-                    </button>
-                  </form>
-                )}
-
-                {addresses.length === 0 ? (
-                  <p className="text-text-secondary text-xs font-bold text-center py-4">No address added. Add one to proceed.</p>
-                ) : (
-                  <div className="flex flex-col gap-3">
-                    {addresses.map(addr => (
-                      <div 
-                        key={addr.id} 
-                        onClick={() => setSelectedAddressId(addr.id)}
-                        className={`p-3.5 bg-[#111111] border rounded-[12px] flex gap-3 items-start cursor-pointer transition-all ${
-                          selectedAddressId === addr.id 
-                            ? 'border-gold bg-gold/5 shadow-md shadow-gold/5' 
-                            : 'border-white/10 hover:border-white/20'
-                        }`}
-                        style={{ color: '#ffffff' }}
-                      >
-                        <input 
-                          type="radio" 
-                          name="checkoutAddress" 
-                          checked={selectedAddressId === addr.id}
-                          onChange={() => setSelectedAddressId(addr.id)}
-                          className="accent-primary mt-1"
-                        />
-                        <div className="flex-1 flex flex-col gap-0.5">
-                          <div className="flex justify-between items-center">
-                            <span className="font-extrabold text-xs text-white" style={{ color: '#ffffff' }}>{addr.name}</span>
-                            {selectedAddressId === addr.id && (
-                              <span className="text-[9px] text-gold font-extrabold uppercase bg-gold/10 px-2 py-0.5 rounded-full" style={{ color: '#D4AF37', backgroundColor: 'rgba(212, 175, 55, 0.1)' }}>
-                                Selected
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[11px] text-[#B8B8B8] leading-relaxed mt-0.5" style={{ color: '#B8B8B8' }}>{addr.addressLine}</p>
-                          <span className="text-[10px] text-[#B8B8B8] font-bold mt-1" style={{ color: '#B8B8B8' }}>📞 {addr.phone}</span>
-                        </div>
-                      </div>
-                    ))}
+        <div className="px-4 py-4 flex flex-col gap-5 max-w-[480px] mx-auto w-full">
+          {/* Minimum Order & Wholesale Status Card */}
+          {userRole === 'b2b' ? (
+            <div className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border border-gold/40 rounded-[16px] p-4 flex flex-col gap-2.5 shadow-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🏢</span>
+                  <div>
+                    <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">
+                      MeatCity B2B Wholesale
+                    </h2>
+                    <span className="text-[10px] text-gray-600 dark:text-gray-400 font-bold block">
+                      Direct Wholesale Pricing Applied • Free Commercial Delivery
+                    </span>
                   </div>
-                )}
-              </div>
-
-              {/* Delivery Time Slot Section */}
-              <div className="bg-neutral-900 border border-white/5 rounded-[16px] p-4 flex flex-col gap-3.5">
-                <h3 className="text-white text-xs font-extrabold uppercase tracking-wide">📅 Schedule Delivery</h3>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold">Select Delivery Time Slot</label>
-                  <select
-                    value={deliverySlot}
-                    onChange={e => setDeliverySlot(e.target.value)}
-                    className="w-full bg-[#1E2020] border border-white/5 rounded-[12px] px-4 py-3.5 text-white text-sm outline-none focus:border-gold/50"
-                  >
-                    <option value="ASAP">ASAP (Within 60 Minutes)</option>
-                    <option value="10 AM – 12 PM">10 AM – 12 PM</option>
-                    <option value="12 PM – 2 PM">12 PM – 2 PM</option>
-                    <option value="2 PM – 4 PM">2 PM – 4 PM</option>
-                    <option value="4 PM – 6 PM">4 PM – 6 PM</option>
-                  </select>
                 </div>
+                <span className="text-[10px] bg-gold/20 text-gold-dark dark:text-gold border border-gold/40 px-2 py-0.5 rounded-full font-black">
+                  Min ₹{minB2BOrder.toLocaleString('en-IN')}
+                </span>
               </div>
 
-              {/* 2. Payment Section */}
-              <div className="bg-neutral-900 border border-white/5 rounded-[16px] p-4 flex flex-col gap-3.5">
-                <div className="flex justify-between items-center pb-2 border-b border-white/5">
-                  <h3 className="text-white text-xs font-extrabold uppercase tracking-wide">💳 Select Payment</h3>
-                  <span className="text-[9px] bg-white/10 text-white font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                    {userRole === 'b2b' ? 'Wholesale' : 'Retail'}
+              {/* Progress bar */}
+              <div className="flex flex-col gap-1 pt-1">
+                <div className="flex justify-between items-center text-[10px] font-black">
+                  <span className={subtotal >= minB2BOrder ? 'text-emerald-600 dark:text-emerald-400' : 'text-primary'}>
+                    {subtotal >= minB2BOrder 
+                      ? `✓ Minimum wholesale order threshold met (₹${subtotal.toLocaleString('en-IN')})` 
+                      : `Add ₹${(minB2BOrder - subtotal).toLocaleString('en-IN')} more to reach wholesale min order`
+                    }
+                  </span>
+                  <span className="text-gray-500 dark:text-gray-400">
+                    ₹{subtotal.toLocaleString('en-IN')} / ₹{minB2BOrder.toLocaleString('en-IN')}
                   </span>
                 </div>
+                <div className="w-full h-2 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full transition-all duration-300 rounded-full ${
+                      subtotal >= minB2BOrder ? 'bg-emerald-500' : 'bg-primary'
+                    }`}
+                    style={{ width: `${Math.min(100, (subtotal / minB2BOrder) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 rounded-[16px] p-3.5 flex items-center justify-between shadow-xs">
+              <div className="flex items-center gap-2.5">
+                <span className="text-lg">🛵</span>
+                <div className="flex flex-col">
+                  <span className="text-xs font-black text-gray-900 dark:text-white">
+                    {deliveryFee === 0 ? 'FREE Standard Delivery Applied!' : 'Fast Delivery to your Doorstep'}
+                  </span>
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400 font-bold">
+                    {deliveryFee === 0 
+                      ? 'Orders above ₹' + freeDeliveryAbove + ' get free shipping' 
+                      : `Add ₹${Math.max(0, freeDeliveryAbove - subtotal)} more for free delivery`
+                    }
+                  </span>
+                </div>
+              </div>
+              {deliveryFee === 0 && (
+                <span className="text-[10px] bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 px-2 py-0.5 rounded-full font-black uppercase">
+                  FREE
+                </span>
+              )}
+            </div>
+          )}
 
-                {/* B2B Status Overview */}
-                {userRole === 'b2b' && (
-                  <div className="bg-white/5 border border-white/5 p-3 rounded-[12px] grid grid-cols-2 gap-2 text-xs">
-                    <div>Outstanding: <strong className="text-primary font-black">₹{userProfile?.outstanding_balance || 0}</strong></div>
-                    <div>Credit Limit: <strong className="text-white font-black">₹{userProfile?.credit_limit || 0}</strong></div>
-                    <div className="col-span-2 pt-2 mt-1 border-t border-white/5 flex justify-between text-[10px] text-text-secondary font-bold">
-                      <span>Available Credit: <strong className="text-emerald-400">₹{userProfile?.credit_available || 0}</strong></span>
-                      {userProfile?.payment_due_date && <span>Due Date: <strong>{userProfile.payment_due_date}</strong></span>}
+          {/* 1. Basket items list (Order Summary) */}
+          <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 rounded-[16px] p-4 flex flex-col gap-3.5 shadow-xs">
+            <div className="flex justify-between items-center pb-2 border-b border-gray-100 dark:border-white/10">
+              <h3 className="text-gray-900 dark:text-white text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
+                <span>🛒</span>
+                <span>{userRole === 'b2b' ? 'Wholesale Basket' : 'Order Items'}</span>
+                <span className="text-gray-500 dark:text-gray-400 font-bold">({cartItems.length})</span>
+              </h3>
+              <span className="text-[10px] text-gold font-extrabold uppercase">
+                {userRole === 'b2b' ? 'B2B Wholesale Rates' : 'Retail Price'}
+              </span>
+            </div>
+
+            <div className="flex flex-col divide-y divide-gray-100 dark:divide-white/5 max-h-[360px] overflow-y-auto pr-1">
+              {cartItems.map(({ cartKey, product, quantity, price }) => (
+                <div key={cartKey} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <img 
+                      src={product?.image_url || 'https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=100&auto=format&fit=crop'} 
+                      alt={product?.name} 
+                      className="w-14 h-14 object-cover rounded-[10px] bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-white/10 shrink-0" 
+                    />
+                    <div className="flex-1 flex flex-col min-w-0">
+                      <span className="font-extrabold text-xs text-gray-900 dark:text-white tracking-tight truncate">
+                        {product?.name}
+                      </span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {userRole === 'b2b' ? (
+                          <span className="text-[10px] bg-gold/15 text-gold-dark dark:text-gold border border-gold/30 px-1.5 py-0.5 rounded font-black">
+                            Wholesale: ₹{price}/{product?.unit || 'kg'}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-gray-500 dark:text-gray-400 font-bold">
+                            ₹{price} / {product?.unit || 'unit'}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-gray-900 dark:text-white font-black text-xs mt-1">
+                        ₹{(price * quantity).toLocaleString('en-IN')}
+                      </span>
                     </div>
                   </div>
-                )}
 
-                <div className="flex flex-col gap-3">
-                  {userRole === 'b2b' ? (
-                    // B2B Wholesale payments
-                    <>
-                      <div 
-                        onClick={() => !isCreditLimitExceeded && setPaymentMethod('Credit')}
-                        className={`p-3.5 bg-white/5 border rounded-[12px] flex gap-3 items-start cursor-pointer transition-all ${
-                          paymentMethod === 'Credit' 
-                            ? 'border-gold bg-gold/5' 
-                            : 'border-white/5 opacity-55'
-                        }`}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {/* Quantity Selector */}
+                    <div className="flex items-center bg-gray-100 dark:bg-white/10 rounded-[10px] border border-gray-200 dark:border-white/10 p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => handleDecrement(cartKey)}
+                        aria-label="Decrease quantity"
+                        className="w-8 h-8 min-w-[32px] min-h-[32px] flex items-center justify-center font-black text-gray-800 dark:text-white text-sm active:scale-75 transition-transform hover:bg-gray-200 dark:hover:bg-white/20 rounded"
                       >
-                        <input 
-                          type="radio" 
-                          checked={paymentMethod === 'Credit'} 
-                          disabled={isCreditLimitExceeded}
-                          onChange={() => setPaymentMethod('Credit')} 
-                          className="accent-primary mt-1"
-                        />
-                        <div className="flex-1">
-                          <div className="flex justify-between items-center">
-                            <span className="font-extrabold text-xs text-white">Credit Account (Pay Later)</span>
-                            <span className="text-[9px] text-emerald-400 font-extrabold uppercase bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                              Pay Later
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-text-secondary leading-relaxed mt-1">Order instantly. Owed amount is recorded to your ledger.</p>
-                        </div>
-                      </div>
+                        -
+                      </button>
+                      <span className="px-2 text-gray-900 dark:text-white font-black text-xs min-w-[22px] text-center">
+                        {quantity}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleIncrement(cartKey)}
+                        aria-label="Increase quantity"
+                        className="w-8 h-8 min-w-[32px] min-h-[32px] flex items-center justify-center font-black text-gray-800 dark:text-white text-sm active:scale-75 transition-transform hover:bg-gray-200 dark:hover:bg-white/20 rounded"
+                      >
+                        +
+                      </button>
+                    </div>
 
-                      <div 
-                        onClick={() => setPaymentMethod('UPI')}
-                        className={`p-3.5 bg-white/5 border rounded-[12px] flex gap-3 items-start cursor-pointer transition-all ${
-                          paymentMethod === 'UPI' ? 'border-gold bg-gold/5' : 'border-white/5 opacity-55'
-                        }`}
-                      >
-                        <input 
-                          type="radio" 
-                          checked={paymentMethod === 'UPI'} 
-                          onChange={() => setPaymentMethod('UPI')} 
-                          className="accent-primary mt-1"
-                        />
-                        <div className="flex-1">
-                          <span className="font-extrabold text-xs text-white">Direct UPI</span>
-                          <p className="text-[10px] text-text-secondary leading-relaxed mt-1">Pay instantly using any UPI app (GPay, PhonePe, Paytm).</p>
-                        </div>
-                      </div>
-
-                      <div 
-                        onClick={() => setPaymentMethod('BankTransfer')}
-                        className={`p-3.5 bg-white/5 border rounded-[12px] flex gap-3 items-start cursor-pointer transition-all ${
-                          paymentMethod === 'BankTransfer' ? 'border-gold bg-gold/5' : 'border-white/5 opacity-55'
-                        }`}
-                      >
-                        <input 
-                          type="radio" 
-                          checked={paymentMethod === 'BankTransfer'} 
-                          onChange={() => setPaymentMethod('BankTransfer')} 
-                          className="accent-primary mt-1"
-                        />
-                        <div className="flex-1">
-                          <span className="font-extrabold text-xs text-white">IMPS / NEFT Bank Transfer</span>
-                          <p className="text-[10px] text-text-secondary leading-relaxed mt-1">Transfer directly to bank and record UTR transaction number.</p>
-                        </div>
-                      </div>
-
-                      <div 
-                        onClick={() => {
-                          if (!isCreditLimitExceeded) {
-                            setPaymentMethod('COD');
-                          }
-                        }}
-                        className={`p-3.5 bg-white/5 border rounded-[12px] flex gap-3 items-start cursor-pointer transition-all ${
-                          paymentMethod === 'COD' ? 'border-gold bg-gold/5' : 'border-white/5'
-                        } ${isCreditLimitExceeded ? 'opacity-40 cursor-not-allowed' : 'hover:border-white/20'}`}
-                      >
-                        <input 
-                          type="radio" 
-                          checked={paymentMethod === 'COD'} 
-                          disabled={isCreditLimitExceeded}
-                          onChange={() => setPaymentMethod('COD')} 
-                          className="accent-primary mt-1"
-                        />
-                        <div className="flex-1">
-                          <span className="font-extrabold text-xs text-white">Cash On Delivery (COD)</span>
-                          <p className="text-[10px] text-text-secondary leading-relaxed mt-1">Pay with cash or scan UPI code when order is delivered to your hotel/restaurant.</p>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    // B2C Retail payments
-                    <>
-                      <div 
-                        onClick={() => setPaymentMethod('COD')}
-                        className={`p-3.5 bg-white/5 border rounded-[12px] flex gap-3 items-start cursor-pointer transition-all ${
-                          paymentMethod === 'COD' ? 'border-gold bg-gold/5' : 'border-white/5 opacity-55'
-                        }`}
-                      >
-                        <input 
-                          type="radio" 
-                          checked={paymentMethod === 'COD'} 
-                          onChange={() => setPaymentMethod('COD')} 
-                          className="accent-primary mt-1"
-                        />
-                        <div className="flex-1">
-                          <span className="font-extrabold text-xs text-white">Cash on Delivery (COD)</span>
-                          <p className="text-[10px] text-text-secondary leading-relaxed mt-1">Pay with cash or scan UPI code when order arrives at doorstep.</p>
-                        </div>
-                      </div>
-
-                      <div 
-                        onClick={() => setPaymentMethod('UPI')}
-                        className={`p-3.5 bg-white/5 border rounded-[12px] flex gap-3 items-start cursor-pointer transition-all ${
-                          paymentMethod === 'UPI' ? 'border-gold bg-gold/5' : 'border-white/5 opacity-55'
-                        }`}
-                      >
-                        <input 
-                          type="radio" 
-                          checked={paymentMethod === 'UPI'} 
-                          onChange={() => setPaymentMethod('UPI')} 
-                          className="accent-primary mt-1"
-                        />
-                        <div className="flex-1">
-                          <span className="font-extrabold text-xs text-white">UPI Scan / App Pay</span>
-                          <p className="text-[10px] text-text-secondary leading-relaxed mt-1">Simulated instant redirect scan to verify.</p>
-                        </div>
-                      </div>
-
-                      <div 
-                        onClick={() => setPaymentMethod('Razorpay')}
-                        className={`p-3.5 bg-white/5 border rounded-[12px] flex gap-3 items-start cursor-pointer transition-all ${
-                          paymentMethod === 'Razorpay' ? 'border-gold bg-gold/5' : 'border-white/5 opacity-55'
-                        }`}
-                      >
-                        <input 
-                          type="radio" 
-                          checked={paymentMethod === 'Razorpay'} 
-                          onChange={() => setPaymentMethod('Razorpay')} 
-                          className="accent-primary mt-1"
-                        />
-                        <div className="flex-1">
-                          <span className="font-extrabold text-xs text-white">Credit / Debit Card / Razorpay</span>
-                          <p className="text-[10px] text-text-secondary leading-relaxed mt-1">Secure simulated checkout overlay with cards, wallets or netbanking.</p>
-                        </div>
-                      </div>
-                    </>
-                  )}
+                    {/* Remove Item Button */}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveItem(cartKey)}
+                      aria-label="Remove item from cart"
+                      title="Remove item"
+                      className="w-8 h-8 min-w-[32px] min-h-[32px] rounded-[8px] flex items-center justify-center text-red-500 hover:text-red-600 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 active:scale-75 transition-transform border border-red-200 dark:border-red-500/20 text-xs"
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 </div>
+              ))}
+            </div>
+          </div>
 
-                {/* Sub Forms based on selection */}
-                {paymentMethod === 'UPI' && (
-                  <div className="bg-white/5 border border-white/5 p-4 rounded-[12px] flex flex-col gap-2">
-                    <label className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold">UPI Handle ID</label>
+          {/* 2. Address Section */}
+          <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 rounded-[16px] p-4 flex flex-col gap-3.5 shadow-xs">
+            <div className="flex justify-between items-center pb-2 border-b border-gray-100 dark:border-white/10">
+              <h3 className="text-gray-900 dark:text-white text-xs font-black uppercase tracking-wider">
+                📍 Delivery Address
+              </h3>
+              <button 
+                onClick={() => setShowAddAddress(!showAddAddress)} 
+                className="text-primary text-xs font-bold uppercase hover:underline"
+              >
+                {showAddAddress ? 'Close Panel' : '+ Add Address'}
+              </button>
+            </div>
+
+            {showAddAddress && (
+              <form onSubmit={handleAddAddress} className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-[12px] flex flex-col gap-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-extrabold">Label</label>
                     <input 
                       type="text" 
-                      placeholder="e.g. name@okhdfcbank" 
-                      value={upiId} 
-                      onChange={e => setUpiId(e.target.value)} 
-                      className="bg-[#1E2020] border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
+                      required 
+                      value={newAddress.name} 
+                      onChange={e => setNewAddress({...newAddress, name: e.target.value})} 
+                      placeholder="Home / Shop"
+                      className="bg-white dark:bg-[#1E2020] border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white rounded-[12px] p-2.5 text-xs outline-none focus:border-gold"
                     />
-                    {upiError && <p className="text-primary text-[10px] font-bold mt-0.5">{upiError}</p>}
                   </div>
-                )}
-
-                {paymentMethod === 'BankTransfer' && (
-                  <div className="bg-white/5 border border-white/5 p-4 rounded-[12px] flex flex-col gap-3">
-                    <div className="text-[11px] text-text-secondary leading-relaxed bg-black/40 p-3 rounded-[8px] border border-white/5">
-                      Please transfer <strong className="text-white">₹{total}</strong> to:<br/>
-                      <strong>Bank:</strong> HDFC Bank Ltd<br/>
-                      <strong>A/c Name:</strong> Meat City Turbhe Branch<br/>
-                      <strong>A/c No:</strong> 50200087612344<br/>
-                      <strong>IFSC:</strong> HDFC0000421
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold">Transaction UTR Number</label>
-                      <input 
-                        type="text" 
-                        placeholder="12-digit UTR reference" 
-                        value={bankUtr} 
-                        onChange={e => setBankUtr(e.target.value)} 
-                        className="bg-[#1E2020] border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
-                      />
-                      {bankError && <p className="text-primary text-[10px] font-bold mt-0.5">{bankError}</p>}
-                    </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-extrabold">Recipient Mobile</label>
+                    <input 
+                      type="tel" 
+                      required 
+                      value={newAddress.phone} 
+                      onChange={e => setNewAddress({...newAddress, phone: e.target.value})} 
+                      placeholder="10-digit number"
+                      className="bg-white dark:bg-[#1E2020] border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white rounded-[12px] p-2.5 text-xs outline-none focus:border-gold"
+                    />
                   </div>
-                )}
-              </div>
+                </div>
+                
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-extrabold">Room / Shop / Flat Number *</label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={newAddress.roomNumber} 
+                    onChange={e => setNewAddress({...newAddress, roomNumber: e.target.value})} 
+                    placeholder="e.g. Shop No. 2, Room No. 126"
+                    className="bg-white dark:bg-[#1E2020] border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white rounded-[12px] p-2.5 text-xs outline-none focus:border-gold"
+                  />
+                </div>
 
-              {/* 3. Basket items list */}
-              <div className="bg-neutral-900 border border-white/5 rounded-[16px] p-4 flex flex-col gap-3.5">
-                <h3 className="text-white text-xs font-extrabold uppercase tracking-wide">🛒 Order Summary</h3>
-                <div className="flex flex-col gap-3.5 max-h-[300px] overflow-y-auto pr-1">
-                  {cartItems.map(({ cartKey, product, quantity, price }) => (
-                    <div key={cartKey} className="flex justify-between items-center gap-3">
-                      <div className="flex gap-3 items-center flex-1">
-                        <img 
-                          src={product?.image_url} 
-                          alt={product?.name} 
-                          className="w-12 h-12 object-cover rounded-[8px] bg-neutral-950 border border-white/5" 
-                        />
-                        <div className="flex-1 flex flex-col">
-                          <span className="font-extrabold text-xs text-white tracking-tight line-clamp-1">{product?.name}</span>
-                          <span className="text-[10px] text-text-secondary mt-0.5">{product?.unit} x ₹{price}</span>
-                        </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-extrabold">Sector / Area *</label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={newAddress.sectorArea} 
+                    onChange={e => setNewAddress({...newAddress, sectorArea: e.target.value})} 
+                    placeholder="e.g. Sector 20, Turbhe"
+                    className="bg-white dark:bg-[#1E2020] border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white rounded-[12px] p-2.5 text-xs outline-none focus:border-gold"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-extrabold">Pincode *</label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={newAddress.pincode} 
+                    onChange={e => setNewAddress({...newAddress, pincode: e.target.value})} 
+                    placeholder="e.g. 400705"
+                    className="bg-white dark:bg-[#1E2020] border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white rounded-[12px] p-2.5 text-xs outline-none focus:border-gold"
+                  />
+                </div>
+                
+                <button type="submit" className="w-full mt-1.5 py-2.5 bg-primary text-white text-xs font-extrabold uppercase rounded-[10px] active:scale-95 transition-all">
+                  Save Delivery Address
+                </button>
+              </form>
+            )}
+
+            {addresses.length === 0 ? (
+              <p className="text-gray-500 dark:text-gray-400 text-xs font-bold text-center py-4">No address added. Add one to proceed.</p>
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                {addresses.map(addr => (
+                  <div 
+                    key={addr.id} 
+                    onClick={() => setSelectedAddressId(addr.id)}
+                    className={`p-3.5 rounded-[12px] flex gap-3 items-start cursor-pointer transition-all border ${
+                      selectedAddressId === addr.id 
+                        ? 'border-gold bg-gold/5 dark:bg-gold/10 ring-1 ring-gold/40 shadow-xs' 
+                        : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 bg-gray-50/50 dark:bg-white/5'
+                    }`}
+                  >
+                    <input 
+                      type="radio" 
+                      name="checkoutAddress" 
+                      checked={selectedAddressId === addr.id}
+                      onChange={() => setSelectedAddressId(addr.id)}
+                      className="accent-primary mt-1"
+                    />
+                    <div className="flex-1 flex flex-col gap-0.5">
+                      <div className="flex justify-between items-center">
+                        <span className="font-extrabold text-xs text-gray-900 dark:text-white">{addr.name}</span>
+                        {selectedAddressId === addr.id && (
+                          <span className="text-[9px] text-gold-dark dark:text-gold font-extrabold uppercase bg-gold/15 px-2 py-0.5 rounded-full border border-gold/30">
+                            Selected
+                          </span>
+                        )}
                       </div>
+                      <p className="text-[11px] text-gray-600 dark:text-gray-300 leading-relaxed mt-0.5">{addr.addressLine}</p>
+                      <span className="text-[10px] text-gray-500 dark:text-gray-400 font-bold mt-1">📞 {addr.phone}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
-                      <div className="flex items-center gap-3.5">
-                        {/* Selector */}
-                        <div className="flex items-center bg-white/5 rounded-[10px] border border-white/5 p-0.5">
-                          <button
-                            type="button"
-                            onClick={() => handleDecrement(cartKey)}
-                            className="w-6 h-6 flex items-center justify-center font-bold text-white text-xs active:scale-75 transition-transform"
-                          >
-                            -
-                          </button>
-                          <span className="px-1.5 text-white font-extrabold text-[11px] min-w-[14px] text-center">{quantity}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleIncrement(cartKey)}
-                            className="w-6 h-6 flex items-center justify-center font-bold text-white text-xs active:scale-75 transition-transform"
-                          >
-                            +
-                          </button>
-                        </div>
-                        <span className="font-extrabold text-xs text-white w-[60px] text-right">
-                          ₹{price * quantity}
+          {/* 3. Delivery Time Slot Section */}
+          <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 rounded-[16px] p-4 flex flex-col gap-3.5 shadow-xs">
+            <h3 className="text-gray-900 dark:text-white text-xs font-black uppercase tracking-wider">
+              📅 Schedule Delivery
+            </h3>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-extrabold">
+                Select Delivery Time Slot
+              </label>
+              <select
+                value={deliverySlot}
+                onChange={e => setDeliverySlot(e.target.value)}
+                className="w-full bg-gray-50 dark:bg-[#1E2020] border border-gray-200 dark:border-white/10 rounded-[12px] px-3.5 py-3 text-gray-900 dark:text-white text-xs outline-none focus:border-gold"
+              >
+                <option value="ASAP">ASAP (Within 60 Minutes)</option>
+                <option value="10 AM – 12 PM">10 AM – 12 PM</option>
+                <option value="12 PM – 2 PM">12 PM – 2 PM</option>
+                <option value="2 PM – 4 PM">2 PM – 4 PM</option>
+                <option value="4 PM – 6 PM">4 PM – 6 PM</option>
+              </select>
+            </div>
+          </div>
+
+          {/* 4. Payment Section */}
+          <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 rounded-[16px] p-4 flex flex-col gap-3.5 shadow-xs">
+            <div className="flex justify-between items-center pb-2 border-b border-gray-100 dark:border-white/10">
+              <h3 className="text-gray-900 dark:text-white text-xs font-black uppercase tracking-wider">
+                💳 Payment Method
+              </h3>
+              <span className="text-[9px] bg-gray-100 dark:bg-white/10 text-gray-800 dark:text-white font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                {userRole === 'b2b' ? 'Wholesale Terms' : 'Retail'}
+              </span>
+            </div>
+
+            {/* B2B Credit Notice / Repayment Banner */}
+            {renderB2BCreditBanner()}
+
+            <div className="flex flex-col gap-2.5">
+              {userRole === 'b2b' ? (
+                <>
+                  {/* Credit (Pay Later) */}
+                  <div 
+                    onClick={() => !isCreditLimitExceeded && setPaymentMethod('Credit')}
+                    className={`p-3.5 rounded-[12px] flex gap-3 items-start cursor-pointer transition-all border ${
+                      paymentMethod === 'Credit' 
+                        ? 'border-gold bg-gold/5 dark:bg-gold/10 ring-1 ring-gold/40' 
+                        : isCreditLimitExceeded 
+                          ? 'border-gray-200 dark:border-white/10 opacity-40 cursor-not-allowed bg-gray-50/50 dark:bg-white/5'
+                          : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 bg-gray-50/50 dark:bg-white/5'
+                    }`}
+                  >
+                    <input 
+                      type="radio" 
+                      checked={paymentMethod === 'Credit'} 
+                      disabled={isCreditLimitExceeded}
+                      onChange={() => setPaymentMethod('Credit')} 
+                      className="accent-primary mt-1"
+                    />
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center">
+                        <span className="font-extrabold text-xs text-gray-900 dark:text-white">Credit Account (Pay Later)</span>
+                        <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-extrabold uppercase bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                          Commercial Ledger
                         </span>
                       </div>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed mt-1">
+                        {isCreditLimitExceeded 
+                          ? 'Credit limit reached. Please clear dues or choose UPI / Bank Transfer / COD.' 
+                          : 'Order charged to your business ledger account. Clear on weekly billing cycle.'}
+                      </p>
                     </div>
+                  </div>
+
+                  {/* UPI */}
+                  <div 
+                    onClick={() => setPaymentMethod('UPI')}
+                    className={`p-3.5 rounded-[12px] flex gap-3 items-start cursor-pointer transition-all border ${
+                      paymentMethod === 'UPI' 
+                        ? 'border-gold bg-gold/5 dark:bg-gold/10 ring-1 ring-gold/40' 
+                        : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 bg-gray-50/50 dark:bg-white/5'
+                    }`}
+                  >
+                    <input 
+                      type="radio" 
+                      checked={paymentMethod === 'UPI'} 
+                      onChange={() => setPaymentMethod('UPI')} 
+                      className="accent-primary mt-1"
+                    />
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center">
+                        <span className="font-extrabold text-xs text-gray-900 dark:text-white">UPI (Instant Transfer)</span>
+                        <span className="text-[9px] text-gold font-extrabold uppercase bg-gold/10 px-2 py-0.5 rounded-full border border-gold/20">
+                          Recommended
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed mt-1">
+                        Scan store QR code or enter transaction UTR reference. Fast verification.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Bank Transfer */}
+                  <div 
+                    onClick={() => setPaymentMethod('BankTransfer')}
+                    className={`p-3.5 rounded-[12px] flex gap-3 items-start cursor-pointer transition-all border ${
+                      paymentMethod === 'BankTransfer' 
+                        ? 'border-gold bg-gold/5 dark:bg-gold/10 ring-1 ring-gold/40' 
+                        : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 bg-gray-50/50 dark:bg-white/5'
+                    }`}
+                  >
+                    <input 
+                      type="radio" 
+                      checked={paymentMethod === 'BankTransfer'} 
+                      onChange={() => setPaymentMethod('BankTransfer')} 
+                      className="accent-primary mt-1"
+                    />
+                    <div className="flex-1">
+                      <span className="font-extrabold text-xs text-gray-900 dark:text-white">RTGS / NEFT / IMPS Bank Transfer</span>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed mt-1">Direct bank-to-bank transfer for bulk wholesale volume orders.</p>
+                    </div>
+                  </div>
+
+                  {/* COD */}
+                  <div 
+                    onClick={() => setPaymentMethod('COD')}
+                    className={`p-3.5 rounded-[12px] flex gap-3 items-start cursor-pointer transition-all border ${
+                      paymentMethod === 'COD' 
+                        ? 'border-gold bg-gold/5 dark:bg-gold/10 ring-1 ring-gold/40' 
+                        : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 bg-gray-50/50 dark:bg-white/5'
+                    }`}
+                  >
+                    <input 
+                      type="radio" 
+                      checked={paymentMethod === 'COD'} 
+                      onChange={() => setPaymentMethod('COD')} 
+                      className="accent-primary mt-1"
+                    />
+                    <div className="flex-1">
+                      <span className="font-extrabold text-xs text-gray-900 dark:text-white">Cash on Delivery</span>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed mt-1">Pay physical cash to our Turbhe dispatch driver upon receipt.</p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Retail COD */}
+                  <div 
+                    onClick={() => setPaymentMethod('COD')}
+                    className={`p-3.5 rounded-[12px] flex gap-3 items-start cursor-pointer transition-all border ${
+                      paymentMethod === 'COD' 
+                        ? 'border-gold bg-gold/5 dark:bg-gold/10 ring-1 ring-gold/40' 
+                        : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 bg-gray-50/50 dark:bg-white/5'
+                    }`}
+                  >
+                    <input 
+                      type="radio" 
+                      checked={paymentMethod === 'COD'} 
+                      onChange={() => setPaymentMethod('COD')} 
+                      className="accent-primary mt-1"
+                    />
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center">
+                        <span className="font-extrabold text-xs text-gray-900 dark:text-white">Cash on Delivery</span>
+                        <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-extrabold uppercase bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                          Pay at Door
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed mt-1">Pay cash or UPI upon delivery.</p>
+                    </div>
+                  </div>
+
+                  {/* Retail UPI */}
+                  <div 
+                    onClick={() => setPaymentMethod('UPI')}
+                    className={`p-3.5 rounded-[12px] flex gap-3 items-start cursor-pointer transition-all border ${
+                      paymentMethod === 'UPI' 
+                        ? 'border-gold bg-gold/5 dark:bg-gold/10 ring-1 ring-gold/40' 
+                        : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 bg-gray-50/50 dark:bg-white/5'
+                    }`}
+                  >
+                    <input 
+                      type="radio" 
+                      checked={paymentMethod === 'UPI'} 
+                      onChange={() => setPaymentMethod('UPI')} 
+                      className="accent-primary mt-1"
+                    />
+                    <div className="flex-1">
+                      <span className="font-extrabold text-xs text-gray-900 dark:text-white">UPI (GPay / PhonePe / Paytm / QR)</span>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed mt-1">Instant payment verification via UPI QR code or handle.</p>
+                    </div>
+                  </div>
+
+                  {/* Retail Razorpay */}
+                  <div 
+                    onClick={() => setPaymentMethod('Razorpay')}
+                    className={`p-3.5 rounded-[12px] flex gap-3 items-start cursor-pointer transition-all border ${
+                      paymentMethod === 'Razorpay' 
+                        ? 'border-gold bg-gold/5 dark:bg-gold/10 ring-1 ring-gold/40' 
+                        : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 bg-gray-50/50 dark:bg-white/5'
+                    }`}
+                  >
+                    <input 
+                      type="radio" 
+                      checked={paymentMethod === 'Razorpay'} 
+                      onChange={() => setPaymentMethod('Razorpay')} 
+                      className="accent-primary mt-1"
+                    />
+                    <div className="flex-1">
+                      <span className="font-extrabold text-xs text-gray-900 dark:text-white">Credit / Debit Card / NetBanking</span>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed mt-1">Secure payment overlay with cards and online banking.</p>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Sub Forms based on selection */}
+            {paymentMethod === 'BankTransfer' && (
+              <div className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-[12px] flex flex-col gap-3">
+                <div className="text-[11px] text-gray-700 dark:text-gray-300 leading-relaxed bg-white dark:bg-black/40 p-3 rounded-[8px] border border-gray-200 dark:border-white/10">
+                  Please transfer <strong className="text-gray-900 dark:text-white">₹{total.toLocaleString('en-IN')}</strong> to:<br/>
+                  <strong>Bank:</strong> HDFC Bank Ltd<br/>
+                  <strong>A/c Name:</strong> Meat City Turbhe Branch<br/>
+                  <strong>A/c No:</strong> 50200087612344<br/>
+                  <strong>IFSC:</strong> HDFC0000421
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-extrabold">Transaction UTR Number</label>
+                  <input 
+                    type="text" 
+                    placeholder="12-digit UTR reference" 
+                    value={bankUtr} 
+                    onChange={e => setBankUtr(e.target.value)} 
+                    className="bg-white dark:bg-[#1E2020] border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white rounded-[12px] p-2.5 text-xs outline-none focus:border-gold"
+                  />
+                  {bankError && <p className="text-primary text-[10px] font-bold mt-0.5">{bankError}</p>}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 5. Coupons application (B2C Only) */}
+          {userRole !== 'b2b' && (
+            <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 rounded-[16px] p-4 flex flex-col gap-3.5 shadow-xs">
+              <h3 className="text-gray-900 dark:text-white text-xs font-black uppercase tracking-wider">
+                🏷️ Coupon Code
+              </h3>
+              {appliedCoupon ? (
+                <div className="flex justify-between items-center bg-emerald-500/10 border border-emerald-500/25 p-3 rounded-[12px]">
+                  <div className="flex flex-col">
+                    <span className="text-emerald-600 dark:text-emerald-400 font-extrabold text-xs">✓ Coupon {appliedCoupon.code}</span>
+                    <span className="text-[10px] text-emerald-700 dark:text-emerald-500 font-bold">You saved ₹{discountAmount}!</span>
+                  </div>
+                  <button 
+                    onClick={handleRemoveCoupon} 
+                    className="text-primary text-xs font-black uppercase hover:underline"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      value={couponCode} 
+                      onChange={e => setCouponCode(e.target.value)} 
+                      placeholder="WELCOME20 or MEAT10" 
+                      className="flex-1 bg-gray-50 dark:bg-[#1E2020] border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white rounded-[12px] px-3.5 py-3 text-xs outline-none focus:border-gold uppercase"
+                    />
+                    <button 
+                      onClick={handleApplyCoupon} 
+                      className="px-5 py-3 bg-gold text-black text-xs font-black uppercase rounded-[12px] active:scale-95 transition-all shadow-xs"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                  {couponError && <p className="text-primary text-[10px] font-bold mt-0.5">{couponError}</p>}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 6. MeatCity Loyalty Points & Rewards */}
+          {loyaltyEstimate && loyaltyEstimate.isEnabled && (
+            <div className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border border-amber-400/30 rounded-[16px] p-4 flex flex-col gap-3 shadow-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">👑</span>
+                  <h3 className="text-gray-900 dark:text-white text-xs font-extrabold uppercase tracking-wide">
+                    MeatCity Loyalty Points
+                  </h3>
+                </div>
+                <span className="text-[10px] bg-gold/15 text-gold-dark dark:text-gold px-2.5 py-0.5 rounded-full font-black border border-gold/30">
+                  Balance: {loyaltyEstimate.availablePoints} pts
+                </span>
+              </div>
+
+              {loyaltyEstimate.maxPointsRedeemable > 0 ? (
+                <div className="flex items-center justify-between bg-white dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded-[12px] p-3">
+                  <div className="flex flex-col">
+                    <span className="text-xs text-gray-900 dark:text-white font-bold">
+                      Redeem {loyaltyEstimate.maxPointsRedeemable} points
+                    </span>
+                    <span className="text-[10px] text-gold font-bold">
+                      Get flat ₹{loyaltyEstimate.maxRupeeDiscount} off this order
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleLoyaltyPoints(!useLoyaltyPoints)}
+                    className={`px-3.5 py-1.5 rounded-[10px] text-xs font-black uppercase transition-all ${
+                      useLoyaltyPoints
+                        ? 'bg-red-600/20 text-red-500 border border-red-500/30'
+                        : 'bg-gold text-black shadow-md shadow-gold/20 active:scale-95'
+                    }`}
+                  >
+                    {useLoyaltyPoints ? 'Remove' : 'Apply'}
+                  </button>
+                </div>
+              ) : (
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed">
+                  {loyaltyEstimate.availablePoints < (loyaltyEstimate.minPointsForRedemption || 100)
+                    ? `Minimum ${loyaltyEstimate.minPointsForRedemption || 100} points required to redeem on orders (Current: ${loyaltyEstimate.availablePoints} pts).`
+                    : `No points eligible for redemption on this order.`}
+                </p>
+              )}
+
+              {loyaltyEstimate.estimatedPointsEarned > 0 && (
+                <div className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-bold pt-1 border-t border-gray-200 dark:border-white/10">
+                  <span>✨</span>
+                  <span>You'll earn +{loyaltyEstimate.estimatedPointsEarned} points upon successful delivery!</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 7. Bill Details */}
+          <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 rounded-[16px] p-4 flex flex-col gap-3.5 shadow-xs">
+            <h3 className="text-gray-900 dark:text-white text-xs font-black uppercase tracking-wider pb-1 border-b border-gray-100 dark:border-white/10">
+              🧾 Bill Breakdown
+            </h3>
+            <div className="flex flex-col gap-3 text-xs">
+              <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                <span>{userRole === 'b2b' ? 'Wholesale Items Total' : 'Items Total'}</span>
+                <span className="text-gray-900 dark:text-white font-extrabold">₹{subtotal.toLocaleString('en-IN')}</span>
+              </div>
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-bold">
+                  <span>Discount ({appliedCoupon?.code})</span>
+                  <span>-₹{discountAmount.toLocaleString('en-IN')}</span>
+                </div>
+              )}
+              {activeLoyaltyDiscount > 0 && (
+                <div className="flex justify-between text-gold font-bold">
+                  <span>Loyalty Points ({pointsToRedeem} pts)</span>
+                  <span>-₹{activeLoyaltyDiscount.toLocaleString('en-IN')}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                <span>Commercial Delivery</span>
+                <span>
+                  {deliveryFee === 0 
+                    ? <strong className="text-emerald-600 dark:text-emerald-400 font-extrabold">FREE</strong> 
+                    : `₹${deliveryFee}`
+                  }
+                </span>
+              </div>
+              <div className="border-t border-gray-200 dark:border-white/10 border-dashed pt-3 mt-1 flex justify-between items-center">
+                <span className="text-gray-900 dark:text-white font-black text-sm uppercase tracking-tight">Payable Grand Total</span>
+                <span className="text-gold font-black text-lg">₹{total.toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* FSSAI Certified Trust Badge */}
+          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-[16px] p-3.5 flex gap-3.5 items-center">
+            <div className="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-lg shrink-0">
+              🛡️
+            </div>
+            <div className="flex flex-col text-left text-xs">
+              <span className="text-emerald-700 dark:text-emerald-400 font-extrabold text-[9px] uppercase tracking-wide">FSSAI Certified Safety</span>
+              <span className="text-gray-900 dark:text-white font-black mt-0.5">Registration: 21525016001365</span>
+              <span className="text-[9px] text-gray-500 dark:text-gray-400 font-bold mt-0.5">Quality Assured • Hygienic • Fresh Daily • Safe Pack</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FIXED BOTTOM CHECKOUT ACTION BAR */}
+      {cartItems.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#141414]/95 backdrop-blur-md border-t border-gray-200 dark:border-white/10 py-3.5 px-4 shadow-2xl">
+          <div className="max-w-[480px] mx-auto flex items-center justify-between gap-4">
+            <div className="flex flex-col">
+              <span className="text-gray-900 dark:text-white text-base font-black">₹{total.toLocaleString('en-IN')}</span>
+              <span className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-bold mt-0.5 truncate max-w-[160px]">
+                {cartItems.reduce((acc, i) => acc + i.quantity, 0)} Items • {userRole === 'b2b' ? 'Wholesale' : 'Retail'}
+              </span>
+            </div>
+
+            <button 
+              onClick={handleCheckout} 
+              disabled={
+                isProcessingPayment || 
+                (userRole === 'b2b' && subtotal < minB2BOrder) || 
+                (userRole === 'b2b' && paymentMethod === 'Credit' && isCreditBlocked)
+              }
+              className="flex-1 max-w-[260px] py-3.5 bg-primary hover:bg-[#B80000] active:scale-[0.98] disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider rounded-[14px] shadow-lg shadow-primary/20 transition-all text-center"
+            >
+              {isProcessingPayment 
+                ? 'Processing Securely...' 
+                : userRole === 'guest' 
+                  ? 'Login to Checkout' 
+                  : userRole === 'b2b' && subtotal < minB2BOrder
+                    ? `Min Order ₹${minB2BOrder.toLocaleString('en-IN')}`
+                    : userRole === 'b2b' && paymentMethod === 'Credit' && isCreditBlocked
+                      ? 'Credit Clearance Required'
+                      : `Proceed to Pay • ₹${total.toLocaleString('en-IN')}`
+              }
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* REPAYMENT PAYMENT SUCCESS MODAL */}
+      {paymentSuccess && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 rounded-[16px] p-6 text-center flex flex-col items-center justify-center gap-4 max-w-[380px] w-full shadow-2xl">
+            <div className="text-5xl animate-bounce">⏳</div>
+            <h3 className="text-gold text-lg font-black tracking-tight">Payment Submitted</h3>
+            <p className="text-gray-600 dark:text-gray-300 text-xs leading-relaxed">
+              Your repayment of <strong>₹{onlinePayAmount.toLocaleString('en-IN')}</strong> has been registered and is pending administrator review. Available credit will update once approved.
+            </p>
+            <div className="grid grid-cols-2 gap-4 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-[12px] w-full text-left">
+              <div>
+                <span className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-extrabold block">Outstanding</span>
+                <strong className="text-gray-900 dark:text-white text-base font-extrabold">₹{(userProfile?.outstanding_balance || 0).toLocaleString('en-IN')}</strong>
+              </div>
+              <div>
+                <span className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-extrabold block">Available Credit</span>
+                <strong className="text-emerald-500 text-base font-extrabold">₹{(userProfile?.credit_available || 0).toLocaleString('en-IN')}</strong>
+              </div>
+            </div>
+            <button 
+              type="button"
+              onClick={() => {
+                setPaymentSuccess(false);
+                setShowOnlinePaymentModal(false);
+              }} 
+              className="w-full mt-2 py-3 bg-primary text-white font-extrabold text-xs uppercase rounded-[12px] shadow-lg transition-transform active:scale-[0.98]"
+            >
+              Got It
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* B2B ONLINE CREDIT REPAYMENT MODAL */}
+      {showOnlinePaymentModal && userProfile && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 rounded-[16px] p-5 flex flex-col gap-4 max-w-[400px] w-full shadow-2xl">
+            <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-white/10">
+              <span className="font-extrabold text-gray-900 dark:text-white text-sm">💳 Pay Outstanding Online</span>
+              <button 
+                type="button"
+                onClick={() => setShowOnlinePaymentModal(false)}
+                className="text-gold text-xs font-bold uppercase hover:underline"
+              >
+                ✕ Close
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-extrabold">Select Method</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['UPI', 'Razorpay', 'NetBanking', 'Card'] as const).map(method => (
+                    <button 
+                      key={method}
+                      type="button"
+                      onClick={() => setOnlinePaymentMethod(method)}
+                      className={`p-3 rounded-[12px] text-xs font-extrabold text-center border transition-all ${
+                        onlinePaymentMethod === method 
+                          ? 'bg-gold/15 border-gold text-gold ring-1 ring-gold/30' 
+                          : 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-800 dark:text-white'
+                      }`}
+                    >
+                      {method === 'UPI' && '📱 UPI'}
+                      {method === 'Razorpay' && '💳 Razorpay'}
+                      {method === 'NetBanking' && '🏦 Net Banking'}
+                      {method === 'Card' && '🎴 Card'}
+                    </button>
                   ))}
                 </div>
               </div>
 
-              {/* 4. Coupons application (B2C Only) */}
-              {userRole !== 'b2b' && (
-                <div className="bg-neutral-900 border border-white/5 rounded-[16px] p-4 flex flex-col gap-3.5">
-                  <h3 className="text-white text-xs font-extrabold uppercase tracking-wide">🏷️ Coupon Code</h3>
-                  {appliedCoupon ? (
-                    <div className="flex justify-between items-center bg-emerald-500/10 border border-emerald-500/25 p-3 rounded-[12px]">
-                      <div className="flex flex-col">
-                        <span className="text-emerald-400 font-extrabold text-xs">✓ Coupon {appliedCoupon.code}</span>
-                        <span className="text-[10px] text-emerald-500 font-bold">You saved ₹{discountAmount}!</span>
-                      </div>
-                      <button 
-                        onClick={handleRemoveCoupon} 
-                        className="text-primary text-xs font-black uppercase hover:underline"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-2">
-                      <div className="flex gap-2">
-                        <input 
-                          type="text" 
-                          value={couponCode} 
-                          onChange={e => setCouponCode(e.target.value)} 
-                          placeholder="WELCOME20 or MEAT10" 
-                          className="flex-1 bg-[#1E2020] border border-white/5 text-white rounded-[12px] px-3.5 py-3 text-xs outline-none focus:border-gold/50 text-transform-uppercase"
-                        />
-                        <button 
-                          onClick={handleApplyCoupon} 
-                          className="px-5 py-3 bg-gold text-black text-xs font-black uppercase rounded-[12px] active:scale-95 transition-all"
-                        >
-                          Apply
-                        </button>
-                      </div>
-                      {couponError && <p className="text-primary text-[10px] font-bold mt-0.5">{couponError}</p>}
-                    </div>
-                  )}
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-extrabold">Payment Amount (₹)</label>
+                <div className="flex flex-wrap gap-2 mb-1">
+                  {[5000, 10000].map(amt => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setOnlinePayAmount(amt)}
+                      className="px-2.5 py-1.5 bg-gray-100 dark:bg-neutral-800 text-[10px] font-bold rounded-[8px] text-gray-800 dark:text-white border border-gray-200 dark:border-white/10"
+                      disabled={amt > (userProfile.outstanding_balance || 0)}
+                    >
+                      ₹{amt.toLocaleString('en-IN')}
+                    </button>
+                  ))}
+                  <button
+                    key="full"
+                    type="button"
+                    onClick={() => setOnlinePayAmount(userProfile.outstanding_balance || 0)}
+                    className="px-2.5 py-1.5 bg-primary/10 text-primary border border-primary/30 text-[10px] font-bold rounded-[8px]"
+                  >
+                    Pay Full (₹{(userProfile.outstanding_balance || 0).toLocaleString('en-IN')})
+                  </button>
                 </div>
-              )}
 
-              {/* 4b. MeatCity Loyalty Points & Rewards */}
-              {loyaltyEstimate && loyaltyEstimate.isEnabled && (
-                <div className="bg-gradient-to-br from-neutral-900 via-neutral-900 to-amber-950/20 border border-amber-500/20 rounded-[16px] p-4 flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">👑</span>
-                      <h3 className="text-white text-xs font-extrabold uppercase tracking-wide">
-                        MeatCity Loyalty Points
-                      </h3>
-                    </div>
-                    <span className="text-[10px] bg-gold/10 text-gold px-2 py-0.5 rounded-full font-black border border-gold/20">
-                      Balance: {loyaltyEstimate.availablePoints} pts
-                    </span>
-                  </div>
-
-                  {loyaltyEstimate.maxPointsRedeemable > 0 ? (
-                    <div className="flex items-center justify-between bg-black/40 border border-white/5 rounded-[12px] p-3">
-                      <div className="flex flex-col">
-                        <span className="text-xs text-white font-bold">
-                          Redeem {loyaltyEstimate.maxPointsRedeemable} points
-                        </span>
-                        <span className="text-[10px] text-gold font-bold">
-                          Get flat ₹{loyaltyEstimate.maxRupeeDiscount} off this order
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleLoyaltyPoints(!useLoyaltyPoints)}
-                        className={`px-3.5 py-1.5 rounded-[10px] text-xs font-black uppercase transition-all ${
-                          useLoyaltyPoints
-                            ? 'bg-red-600/20 text-red-400 border border-red-500/30'
-                            : 'bg-gold text-black shadow-md shadow-gold/20 active:scale-95'
-                        }`}
-                      >
-                        {useLoyaltyPoints ? 'Remove' : 'Apply'}
-                      </button>
-                    </div>
-                  ) : (
-                    <p className="text-[10px] text-text-secondary leading-relaxed">
-                      {loyaltyEstimate.availablePoints < (loyaltyEstimate.minPointsForRedemption || 100)
-                        ? `Minimum ${loyaltyEstimate.minPointsForRedemption || 100} points required to redeem on orders (Current: ${loyaltyEstimate.availablePoints} pts).`
-                        : `No points eligible for redemption on this order.`}
-                    </p>
-                  )}
-
-                  {loyaltyEstimate.estimatedPointsEarned > 0 && (
-                    <div className="text-[10px] text-emerald-400 flex items-center gap-1.5 font-bold pt-1 border-t border-white/5">
-                      <span>✨</span>
-                      <span>You'll earn +{loyaltyEstimate.estimatedPointsEarned} points upon successful delivery!</span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* 5. Bill Details */}
-              <div className="bg-neutral-900 border border-white/5 rounded-[16px] p-4 flex flex-col gap-3.5">
-                <h3 className="text-white text-xs font-extrabold uppercase tracking-wide pb-1 border-b border-white/5">
-                  🧾 Bill Breakdown
-                </h3>
-                <div className="flex flex-col gap-3.5 text-xs">
-                  <div className="flex justify-between text-text-secondary">
-                    <span>Items Total</span>
-                    <span className="text-white font-bold">₹{subtotal}</span>
-                  </div>
-                  {discountAmount > 0 && (
-                    <div className="flex justify-between text-emerald-400 font-bold">
-                      <span>Discount ({appliedCoupon?.code})</span>
-                      <span>-₹{discountAmount}</span>
-                    </div>
-                  )}
-                  {activeLoyaltyDiscount > 0 && (
-                    <div className="flex justify-between text-gold font-bold">
-                      <span>Loyalty Points ({pointsToRedeem} pts)</span>
-                      <span>-₹{activeLoyaltyDiscount}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-text-secondary">
-                    <span>Delivery Charge</span>
-                    <span>
-                      {deliveryFee === 0 
-                        ? <strong className="text-emerald-400 font-extrabold">FREE</strong> 
-                        : `₹${deliveryFee}`
-                      }
-                    </span>
-                  </div>
-                  <div className="border-t border-white/5 border-dashed pt-3 mt-1 flex justify-between items-center">
-                    <span className="text-white font-black text-sm uppercase tracking-tight">Grand Total</span>
-                    <span className="text-gold font-extrabold text-base">₹{total}</span>
-                  </div>
-                </div>
+                <input 
+                  type="number" 
+                  placeholder="Enter custom amount"
+                  value={onlinePayAmount || ''}
+                  onChange={e => setOnlinePayAmount(Math.min(userProfile.outstanding_balance || 0, Math.max(0, Number(e.target.value))))}
+                  className="w-full bg-gray-50 dark:bg-[#1E2020] border border-gray-200 dark:border-white/10 rounded-[12px] px-4 py-3 text-gray-900 dark:text-white text-xs outline-none focus:border-gold"
+                />
               </div>
 
-              {/* FSSAI Certified Trust Badge */}
-              <div className="bg-gradient-to-r from-emerald-950/20 to-emerald-900/10 border border-emerald-500/20 rounded-[16px] p-3.5 flex gap-3.5 items-center">
-                <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-lg">
-                  🛡️
-                </div>
-                <div className="flex flex-col text-left text-xs">
-                  <span className="text-emerald-400 font-extrabold text-[9px] uppercase tracking-wide">FSSAI Certified Safety</span>
-                  <span className="text-white font-black mt-0.5">Registration: 21525016001365</span>
-                  <span className="text-[9px] text-text-secondary font-bold mt-0.5">Quality Assured • Hygienic • Fresh Daily • Safe Pack</span>
-                </div>
-              </div>
-            </>
-          )}
+              <button
+                type="button"
+                onClick={() => handleOnlineCreditPayment(onlinePayAmount)}
+                disabled={isProcessingPayment || onlinePayAmount <= 0}
+                className="w-full py-3.5 bg-primary hover:bg-[#B80000] text-white font-extrabold text-xs uppercase rounded-[12px] shadow-lg disabled:opacity-50 transition-all active:scale-[0.98] mt-1"
+              >
+                {isProcessingPayment ? 'Processing Online Payment...' : `Confirm & Pay ₹${onlinePayAmount.toLocaleString('en-IN')}`}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* UPI PAYMENT VERIFICATION MODAL */}
+      {/* B2B UPI REPAYMENT MODAL */}
+      {showUpiRepayModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 rounded-[16px] p-5 flex flex-col gap-4 max-w-[380px] w-full text-center shadow-2xl">
+            <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-white/10 text-left">
+              <span className="font-extrabold text-gray-900 dark:text-white text-sm">📱 UPI Dynamic Pay</span>
+              {!isSubmittingRepayUpi && (
+                <button 
+                  type="button"
+                  onClick={() => setShowUpiRepayModal(false)}
+                  className="text-gray-500 hover:text-gray-900 dark:hover:text-white font-bold text-xs"
+                >
+                  ✕ Close
+                </button>
+              )}
+            </div>
+
+            {repayUpiSuccess ? (
+              <div className="flex flex-col items-center gap-4 py-4 animate-in fade-in duration-300">
+                <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-500 text-3xl animate-bounce">
+                  ✓
+                </div>
+                <div>
+                  <h4 className="text-gray-900 dark:text-white text-base font-extrabold">Repayment Submitted!</h4>
+                  <p className="text-gray-500 dark:text-gray-400 text-[11px] mt-1 max-w-[240px] mx-auto leading-relaxed">
+                    Your repayment of <strong>₹{onlinePayAmount.toLocaleString('en-IN')}</strong> has been submitted successfully and is pending administrator approval.
+                  </p>
+                </div>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setShowUpiRepayModal(false);
+                    setRepayUpiSuccess(false);
+                  }} 
+                  className="w-full mt-2 py-3 bg-emerald-600 text-white font-bold text-xs uppercase rounded-[12px] active:scale-95 transition-all shadow-md"
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                <p className="text-gray-600 dark:text-gray-300 text-[11px] leading-relaxed text-left">
+                  Scan the dynamic QR code below using any UPI app (GPay, PhonePe, Paytm, BHIM) to clear ₹{onlinePayAmount.toLocaleString('en-IN')} of your outstanding dues:
+                </p>
+
+                <div className="p-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-[12px] flex flex-col items-center gap-2">
+                  <div className="w-[140px] h-[140px] border border-gray-200 dark:border-white/10 rounded-[8px] p-2 bg-white flex justify-center items-center shadow-xs">
+                    <img 
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(`upi://pay?pa=meatcity@ybl&pn=Meat%20City&am=${onlinePayAmount}&cu=INR&tn=B2B%20Payment&tr=${repayUpiTxRef}`)}`} 
+                      alt="Meat City Dynamic Repayment QR" 
+                      className="w-full h-full object-contain" 
+                    />
+                  </div>
+                  <div className="text-center">
+                    <span className="text-[9px] text-gray-500 dark:text-gray-400 uppercase font-bold block">UPI ID (Meat City Store)</span>
+                    <strong className="text-gray-900 dark:text-white text-xs font-black">meatcity@ybl</strong>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5 text-left">
+                  <label className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-extrabold">Transaction Reference ID / UTR</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={repayUpiUtrInput}
+                    onChange={e => setRepayUpiUtrInput(e.target.value)}
+                    placeholder="12-digit reference number"
+                    className="bg-gray-50 dark:bg-[#1E2020] border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white rounded-[12px] p-3 text-xs outline-none focus:border-gold"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mt-1">
+                  <button 
+                    type="button"
+                    onClick={() => setShowUpiRepayModal(false)}
+                    disabled={isSubmittingRepayUpi}
+                    className="py-2.5 bg-gray-100 dark:bg-white/10 text-gray-800 dark:text-white font-bold text-xs rounded-[10px] border border-gray-200 dark:border-white/10 active:scale-95"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => submitCartUpiRepayment(onlinePayAmount)}
+                    disabled={isSubmittingRepayUpi || !repayUpiUtrInput}
+                    className="py-2.5 bg-primary hover:bg-[#B80000] disabled:opacity-40 text-white font-black text-xs rounded-[10px] active:scale-95 shadow-md"
+                  >
+                    {isSubmittingRepayUpi ? 'Submitting...' : 'I Have Paid'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* B2B CASH COLLECTION REQUEST MODAL */}
+      {showCashCollectionModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 rounded-[16px] p-5 flex flex-col gap-4 max-w-[400px] w-full shadow-2xl">
+            <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-white/10">
+              <span className="font-extrabold text-gray-900 dark:text-white text-sm">🛵 Request Cash Collection</span>
+              <button 
+                type="button"
+                onClick={() => {
+                  setShowCashCollectionModal(false);
+                  setCashRequestSuccess(false);
+                }}
+                className="text-gold text-xs font-bold uppercase hover:underline"
+              >
+                ✕ Close
+              </button>
+            </div>
+
+            {cashRequestSuccess ? (
+              <div className="text-center py-4 flex flex-col items-center gap-3">
+                <div className="text-5xl">📥</div>
+                <h4 className="font-black text-gold text-sm uppercase tracking-wide">Request Submitted</h4>
+                <p className="text-gray-600 dark:text-gray-300 text-xs leading-relaxed max-w-[280px]">
+                  Your cash collection request of <strong>₹{cashRequestAmount.toLocaleString('en-IN')}</strong> has been registered. The Turbhe branch manager will dispatch an agent.
+                </p>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setShowCashCollectionModal(false);
+                    setCashRequestSuccess(false);
+                  }} 
+                  className="w-full mt-2 py-3 bg-gray-900 dark:bg-white/10 text-white font-bold text-xs rounded-[12px] border border-gray-700 dark:border-white/10 active:scale-95"
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleRequestCashCollection} className="flex flex-col gap-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-extrabold">Preferred Date</label>
+                    <input 
+                      type="date" 
+                      required
+                      value={cashRequestDate}
+                      min={new Date().toISOString().split('T')[0]}
+                      onChange={e => setCashRequestDate(e.target.value)}
+                      className="bg-gray-50 dark:bg-[#1E2020] border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white rounded-[12px] p-2.5 text-xs outline-none"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-extrabold">Amount (₹)</label>
+                    <input 
+                      type="number" 
+                      required
+                      value={cashRequestAmount || ''}
+                      min={1}
+                      max={userProfile?.outstanding_balance || 50000}
+                      onChange={e => setCashRequestAmount(Math.min(userProfile?.outstanding_balance || 50000, Math.max(0, Number(e.target.value))))}
+                      placeholder="Amount to collect"
+                      className="bg-gray-50 dark:bg-[#1E2020] border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white rounded-[12px] p-2.5 text-xs outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-extrabold">Instructions for Agent</label>
+                  <textarea 
+                    required
+                    value={cashRequestRemarks}
+                    onChange={e => setCashRequestRemarks(e.target.value)}
+                    placeholder="e.g. Please collect cash after 3 PM. Call before arriving."
+                    className="bg-gray-50 dark:bg-[#1E2020] border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white rounded-[12px] p-2.5 text-xs outline-none min-h-[60px]"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isProcessingPayment || cashRequestAmount <= 0}
+                  className="w-full py-3 bg-primary text-white font-extrabold text-xs uppercase rounded-[12px] shadow-lg disabled:opacity-50 transition-all active:scale-[0.98] mt-1"
+                >
+                  {isProcessingPayment ? 'Submitting Request...' : `Submit Collection Request (₹${cashRequestAmount.toLocaleString('en-IN')})`}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* B2B STATEMENT / LEDGER MODAL */}
+      {showLedgerModal && userProfile && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 rounded-[16px] p-5 flex flex-col gap-4 max-w-[420px] w-full shadow-2xl">
+            <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-white/10">
+              <span className="font-extrabold text-gray-900 dark:text-white text-sm">📋 B2B Account Statement</span>
+              <button 
+                type="button"
+                onClick={() => setShowLedgerModal(false)}
+                className="text-gold text-xs font-bold uppercase hover:underline"
+              >
+                ✕ Close
+              </button>
+            </div>
+            
+            <div className="max-h-[300px] overflow-y-auto flex flex-col gap-2.5 pr-1">
+              {userProfile.ledger && userProfile.ledger.map((entry: any, idx: number) => (
+                <div key={idx} className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-3 rounded-[12px] flex flex-col gap-1.5">
+                  <div className="flex justify-between items-start">
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400 font-bold">{new Date(entry.date).toLocaleDateString()}</span>
+                    <span className="text-gray-900 dark:text-white font-extrabold text-xs">Bal: ₹{entry.balance}</span>
+                  </div>
+                  <div className="flex justify-between items-end">
+                    <span className="text-gray-800 dark:text-white font-bold text-xs">{entry.description}</span>
+                    {entry.debit > 0 ? (
+                      <span className="text-primary font-black text-xs">Dr: +₹{entry.debit}</span>
+                    ) : entry.credit > 0 ? (
+                      <span className="text-emerald-500 font-black text-xs">Cr: -₹{entry.credit}</span>
+                    ) : (
+                      <span className="text-gray-400 text-xs">—</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {(!userProfile.ledger || userProfile.ledger.length === 0) && (
+                <div className="text-center py-6 text-xs text-gray-500 font-bold">No statement records yet.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CHECKOUT UPI PAYMENT MODAL */}
       {showUpiPaymentModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
-          <div className="bg-[#111111] border border-white/10 p-5 rounded-[16px] w-full max-w-[380px] flex flex-col gap-4">
+          <div className="bg-white dark:bg-[#111111] border border-gray-200 dark:border-white/10 p-5 rounded-[16px] w-full max-w-[380px] flex flex-col gap-4 shadow-2xl">
             <h3 className="text-gold text-sm font-black uppercase tracking-wide flex items-center gap-1.5">
               <span>📱</span> UPI Verification
             </h3>
-            <p className="text-text-secondary text-[11px] leading-relaxed">
-              Please scan the QR code below or transfer <strong>₹{total}</strong> directly to our store UPI handle. Enter the transaction Reference/UTR number after payment.
+            <p className="text-gray-600 dark:text-gray-300 text-[11px] leading-relaxed">
+              Please scan the QR code below or transfer <strong>₹{total.toLocaleString('en-IN')}</strong> directly to our store UPI handle. Enter the transaction Reference/UTR number after payment.
             </p>
             
-            <div className="flex flex-col items-center gap-2.5 p-3.5 bg-white/5 border border-white/5 rounded-[12px]">
-              <div className="w-[140px] h-[140px] border border-white/10 rounded-[8px] p-2 bg-white flex justify-center items-center">
+            <div className="flex flex-col items-center gap-2.5 p-3.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/5 rounded-[12px]">
+              <div className="w-[140px] h-[140px] border border-gray-200 dark:border-white/10 rounded-[8px] p-2 bg-white flex justify-center items-center shadow-xs">
                 <img 
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(`upi://pay?pa=meatcity@ybl&pn=Meat%20City&am=${total}&cu=INR`)}`} 
                   alt="Meat City Dynamic UPI QR" 
@@ -2462,25 +2565,25 @@ export default function CartPage() {
                 />
               </div>
               <div className="text-center">
-                <span className="text-[9px] text-text-secondary uppercase font-bold block">UPI ID (Store Handle)</span>
-                <strong className="text-white text-xs font-extrabold">meatcity@ybl</strong>
+                <span className="text-[9px] text-gray-500 dark:text-gray-400 uppercase font-bold block">UPI ID (Store Handle)</span>
+                <strong className="text-gray-900 dark:text-white text-xs font-black">meatcity@ybl</strong>
               </div>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold">Transaction Reference ID / UTR</label>
+              <label className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-extrabold">Transaction Reference ID / UTR</label>
               <input 
                 type="text" 
                 required
                 value={upiTxRef}
                 onChange={e => setUpiTxRef(e.target.value)}
                 placeholder="12-digit reference number"
-                className="bg-neutral-800 border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
+                className="bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-white/5 text-gray-900 dark:text-white rounded-[12px] p-3 text-xs outline-none focus:border-gold"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold">Payment Screenshot (Optional)</label>
+              <label className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-extrabold">Payment Screenshot (Optional)</label>
               <input 
                 type="file" 
                 accept="image/*"
@@ -2489,16 +2592,16 @@ export default function CartPage() {
                     setUpiScreenshot(e.target.files[0].name);
                   }
                 }}
-                className="bg-neutral-800 border border-white/5 text-white rounded-[12px] p-2 text-xs outline-none"
+                className="bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-white/5 text-gray-900 dark:text-white rounded-[12px] p-2 text-xs outline-none"
               />
-              {upiScreenshot && <span className="text-[10px] text-emerald-400 font-bold">✓ {upiScreenshot} selected</span>}
+              {upiScreenshot && <span className="text-[10px] text-emerald-500 font-bold">✓ {upiScreenshot} selected</span>}
             </div>
 
             <div className="grid grid-cols-2 gap-3 mt-2">
               <button 
                 type="button"
                 onClick={() => setShowUpiPaymentModal(false)}
-                className="py-2.5 bg-[#1E2020] text-white font-bold text-xs rounded-[10px] border border-white/5 active:scale-95"
+                className="py-2.5 bg-gray-100 dark:bg-[#1E2020] text-gray-800 dark:text-white font-bold text-xs rounded-[10px] border border-gray-200 dark:border-white/5 active:scale-95"
               >
                 Cancel
               </button>
@@ -2512,7 +2615,7 @@ export default function CartPage() {
                   completeOrderWithPayment('Pending Verification', upiTxRef);
                 }}
                 disabled={!upiTxRef}
-                className="py-2.5 bg-primary hover:bg-red-700 disabled:opacity-40 disabled:pointer-events-none text-white font-black text-xs rounded-[10px] active:scale-95 shadow-md"
+                className="py-2.5 bg-primary hover:bg-[#B80000] disabled:opacity-40 disabled:pointer-events-none text-white font-black text-xs rounded-[10px] active:scale-95 shadow-md"
               >
                 I Have Paid
               </button>
@@ -2521,60 +2624,60 @@ export default function CartPage() {
         </div>
       )}
 
-      {/* RAZORPAY TEST MODE MODAL */}
+      {/* CHECKOUT RAZORPAY TEST MODE MODAL */}
       {showRazorpayModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
-          <div className="bg-[#111111] border border-white/10 rounded-[16px] w-full max-w-[380px] overflow-hidden flex flex-col">
-            <div className="bg-neutral-900 border-b border-white/5 px-4 py-3 flex justify-between items-center">
-              <span className="font-extrabold text-white text-xs">Razorpay Secure Checkout</span>
-              <span className="text-[8px] bg-white/10 text-text-secondary px-2 py-0.5 rounded-full uppercase tracking-wider">
+          <div className="bg-white dark:bg-[#111111] border border-gray-200 dark:border-white/10 rounded-[16px] w-full max-w-[380px] overflow-hidden flex flex-col shadow-2xl">
+            <div className="bg-gray-50 dark:bg-neutral-900 border-b border-gray-200 dark:border-white/5 px-4 py-3 flex justify-between items-center">
+              <span className="font-extrabold text-gray-900 dark:text-white text-xs">Razorpay Secure Checkout</span>
+              <span className="text-[8px] bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
                 Test Mode
               </span>
             </div>
             
             <div className="p-4 flex flex-col gap-4">
               <div className="flex justify-between items-center text-xs">
-                <span className="text-text-secondary">Merchant</span>
-                <strong className="text-white">Meat City Navi Mumbai</strong>
+                <span className="text-gray-500 dark:text-gray-400">Merchant</span>
+                <strong className="text-gray-900 dark:text-white">Meat City Navi Mumbai</strong>
               </div>
-              <div className="flex justify-between items-center text-xs pb-3 border-b border-white/5">
-                <span className="text-text-secondary font-bold">Amount Due</span>
-                <strong className="text-gold text-base">₹{total}</strong>
+              <div className="flex justify-between items-center text-xs pb-3 border-b border-gray-200 dark:border-white/5">
+                <span className="text-gray-500 dark:text-gray-400 font-bold">Amount Due</span>
+                <strong className="text-gold text-base">₹{total.toLocaleString('en-IN')}</strong>
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold">Dummy Card Number</label>
+                <label className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-extrabold">Dummy Card Number</label>
                 <input 
                   type="text" 
                   maxLength={16}
                   value={razorpayCard.number}
                   onChange={e => setRazorpayCard({...razorpayCard, number: e.target.value})}
                   placeholder="4111 1111 1111 1111" 
-                  className="bg-neutral-800 border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
+                  className="bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-white/5 text-gray-900 dark:text-white rounded-[12px] p-3 text-xs outline-none focus:border-gold"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold">Expiry Date</label>
+                  <label className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-extrabold">Expiry Date</label>
                   <input 
                     type="text" 
                     maxLength={5}
                     value={razorpayCard.expiry}
                     onChange={e => setRazorpayCard({...razorpayCard, expiry: e.target.value})}
                     placeholder="MM/YY" 
-                    className="bg-neutral-800 border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
+                    className="bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-white/5 text-gray-900 dark:text-white rounded-[12px] p-3 text-xs outline-none focus:border-gold"
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold">CVV</label>
+                  <label className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-extrabold">CVV</label>
                   <input 
                     type="password" 
                     maxLength={3}
                     value={razorpayCard.cvv}
                     onChange={e => setRazorpayCard({...razorpayCard, cvv: e.target.value})}
                     placeholder="123" 
-                    className="bg-neutral-800 border border-white/5 text-white rounded-[12px] p-3 text-xs outline-none"
+                    className="bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-white/5 text-gray-900 dark:text-white rounded-[12px] p-3 text-xs outline-none focus:border-gold"
                   />
                 </div>
               </div>
@@ -2594,7 +2697,7 @@ export default function CartPage() {
                     setShowRazorpayModal(false);
                   }}
                   disabled={isProcessingPayment}
-                  className="py-2.5 bg-neutral-855 text-white font-bold text-xs rounded-[10px] border border-white/5 active:scale-95"
+                  className="py-2.5 bg-gray-100 dark:bg-neutral-800 text-gray-800 dark:text-white font-bold text-xs rounded-[10px] border border-gray-200 dark:border-white/5 active:scale-95"
                 >
                   Cancel
                 </button>
@@ -2614,39 +2717,10 @@ export default function CartPage() {
                   disabled={isProcessingPayment}
                   className="py-2.5 bg-[#16a34a] hover:bg-green-700 text-white font-black text-xs rounded-[10px] active:scale-95 shadow-md"
                 >
-                  {isProcessingPayment ? 'Authorizing...' : `Pay ₹${total}`}
+                  {isProcessingPayment ? 'Authorizing...' : `Pay ₹${total.toLocaleString('en-IN')}`}
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* FIXED BOTTOM CHECKOUT ACTION BAR */}
-      {cartItems.length > 0 && !showCreditDuesScreen && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-surface/95 backdrop-blur-md border-t border-border py-4 px-4 shadow-2xl">
-          <div className="max-w-[480px] mx-auto flex items-center justify-between gap-4">
-            <div className="flex flex-col">
-              <span className="text-text-primary text-base font-black">₹{total}</span>
-              <span className="text-[10px] text-text-secondary uppercase tracking-wider font-bold mt-0.5 truncate max-w-[160px]">
-                {cartItems.reduce((acc, i) => acc + i.quantity, 0)} Items • {addresses.find(a => a.id === selectedAddressId)?.name || '...'}
-              </span>
-            </div>
-
-            <button 
-              onClick={handleCheckout} 
-              disabled={isProcessingPayment || isCreditBlocked}
-              className="flex-1 max-w-[240px] py-3.5 bg-primary hover:bg-[#B80000] active:scale-[0.98] disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider rounded-[14px] shadow-lg shadow-primary/20 transition-all text-center"
-            >
-              {isProcessingPayment 
-                ? 'Processing Securely...' 
-                : userRole === 'guest' 
-                  ? 'Login to Checkout' 
-                  : userRole === 'b2b' && isCreditBlocked
-                    ? 'Credit Clearance Required'
-                    : `Proceed to Pay • ₹${total}`
-              }
-            </button>
           </div>
         </div>
       )}
