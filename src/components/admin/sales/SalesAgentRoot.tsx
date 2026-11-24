@@ -138,12 +138,44 @@ export default function SalesAgentRoot({
     }
   };
 
-  // Local Storage Fallback
+  // Known signatures of previously seeded fabricated test records
+  const isFabricatedSeedRecord = (item: any) => {
+    if (!item) return false;
+    const phone = (item.phone || '').replace(/\D/g, '');
+    const id = (item.id || '').toLowerCase();
+    const name = (item.business_name || '').toLowerCase().trim();
+
+    const FAKE_PHONES = ['9820112233', '9833445566', '9892001122', '9819776655', '9867112244', '9820556677', '9821889900', '9819223344'];
+    const FAKE_IDS = ['seed-1', 'seed-2', 'seed-3', 'lead-1', 'lead-2'];
+    const FAKE_NAMES = [
+      'noorani biryani house',
+      'noorani biryani & mughlai',
+      'dawat caterers & events',
+      'dawat grand caterers',
+      'al-madina darbar restaurant'
+    ];
+
+    return FAKE_IDS.includes(id) || FAKE_PHONES.includes(phone) || FAKE_NAMES.includes(name);
+  };
+
+  // Local Storage Fallback with automatic sanitization of previously seeded test records
   const loadFromLocalStorage = () => {
     try {
       const storedLeads = localStorage.getItem('meatcity_sales_leads');
-      if (storedLeads) setLeads(JSON.parse(storedLeads));
-      else setLeads([]);
+      if (storedLeads) {
+        const parsed: SalesLead[] = JSON.parse(storedLeads);
+        if (Array.isArray(parsed)) {
+          const sanitized = parsed.filter((l) => !isFabricatedSeedRecord(l));
+          if (sanitized.length !== parsed.length) {
+            localStorage.setItem('meatcity_sales_leads', JSON.stringify(sanitized));
+          }
+          setLeads(sanitized);
+        } else {
+          setLeads([]);
+        }
+      } else {
+        setLeads([]);
+      }
 
       const storedMessages = localStorage.getItem('meatcity_sales_messages');
       if (storedMessages) setMessages(JSON.parse(storedMessages));
@@ -152,7 +184,16 @@ export default function SalesAgentRoot({
       if (storedQuotes) setQuotations(JSON.parse(storedQuotes));
 
       const storedFollowUps = localStorage.getItem('meatcity_sales_followups');
-      if (storedFollowUps) setFollowUps(JSON.parse(storedFollowUps));
+      if (storedFollowUps) {
+        const parsed = JSON.parse(storedFollowUps);
+        if (Array.isArray(parsed)) {
+          const sanitized = parsed.filter((f: any) => f.id !== 'fu-1' && f.lead_id !== 'lead-2' && f.lead_id !== 'seed-2');
+          if (sanitized.length !== parsed.length) {
+            localStorage.setItem('meatcity_sales_followups', JSON.stringify(sanitized));
+          }
+          setFollowUps(sanitized);
+        }
+      }
 
       const storedSettings = localStorage.getItem('meatcity_sales_settings');
       if (storedSettings) {

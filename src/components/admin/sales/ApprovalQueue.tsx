@@ -151,6 +151,8 @@ export default function ApprovalQueue({
               (l) => l.id === msg.lead_id || (msg.recipient_phone && l.phone && normalizePhone(l.phone) === normalizePhone(msg.recipient_phone))
             );
             const isOptedOut = Boolean(relatedLead && (relatedLead.opt_out === true || relatedLead.status === 'Opted Out'));
+            const phoneDigits = (msg.recipient_phone || '').replace(/\D/g, '');
+            const hasValidPhone = phoneDigits.length >= 10;
 
             return (
               <div
@@ -221,6 +223,19 @@ export default function ApprovalQueue({
                       <div className="font-bold text-rose-300">Recipient Opted Out / Do Not Contact</div>
                       <p className="text-[11px] text-rose-400/90 mt-0.5">
                         This contact has requested not to receive sales outreach. Outbound WhatsApp dispatch and manual send confirmation are blocked.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Unverified Phone Warning Card */}
+                {!hasValidPhone && (
+                  <div className="p-3 bg-amber-950/40 border border-amber-500/50 rounded-xl text-xs text-amber-200 flex items-start gap-2.5">
+                    <span className="text-base text-amber-400">⚠️</span>
+                    <div>
+                      <div className="font-bold text-amber-300">Unverified Contact Phone Number</div>
+                      <p className="text-[11px] text-amber-400/90 mt-0.5">
+                        This message draft does not have a verified 10-digit Indian phone number. Direct WhatsApp dispatch and manual send confirmation are blocked.
                       </p>
                     </div>
                   </div>
@@ -315,6 +330,14 @@ export default function ApprovalQueue({
                           >
                             Cannot Approve (Opted Out)
                           </button>
+                        ) : !hasValidPhone ? (
+                          <button
+                            disabled
+                            className="px-4 py-1.5 bg-gray-800 text-gray-500 cursor-not-allowed rounded text-xs font-bold"
+                            title="Cannot approve message: Recipient phone number is missing or unverified (less than 10 digits)."
+                          >
+                            Cannot Approve (Unverified Phone)
+                          </button>
                         ) : (
                           <button
                             onClick={() => handleApprove(msg.id)}
@@ -337,18 +360,25 @@ export default function ApprovalQueue({
                             <span>🚫</span>
                             <span>WhatsApp Blocked</span>
                           </button>
+                        ) : !hasValidPhone ? (
+                          <button
+                            disabled
+                            className="px-3 py-1.5 bg-gray-800 text-gray-500 cursor-not-allowed rounded text-xs font-bold flex items-center gap-1.5"
+                            title="Cannot open WhatsApp: Recipient phone number is missing or unverified (less than 10 digits). Verification required before outreach."
+                          >
+                            <span>🚫</span>
+                            <span>Unverified Phone</span>
+                          </button>
                         ) : (
-                          msg.recipient_phone && (
-                            <a
-                              href={getWhatsAppUrl(msg.recipient_phone, msg.content)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-extrabold transition-colors flex items-center gap-1.5"
-                            >
-                              <span>💬</span>
-                              <span>Open in WhatsApp</span>
-                            </a>
-                          )
+                          <a
+                            href={getWhatsAppUrl(msg.recipient_phone, msg.content)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-extrabold transition-colors flex items-center gap-1.5"
+                          >
+                            <span>💬</span>
+                            <span>Open in WhatsApp</span>
+                          </a>
                         )}
 
                         {isOptedOut ? (
@@ -358,6 +388,14 @@ export default function ApprovalQueue({
                             title="Cannot confirm send for opted-out recipient."
                           >
                             Blocked (Opted Out)
+                          </button>
+                        ) : !hasValidPhone ? (
+                          <button
+                            disabled
+                            className="px-4 py-1.5 bg-gray-800 text-gray-500 cursor-not-allowed rounded text-xs font-bold"
+                            title="Outreach blocked: Contact phone number is missing or unverified (less than 10 digits). Valid verified phone number required before confirming send."
+                          >
+                            Blocked (Unverified Phone)
                           </button>
                         ) : (
                           <button

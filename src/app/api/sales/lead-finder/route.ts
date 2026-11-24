@@ -76,14 +76,12 @@ export async function POST(request: Request) {
         // Exclude opted-out contacts
         if (lead.opt_out === true || lead.status === 'Opted Out') continue;
 
-        // A lead is marked verified only with genuine owner verification or confirmed commercial relationship.
-        // An arbitrary HTTP/HTTPS source URL alone does NOT grant verified status.
+        // A lead is marked verified ONLY with explicit owner verification or genuine documented evidence.
+        // Commercial progression statuses (Quoted, Trial Order, Active Customer) and arbitrary HTTP URLs do NOT confer verification.
         const hasOwnerVerification = Boolean(
           lead.is_verified === true ||
-          lead.status === 'Active Customer' ||
-          lead.status === 'Quoted' ||
-          lead.status === 'Trial Order' ||
-          lead.status === 'Verified'
+          lead.status === 'Verified' ||
+          Boolean(lead.verified_at && lead.verified_by)
         );
 
         const isVerified = hasOwnerVerification;

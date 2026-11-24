@@ -183,15 +183,33 @@ export default function SalesOverview({
                       {lead.category} • Est. {lead.estimated_daily_kg || 25}kg/day • Status: <span className="text-gray-300 font-semibold">{lead.status}</span>
                     </div>
                   </div>
-                  <button
-                    onClick={() => {
-                      if (onSelectLeadForMessage) onSelectLeadForMessage(lead);
-                      onNavigateTab('generator');
-                    }}
-                    className="px-3 py-1.5 bg-[#D4AF37]/20 hover:bg-[#D4AF37] text-[#D4AF37] hover:text-black rounded text-xs font-bold transition-colors whitespace-nowrap"
-                  >
-                    Draft AI Message
-                  </button>
+                  {lead.opt_out || lead.status === 'Opted Out' ? (
+                    <button
+                      disabled
+                      title="Recipient has opted out of communications"
+                      className="px-3 py-1.5 bg-gray-800 text-gray-500 cursor-not-allowed rounded text-xs font-bold whitespace-nowrap"
+                    >
+                      ⛔ Opted Out
+                    </button>
+                  ) : (lead.phone || '').replace(/\D/g, '').length < 10 ? (
+                    <button
+                      disabled
+                      title="Contact phone number is unverified (less than 10 digits)"
+                      className="px-3 py-1.5 bg-gray-800 text-gray-500 cursor-not-allowed rounded text-xs font-bold whitespace-nowrap"
+                    >
+                      🚫 Unverified
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        if (onSelectLeadForMessage) onSelectLeadForMessage(lead);
+                        onNavigateTab('generator');
+                      }}
+                      className="px-3 py-1.5 bg-[#D4AF37]/20 hover:bg-[#D4AF37] text-[#D4AF37] hover:text-black rounded text-xs font-bold transition-colors whitespace-nowrap"
+                    >
+                      Draft AI Message
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

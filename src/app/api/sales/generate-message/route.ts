@@ -60,10 +60,7 @@ export async function POST(request: Request) {
       ? createSupabaseClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } })
       : supabase;
 
-    const isPendingMigrationError = (err: any) =>
-      Boolean(err && (err.code === 'PGRST205' || err.message?.includes('schema cache') || err.message?.includes('does not exist')));
-
-    // Verify opt-out status against sales_leads table by leadId
+    // Verify opt-out status against sales_leads table by leadId (fails closed on any error, including PGRST205)
     if (leadId) {
       try {
         const { data: leadRecord, error: leadErr } = await dbClient.from('sales_leads')
@@ -71,10 +68,10 @@ export async function POST(request: Request) {
           .eq('id', leadId)
           .single();
 
-        if (leadErr && !isPendingMigrationError(leadErr) && leadErr.code !== 'PGRST116') {
+        if (leadErr && leadErr.code !== 'PGRST116') {
           console.error('[Sales API] Database error during lead opt-out check:', leadErr);
           return NextResponse.json(
-            { error: 'Security check failed: Unable to verify lead opt-out status due to a database service error. Outbound message generation is blocked.' },
+            { error: 'Security check failed: Unable to verify lead opt-out status due to a database service error or missing sales table. Outbound message generation is blocked.' },
             { status: 503 }
           );
         }
@@ -86,17 +83,15 @@ export async function POST(request: Request) {
           );
         }
       } catch (err: any) {
-        if (!isPendingMigrationError(err)) {
-          console.error('[Sales API] Exception during lead opt-out check:', err);
-          return NextResponse.json(
-            { error: 'Security check failed: Unable to verify lead opt-out status. Outbound message generation is blocked.' },
-            { status: 503 }
-          );
-        }
+        console.error('[Sales API] Exception during lead opt-out check:', err);
+        return NextResponse.json(
+          { error: 'Security check failed: Unable to verify lead opt-out status. Outbound message generation is blocked.' },
+          { status: 503 }
+        );
       }
     }
 
-    // Verify opt-out status against sales_leads table by recipient phone
+    // Verify opt-out status against sales_leads table by recipient phone (fails closed on any error, including PGRST205)
     if (recipientPhone) {
       try {
         const digits = recipientPhone.replace(/\D/g, '');
@@ -107,10 +102,10 @@ export async function POST(request: Request) {
             .ilike('phone', `%${last10}%`)
             .limit(5);
 
-          if (phoneErr && !isPendingMigrationError(phoneErr)) {
+          if (phoneErr) {
             console.error('[Sales API] Database error during phone opt-out check:', phoneErr);
             return NextResponse.json(
-              { error: 'Security check failed: Unable to verify phone opt-out status due to a database service error. Outbound message generation is blocked.' },
+              { error: 'Security check failed: Unable to verify phone opt-out status due to a database service error or missing sales table. Outbound message generation is blocked.' },
               { status: 503 }
             );
           }
@@ -123,13 +118,11 @@ export async function POST(request: Request) {
           }
         }
       } catch (err: any) {
-        if (!isPendingMigrationError(err)) {
-          console.error('[Sales API] Exception during phone opt-out check:', err);
-          return NextResponse.json(
-            { error: 'Security check failed: Unable to verify phone opt-out status. Outbound message generation is blocked.' },
-            { status: 503 }
-          );
-        }
+        console.error('[Sales API] Exception during phone opt-out check:', err);
+        return NextResponse.json(
+          { error: 'Security check failed: Unable to verify phone opt-out status. Outbound message generation is blocked.' },
+          { status: 503 }
+        );
       }
     }
 
@@ -163,6 +156,17 @@ export async function POST(request: Request) {
         return NextResponse.json(
           { error: 'Security check failed: Unable to verify customer account status. Outbound message generation is blocked.' },
           { status: 503 }
+        );
+      }
+    }
+
+    // Ensure contact details are valid and verified before outreach can be generated
+    if (recipientPhone) {
+      const cleanDigits = recipientPhone.replace(/\D/g, '');
+      if (cleanDigits.length < 10) {
+        return NextResponse.json(
+          { error: 'Contact phone number is incomplete or unverified. A valid 10-digit Indian mobile number is required before outreach can be generated.' },
+          { status: 400 }
         );
       }
     }

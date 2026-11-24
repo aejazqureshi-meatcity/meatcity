@@ -267,6 +267,14 @@ export default function B2BLeads({
                           >
                             ⛔ Opted Out
                           </button>
+                        ) : (lead.phone || '').replace(/\D/g, '').length < 10 ? (
+                          <button
+                            disabled
+                            title="Contact phone number is missing or unverified (less than 10 digits). Verification required before message generation."
+                            className="px-2.5 py-1.5 bg-gray-800 text-gray-500 cursor-not-allowed font-bold rounded text-[11px]"
+                          >
+                            🚫 Unverified
+                          </button>
                         ) : (
                           <button
                             onClick={() => {
@@ -430,6 +438,14 @@ export default function B2BLeads({
                     className="px-4 py-2 bg-gray-800 text-gray-500 cursor-not-allowed rounded-lg font-extrabold text-xs"
                   >
                     ⛔ Message Blocked (Opted Out)
+                  </button>
+                ) : (activeLead.phone || '').replace(/\D/g, '').length < 10 ? (
+                  <button
+                    disabled
+                    title="A valid 10-digit Indian mobile number is required before drafting an outreach message."
+                    className="px-4 py-2 bg-gray-800 text-gray-500 cursor-not-allowed rounded-lg font-extrabold text-xs"
+                  >
+                    🚫 Phone Unverified
                   </button>
                 ) : (
                   <button

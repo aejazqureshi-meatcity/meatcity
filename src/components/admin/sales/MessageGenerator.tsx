@@ -108,12 +108,14 @@ export default function MessageGenerator({
     }
   };
 
-  // Opt-out detection
+  // Opt-out and phone verification detection
   const currentLead = leads.find((l) => l.id === leadId) || (selectedLead?.id === leadId ? selectedLead : null);
   const isOptedOut = recipientType === 'b2b' && Boolean(
     (currentLead && (currentLead.opt_out === true || currentLead.status === 'Opted Out')) ||
     (selectedLead && (selectedLead.opt_out === true || selectedLead.status === 'Opted Out'))
   );
+  const phoneDigits = (recipientPhone || '').replace(/\D/g, '');
+  const hasValidPhone = phoneDigits.length >= 10;
 
   // Trigger Gemini API generation
   const handleGenerate = async () => {
@@ -124,6 +126,11 @@ export default function MessageGenerator({
 
     if (!recipientName) {
       alert('Please specify a recipient name or select a lead/customer.');
+      return;
+    }
+
+    if (!hasValidPhone) {
+      alert('Contact phone number is incomplete or unverified. A valid 10-digit Indian mobile number is required before outreach can be generated.');
       return;
     }
 
@@ -432,15 +439,17 @@ export default function MessageGenerator({
 
           <button
             onClick={handleGenerate}
-            disabled={isGenerating || isOptedOut}
+            disabled={isGenerating || isOptedOut || !hasValidPhone}
             className={`w-full py-3 font-black text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg ${
-              isOptedOut
+              isOptedOut || !hasValidPhone
                 ? 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700'
                 : 'bg-[#D4AF37] hover:bg-[#b5952f] disabled:opacity-50 text-black'
             }`}
           >
             {isOptedOut
               ? '⛔ Generation Blocked (Recipient Opted Out)'
+              : !hasValidPhone
+              ? '🚫 Generation Blocked (Phone Number Unverified)'
               : isGenerating
               ? 'Drafting Message with Gemini...'
               : '⚡ Generate AI Sales Message'}
