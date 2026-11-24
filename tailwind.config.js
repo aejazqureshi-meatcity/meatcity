@@ -10,18 +10,20 @@ module.exports = {
     extend: {
       colors: {
         primary: '#D60000',
+        'primary-hover': '#B80000',
         gold: '#D4AF37',
-        black: '#111111',
-        white: '#FFFFFF',
-        background: '#F8F9FA',
-        surface: '#111111',
-        "text-primary": '#FFFFFF',
-        "text-secondary": '#B8B8B8',
-        border: 'rgba(255,255,255,0.08)'
+        'gold-light': '#F3E5AB',
+        surface: 'var(--color-surface)',
+        'surface-elevated': 'var(--color-surface-elevated)',
+        background: 'var(--color-background)',
+        'text-primary': 'var(--color-text-primary)',
+        'text-secondary': 'var(--color-text-secondary)',
+        border: 'var(--color-border)',
       },
       borderRadius: {
         DEFAULT: '16px',
-        btn: '12px'
+        btn: '12px',
+        card: '16px',
       },
       spacing: {
         container: '480px'

@@ -1,127 +1,180 @@
 "use client";
 
-import { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
+import { useTheme } from '@/context/ThemeContext';
 
 interface SplashScreensProps {
   onComplete: () => void;
+  forceShow?: boolean;
 }
 
-export default function SplashScreens({ onComplete }: SplashScreensProps) {
-  const [step, setStep] = useState(1);
+export default function SplashScreens({ onComplete, forceShow = false }: SplashScreensProps) {
+  const { resolvedTheme } = useTheme();
+  const [phase, setPhase] = useState<number>(0); // 0: walking in, 1: logo reveal, 2: tagline, 3: transition out
+  const [isDismissing, setIsDismissing] = useState(false);
 
-  const nextStep = () => {
-    if (step < 3) {
-      setStep(step + 1);
-    } else {
-      onComplete();
+  useEffect(() => {
+    // Check if splash was already shown this session
+    if (!forceShow) {
+      const shown = typeof window !== 'undefined' ? sessionStorage.getItem('meatcity_splash_shown') : null;
+      if (shown) {
+        onComplete();
+        return;
+      }
     }
+
+    // Check reduced motion preference
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (mediaQuery.matches) {
+      sessionStorage.setItem('meatcity_splash_shown', 'true');
+      onComplete();
+      return;
+    }
+
+    // Animation timeline (max 2300ms total)
+    // 0ms -> Phase 0: stepping in from left
+    const t1 = setTimeout(() => setPhase(1), 600);   // 600ms -> Phase 1: Logo reveal & center
+    const t2 = setTimeout(() => setPhase(2), 1300);  // 1300ms -> Phase 2: Tagline fade in
+    const t3 = setTimeout(() => {
+      setPhase(3);
+      setIsDismissing(true);
+    }, 1900); // 1900ms -> Phase 3: Smooth exit transition
+    const t4 = setTimeout(() => {
+      sessionStorage.setItem('meatcity_splash_shown', 'true');
+      onComplete();
+    }, 2300); // 2300ms -> Complete
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
+    };
+  }, [onComplete, forceShow]);
+
+  const handleSkip = () => {
+    sessionStorage.setItem('meatcity_splash_shown', 'true');
+    setIsDismissing(true);
+    setTimeout(onComplete, 150);
   };
 
-  const skipSplash = () => {
-    onComplete();
-  };
+  const isDark = resolvedTheme === 'dark';
 
   return (
-    <div className="flex flex-col min-h-screen bg-black text-white px-6 py-6 font-primary justify-between">
-      {/* Top Bar with dots & skip button */}
-      <div className="flex justify-between items-center w-full mt-4">
-        <div className="flex gap-2">
-          {[1, 2, 3].map((s) => (
-            <div
-              key={s}
-              className={`h-2 rounded-full transition-all duration-350 cursor-pointer ${
-                step === s ? 'w-6 bg-gold' : 'w-2 bg-white/20'
-              }`}
-              onClick={() => setStep(s)}
-            />
-          ))}
-        </div>
-        {step < 3 && (
-          <button 
-            onClick={skipSplash}
-            className="text-text-secondary text-sm font-bold tracking-wide hover:text-white transition-colors"
-          >
-            Skip
-          </button>
-        )}
-      </div>
+    <div
+      role="dialog"
+      aria-label="Welcome to MeatCity"
+      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-between p-6 select-none transition-opacity duration-300 ${
+        isDismissing ? 'opacity-0 pointer-events-none' : 'opacity-100'
+      } ${
+        isDark 
+          ? 'bg-[#0B0B0B] text-white' 
+          : 'bg-[#FDFDFD] text-[#111111]'
+      }`}
+    >
+      {/* Ambient background glow */}
+      <div 
+        className={`absolute inset-0 pointer-events-none transition-opacity duration-1000 ${
+          isDark 
+            ? 'bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#D60000]/15 via-transparent to-transparent' 
+            : 'bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#D60000]/5 via-transparent to-transparent'
+        }`} 
+      />
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col justify-center items-center w-full max-w-sm mx-auto my-8">
-        {step === 1 && (
-          <div className="flex flex-col items-center text-center animate-in fade-in slide-in-from-bottom-6 duration-300">
-            <div className="relative w-32 h-32 mb-6">
-              <svg className="w-full h-full" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="50" cy="50" r="45" stroke="#D4AF37" strokeWidth="3" fill="#111" />
-                <path d="M30 65V35L50 50L70 35V65" stroke="#D60000" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M50 50V68" stroke="#D4AF37" strokeWidth="4" strokeLinecap="round" />
-                <circle cx="50" cy="30" r="5" fill="#D4AF37" />
-              </svg>
-            </div>
-            <h1 className="text-white text-3xl font-extrabold tracking-tight mb-2">
-              Meat <span className="text-gold">City</span>
-            </h1>
-            <div className="text-gold text-sm font-bold tracking-widest uppercase mb-6">"Meat That Matters"</div>
-            <p className="text-text-secondary text-sm leading-relaxed max-w-[280px]">
-              Navi Mumbai's premium source for farm-fresh, 100% Halal cuts.
-            </p>
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="flex flex-col items-center text-center animate-in fade-in slide-in-from-bottom-6 duration-300">
-            <div className="relative w-48 h-48 mb-6">
-              <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-                <circle cx="100" cy="100" r="80" fill="rgba(214, 0, 0, 0.05)" />
-                <path d="M60 110C60 90 90 60 110 60C130 60 145 75 145 95C145 115 115 145 95 145C75 145 60 130 60 110Z" fill="#D60000" opacity="0.9" />
-                <path d="M85 85C80 80 80 70 85 65C90 60 100 60 105 65C110 70 110 80 105 85C100 90 90 90 85 85Z" fill="#FFAAAA" />
-                <path d="M125 75L150 50" stroke="white" strokeWidth="8" strokeLinecap="round" />
-                <circle cx="150" cy="50" r="6" fill="white" />
-                <rect x="70" y="115" width="60" height="24" rx="12" fill="#D4AF37" />
-                <text x="100" y="131" fill="#111111" fontSize="9" fontWeight="900" textAnchor="middle" letterSpacing="0.5">HALAL</text>
-              </svg>
-            </div>
-            <h2 className="text-white text-2xl font-extrabold tracking-tight mb-3">Freshness Guaranteed</h2>
-            <p className="text-text-secondary text-sm leading-relaxed max-w-[280px]">
-              Every cut is hand-picked, hygienically packed, and delivered super cold.
-            </p>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="flex flex-col items-center text-center animate-in fade-in slide-in-from-bottom-6 duration-300">
-            <div className="relative w-48 h-48 mb-6">
-              <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-                <circle cx="100" cy="100" r="80" fill="rgba(212, 175, 55, 0.05)" />
-                <path d="M50 130H150" stroke="#111" strokeWidth="6" strokeLinecap="round" />
-                <circle cx="70" cy="130" r="20" stroke="#111" strokeWidth="6" fill="white" />
-                <circle cx="70" cy="130" r="8" fill="#D4AF37" />
-                <circle cx="130" cy="130" r="20" stroke="#111" strokeWidth="6" fill="white" />
-                <circle cx="130" cy="130" r="8" fill="#D4AF37" />
-                <path d="M70 110H120L135 75H145" stroke="#D60000" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
-                <rect x="55" y="65" width="45" height="40" rx="5" fill="#111111" stroke="#D4AF37" strokeWidth="2" />
-                <path d="M77 85H60" stroke="#D4AF37" strokeWidth="2" />
-                <text x="77" y="90" fill="#D4AF37" fontSize="6" fontWeight="bold" textAnchor="middle">MEAT CITY</text>
-                <line x1="30" y1="80" x2="15" y2="80" stroke="#D4AF37" strokeWidth="3" strokeLinecap="round" />
-                <line x1="35" y1="95" x2="20" y2="95" stroke="#D60000" strokeWidth="3" strokeLinecap="round" />
-              </svg>
-            </div>
-            <h2 className="text-white text-2xl font-extrabold tracking-tight mb-3">Super Fast Delivery</h2>
-            <p className="text-text-secondary text-sm leading-relaxed max-w-[280px]">
-              Quick and contactless delivery across Turbhe and Navi Mumbai.
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Footer / Action Button */}
-      <div className="w-full max-w-sm mx-auto mb-6">
+      {/* Top Bar with Skip */}
+      <div className="w-full flex justify-end items-center relative z-10 pt-2">
         <button
-          onClick={nextStep}
-          className="w-full py-4 bg-primary text-white font-extrabold text-sm uppercase tracking-wider rounded-[12px] shadow-lg transition-all duration-200 active:scale-[0.98] hover:bg-red-700"
+          onClick={handleSkip}
+          className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95 border ${
+            isDark
+              ? 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border-white/10'
+              : 'bg-black/5 hover:bg-black/10 text-gray-500 hover:text-black border-black/5'
+          }`}
         >
-          {step === 3 ? 'Get Started' : 'Next'}
+          Skip ✕
         </button>
+      </div>
+
+      {/* Center Animation Stage */}
+      <div className="flex-1 flex flex-col items-center justify-center text-center relative z-10 w-full max-w-sm">
+        {/* Chicken Character / Primary Logo */}
+        <div className="relative flex items-center justify-center">
+          {/* Subtle Golden halo / contrast backing in dark mode so black chicken body pops */}
+          {isDark && (
+            <div className="absolute w-44 h-44 rounded-full bg-gradient-to-tr from-[#D4AF37]/20 via-[#D60000]/15 to-transparent blur-2xl animate-pulse pointer-events-none" />
+          )}
+
+          <div
+            className={`transition-all duration-700 ease-out transform ${
+              phase === 0
+                ? '-translate-x-12 opacity-80 scale-95 rotate-[-3deg]'
+                : phase === 1
+                ? 'translate-x-0 opacity-100 scale-100 rotate-0'
+                : 'translate-x-0 opacity-100 scale-105'
+            }`}
+          >
+            {/* Logo container with dark-mode contrast border/badge if in dark mode */}
+            <div className={`p-4 rounded-3xl transition-colors ${
+              isDark 
+                ? 'bg-[#141414] border border-white/10 shadow-2xl shadow-black/80' 
+                : 'bg-white shadow-xl shadow-red-500/5 border border-black/5'
+            }`}>
+              <Image
+                src="/images/brand/meatcity-primary.png"
+                alt="MeatCity Primary Logo"
+                width={150}
+                height={200}
+                priority
+                className="w-auto h-36 object-contain"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Brand Name Typography Reveal (600ms+) */}
+        <div className={`mt-6 transition-all duration-500 ${
+          phase >= 1 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
+        }`}>
+          <div className="flex items-center justify-center gap-1.5">
+            <span className="text-2xl font-black tracking-tight text-[#111111] dark:text-white">
+              MEAT
+            </span>
+            <span className="text-2xl font-black tracking-tight text-[#D60000]">
+              CITY
+            </span>
+          </div>
+        </div>
+
+        {/* Tagline Reveal (1300ms+) */}
+        <div className={`mt-2 transition-all duration-500 ${
+          phase >= 2 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+        }`}>
+          <div className="flex items-center justify-center gap-2">
+            <span className="h-[1px] w-6 bg-[#D4AF37]/40" />
+            <p className="text-[#D4AF37] text-xs font-black tracking-[0.2em] uppercase">
+              Meat that matters
+            </p>
+            <span className="h-[1px] w-6 bg-[#D4AF37]/40" />
+          </div>
+
+          <div className="flex items-center justify-center gap-2 mt-3">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+              ✓ 100% Halal Assured
+            </span>
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
+              Navi Mumbai
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Progress Bar Indicator */}
+      <div className="w-full max-w-[180px] h-1 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden relative z-10 mb-2">
+        <div 
+          className="h-full bg-gradient-to-r from-[#D60000] to-[#D4AF37] transition-all duration-500 ease-out"
+          style={{ width: `${((phase + 1) / 4) * 100}%` }}
+        />
       </div>
     </div>
   );

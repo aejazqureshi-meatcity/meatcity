@@ -72,17 +72,27 @@ export default function RegisterB2B() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-black text-white px-6 py-8 font-primary justify-between">
+    <div className="flex flex-col min-h-screen bg-background text-text-primary px-6 py-8 font-primary justify-between">
       {/* Header */}
       <div className="flex flex-col items-center mt-4 select-none">
-        <svg className="w-14 h-14 mb-3" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="50" cy="50" r="45" stroke="#D4AF37" strokeWidth="3" fill="#111" />
-          <path d="M30 65V35L50 50L70 35V65" stroke="#D60000" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        <h2 className="text-white text-xl font-black uppercase tracking-tight leading-none text-center">
+        <div className="w-14 h-14 mb-2 flex items-center justify-center">
+          <img
+            src="/images/brand/meatcity-icon.png"
+            alt="MeatCity Icon"
+            className="w-full h-full object-contain dark:hidden"
+          />
+          <img
+            src="/images/brand/meatcity-icon-dark.png"
+            alt="MeatCity Icon"
+            className="w-full h-full object-contain hidden dark:block"
+          />
+        </div>
+        <h2 className="text-text-primary text-xl font-black uppercase tracking-tight leading-none text-center">
           Partner with Us
         </h2>
-        <p className="text-gold text-[10px] mt-1.5 uppercase font-bold tracking-wider">Wholesale Registration</p>
+        <p className="text-gold text-[10px] mt-1.5 uppercase font-bold tracking-wider">
+          Wholesale Registration
+        </p>
       </div>
 
       {/* Form scroll container */}
@@ -141,7 +151,7 @@ export default function RegisterB2B() {
             value={formData.businessAddress}
             onChange={handleChange}
             placeholder="Complete delivery address"
-            className="w-full bg-[#1E2020] border border-white/5 rounded-[12px] px-4 py-3.5 text-white text-sm placeholder:text-text-secondary outline-none transition-all duration-200 focus:border-gold/50 focus:ring-1 focus:ring-gold/50"
+            className="w-full bg-surface border border-border rounded-[12px] px-4 py-3 text-text-primary text-sm placeholder:text-text-secondary outline-none transition-all duration-200 focus:border-primary/60 focus:ring-2 focus:ring-primary/10"
           />
         </div>
 
@@ -152,7 +162,7 @@ export default function RegisterB2B() {
           required
           value={formData.phone}
           onChange={handleChange}
-          placeholder="10-digit mobile"
+          placeholder="10-digit number"
         />
 
         <TextInput 
@@ -166,7 +176,7 @@ export default function RegisterB2B() {
         />
 
         <TextInput 
-          label="Password *"
+          label="Create Password *"
           type="password"
           name="password"
           required
@@ -176,53 +186,37 @@ export default function RegisterB2B() {
         />
 
         <TextInput 
-          label="Monthly Purchase Estimate (₹) *"
-          type="number"
+          label="Expected Monthly Meat Volume (kg)"
+          type="text"
           name="monthlyEstimate"
-          required
           value={formData.monthlyEstimate}
           onChange={handleChange}
-          placeholder="Expected monthly volume"
+          placeholder="e.g. 500 kg"
         />
 
-        {/* Terms and Conditions Scrollbox */}
-        <div className="bg-[#111] border border-white/5 rounded-[12px] p-3 text-[10px] text-text-secondary overflow-y-auto max-h-[120px] leading-relaxed select-none">
-          <p className="font-extrabold text-white mb-1.5 uppercase">B2B Credit Terms & Conditions</p>
-          <ol className="list-decimal list-inside space-y-1">
-            <li>All purchases made on B2B credit must be paid within the approved credit period.</li>
-            <li>Delayed payments may result in suspension of account privileges and future credit facilities.</li>
-            <li>MeatCity reserves the right to recover outstanding dues through legal proceedings if required.</li>
-            <li>Repeated payment defaults may result in permanent account termination.</li>
-            <li>Customer agrees that all invoices, ledger entries, and digital records maintained by MeatCity shall be considered valid proof of transactions.</li>
-            <li>MeatCity reserves the right to modify credit limits based on payment history.</li>
-            <li>Any dispute must be reported within 7 days of invoice generation.</li>
-          </ol>
+        <div className="flex items-start gap-2.5 mt-2">
+          <input
+            type="checkbox"
+            id="terms"
+            checked={agreed}
+            onChange={(e) => setAgreed(e.target.checked)}
+            className="mt-1 w-4 h-4 accent-primary rounded cursor-pointer"
+          />
+          <label htmlFor="terms" className="text-xs text-text-secondary leading-snug cursor-pointer select-none">
+            I agree to MeatCity's B2B Credit Terms, weekly/bi-weekly settlement schedules, and payment obligations.
+          </label>
         </div>
 
-        {/* Checkbox agreement */}
-        <label className="flex items-start gap-2.5 cursor-pointer mt-1 select-none">
-          <input 
-            type="checkbox" 
-            required
-            checked={agreed} 
-            onChange={(e) => setAgreed(e.target.checked)} 
-            className="accent-gold mt-0.5 rounded cursor-pointer"
-          />
-          <span className="text-[11px] text-text-secondary font-bold leading-snug">
-            I agree to the B2B Credit Terms & Conditions. *
-          </span>
-        </label>
-
         <PrimaryButton type="submit" loading={loading} className="mt-2">
-          {loading ? 'Submitting Application...' : 'Submit Application'}
+          {loading ? 'Submitting Application...' : 'Apply for Wholesale Account'}
         </PrimaryButton>
       </form>
 
       {/* Alternative links */}
       <div className="w-full max-w-sm mx-auto text-center mb-2">
         <p className="text-text-secondary text-[11px] font-bold">
-          Already a partner?{' '}
-          <Link href="/login" className="text-gold font-extrabold uppercase hover:underline">
+          Already registered?{' '}
+          <Link href="/login" className="text-gold font-black uppercase hover:underline ml-1">
             Login Here
           </Link>
         </p>

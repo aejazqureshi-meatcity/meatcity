@@ -1,11 +1,23 @@
-/* Design Tokens for Mobile-First UI */
+/* Design Tokens for Mobile-First UI (MeatCity Light & Dark Themes) */
 :root {
-  /* Colors */
+  /* Brand Palette */
+  --color-primary: #D60000;
   --color-primary-red: #D60000;
+  --color-primary-hover: #B80000;
   --color-gold: #D4AF37;
+  --color-gold-light: #F3E5AB;
   --color-black: #111111;
   --color-white: #FFFFFF;
+
+  /* Light Theme (Default) */
   --color-background: #F8F9FA;
+  --color-surface: #FFFFFF;
+  --color-surface-elevated: #FFFFFF;
+  --color-text-primary: #111111;
+  --color-text-secondary: #6B7280;
+  --color-border: #E5E7EB;
+  --color-card-bg: #FFFFFF;
+  --color-input-bg: #F3F4F6;
 
   /* Typography */
   --font-primary: 'Outfit', sans-serif;
@@ -14,16 +26,37 @@
   /* Border radius */
   --radius-default: 16px;
   --radius-btn: 12px;
+  --radius-card: 16px;
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-  --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
 
-/* Utility classes (optional) */
+.dark {
+  /* Dark Theme */
+  --color-background: #0B0B0B;
+  --color-surface: #141414;
+  --color-surface-elevated: #1F1F1F;
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #9CA3AF;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-card-bg: #141414;
+  --color-input-bg: #181818;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.6);
+}
+
+/* Utility classes */
 .bg-primary-red { background-color: var(--color-primary-red); }
 .text-primary-red { color: var(--color-primary-red); }
 .bg-gold { background-color: var(--color-gold); }
 .text-gold { color: var(--color-gold); }
-.bg-black { background-color: var(--color-black); }
-.text-white { color: var(--color-white); }
+.bg-surface { background-color: var(--color-surface); }
+.bg-surface-elevated { background-color: var(--color-surface-elevated); }
+.text-primary-color { color: var(--color-text-primary); }
+.text-secondary-color { color: var(--color-text-secondary); }
+.border-theme { border-color: var(--color-border); }

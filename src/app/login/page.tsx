@@ -69,17 +69,36 @@ export default function Login() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-black text-white px-6 py-10 font-primary justify-between">
+    <div className="flex flex-col min-h-screen bg-background text-text-primary px-6 py-10 font-primary justify-between">
       {/* Top logo */}
       <div className="flex flex-col items-center mt-6 select-none">
-        <svg className="w-16 h-16 mb-3" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="50" cy="50" r="45" stroke="#D4AF37" strokeWidth="3" fill="#111" />
-          <path d="M30 65V35L50 50L70 35V65" stroke="#D60000" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        <h2 className="text-white text-2xl font-black uppercase tracking-tight leading-none">
-          Meat <span className="text-gold">City</span>
-        </h2>
-        <p className="text-text-secondary text-xs mt-1.5 uppercase font-bold tracking-wider">Login to your account</p>
+        <div className="w-16 h-16 mb-2 flex items-center justify-center">
+          <img
+            src="/images/brand/meatcity-icon.png"
+            alt="MeatCity Icon"
+            className="w-full h-full object-contain dark:hidden"
+          />
+          <img
+            src="/images/brand/meatcity-icon-dark.png"
+            alt="MeatCity Icon"
+            className="w-full h-full object-contain hidden dark:block"
+          />
+        </div>
+        <div className="h-7 flex items-center justify-center">
+          <img
+            src="/images/brand/meatcity-wordmark.png"
+            alt="MeatCity"
+            className="h-full object-contain dark:hidden"
+          />
+          <img
+            src="/images/brand/meatcity-wordmark-dark.png"
+            alt="MeatCity"
+            className="h-full object-contain hidden dark:block"
+          />
+        </div>
+        <p className="text-text-secondary text-xs mt-1.5 uppercase font-bold tracking-wider">
+          Meat that matters.
+        </p>
       </div>
 
       {/* Login form */}
@@ -115,18 +134,20 @@ export default function Login() {
 
       {/* Alternative links */}
       <div className="w-full max-w-sm mx-auto text-center flex flex-col gap-3.5 mb-2">
-        <span className="text-text-secondary text-[11px] font-bold uppercase tracking-wider block">Or Register Account</span>
+        <span className="text-text-secondary text-[11px] font-bold uppercase tracking-wider block">
+          Or Register Account
+        </span>
         
         <div className="grid grid-cols-2 gap-3">
           <Link 
             href="/register" 
-            className="py-3 bg-neutral-900 border border-white/5 text-white text-[11px] font-extrabold uppercase rounded-[12px] active:scale-95 transition-all text-center"
+            className="py-3 bg-surface border border-border text-text-primary text-[11px] font-black uppercase rounded-[12px] active:scale-95 transition-all text-center hover:border-primary/40 shadow-xs"
           >
             Retail (B2C)
           </Link>
           <Link 
             href="/register/b2b" 
-            className="py-3 bg-gold/10 border border-gold/20 text-gold text-[11px] font-extrabold uppercase rounded-[12px] active:scale-95 transition-all text-center"
+            className="py-3 bg-gold/10 border border-gold/30 text-gold text-[11px] font-black uppercase rounded-[12px] active:scale-95 transition-all text-center hover:bg-gold/15 shadow-xs"
           >
             Business (B2B)
           </Link>

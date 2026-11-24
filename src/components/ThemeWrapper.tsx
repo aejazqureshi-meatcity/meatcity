@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
+import { ThemeProvider } from "@/context/ThemeContext";
 
-export default function ThemeWrapper({ children }: { children: React.ReactNode }) {
+function ThemeWrapperInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -38,12 +39,20 @@ export default function ThemeWrapper({ children }: { children: React.ReactNode }
   }
 
   return (
-    <div className="max-w-[480px] mx-auto min-h-screen bg-black text-white pb-[80px] relative flex flex-col">
+    <div className="max-w-[480px] mx-auto min-h-screen bg-[var(--color-background)] text-[var(--color-text-primary)] pb-[80px] relative flex flex-col transition-colors duration-200">
       {!isAuthOrDeliveryRoute && <Header />}
       <main className="flex-1 w-full">
         {children}
       </main>
       {!isAuthOrDeliveryRoute && <BottomNav />}
     </div>
+  );
+}
+
+export default function ThemeWrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <ThemeProvider>
+      <ThemeWrapperInner>{children}</ThemeWrapperInner>
+    </ThemeProvider>
   );
 }

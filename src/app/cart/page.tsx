@@ -1656,10 +1656,10 @@ export default function CartPage() {
 
   if (orderSuccess) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen text-center px-6 py-8 bg-black text-white font-primary">
+      <div className="flex flex-col items-center justify-center min-h-screen text-center px-6 py-8 bg-background text-text-primary font-primary">
         <div className="text-6xl mb-6 animate-pulse">🎉</div>
-        <h2 className="text-gold text-2xl font-black tracking-tight mb-2">Order Confirmed!</h2>
-        <p className="text-white font-extrabold text-sm tracking-wide bg-white/5 border border-white/5 px-4 py-2 rounded-full mb-4">
+        <h2 className="text-primary text-2xl font-black tracking-tight mb-2">Order Confirmed!</h2>
+        <p className="text-text-primary font-extrabold text-sm tracking-wide bg-surface border border-border px-4 py-2 rounded-full mb-4">
           Order ID: {placedOrderId}
         </p>
         <p className="text-text-secondary text-xs leading-relaxed max-w-[320px] mb-8">
@@ -1669,14 +1669,14 @@ export default function CartPage() {
         {whatsappEnabled ? (
           <button 
             onClick={handleWhatsAppRedirect} 
-            className="w-full py-4 bg-[#25D366] text-white font-extrabold text-sm uppercase tracking-wider rounded-[12px] shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-[0.98] mb-6"
+            className="w-full py-4 bg-[#25D366] text-white font-black text-sm uppercase tracking-wider rounded-[14px] shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-[0.98] mb-6"
           >
             <span>💬</span> Confirm on WhatsApp
           </button>
         ) : (
           <Link 
             href="/profile?tab=orders" 
-            className="w-full py-4 bg-primary text-white font-extrabold text-sm uppercase rounded-[12px] shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-[0.98] mb-6 text-center"
+            className="w-full py-4 bg-primary text-white font-black text-sm uppercase rounded-[14px] shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-[0.98] mb-6 text-center"
           >
             📦 View Order History
           </Link>
@@ -1684,7 +1684,7 @@ export default function CartPage() {
 
         <Link 
           href="/" 
-          className="text-text-secondary hover:text-white text-xs font-bold tracking-wide uppercase hover:underline"
+          className="text-text-secondary hover:text-primary text-xs font-bold tracking-wide uppercase hover:underline"
         >
           ← Back to Catalog
         </Link>
@@ -1693,18 +1693,18 @@ export default function CartPage() {
   }
 
   return (
-    <div className="flex flex-col bg-black min-h-screen text-white font-primary pb-[100px]">
+    <div className="flex flex-col bg-background min-h-screen text-text-primary font-primary pb-[100px]">
       {/* Top Sticky Header */}
-      <div className="sticky top-0 z-40 bg-[#050505]/90 backdrop-blur-md border-b border-white/5 px-4 py-3.5 flex items-center gap-3">
+      <div className="sticky top-0 z-40 bg-surface/90 backdrop-blur-md border-b border-border px-4 py-3.5 flex items-center gap-3">
         <Link 
           href="/" 
-          className="w-10 h-10 rounded-full flex items-center justify-center bg-white/5 border border-white/5 text-lg text-white active:scale-95 transition-all"
+          className="w-10 h-10 rounded-full flex items-center justify-center bg-surface border border-border text-lg text-text-primary active:scale-95 transition-all shadow-xs"
         >
           ←
         </Link>
         <div className="flex flex-col">
-          <span className="text-white text-sm font-extrabold tracking-tight leading-none uppercase">Secure Checkout</span>
-          <span className="text-[9px] text-text-secondary uppercase font-bold tracking-widest mt-1">
+          <span className="text-text-primary text-sm font-black tracking-tight leading-none uppercase">Secure Checkout</span>
+          <span className="text-[10px] text-text-secondary uppercase font-bold tracking-widest mt-1">
             Meat City Turbhe
           </span>
         </div>
@@ -2385,11 +2385,11 @@ export default function CartPage() {
 
       {/* FIXED BOTTOM CHECKOUT ACTION BAR */}
       {cartItems.length > 0 && !showCreditDuesScreen && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#111111]/95 backdrop-blur-md border-t border-white/5 py-4 px-4 shadow-2xl">
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-surface/95 backdrop-blur-md border-t border-border py-4 px-4 shadow-2xl">
           <div className="max-w-[480px] mx-auto flex items-center justify-between gap-4">
             <div className="flex flex-col">
-              <span className="text-white text-base font-extrabold">₹{total}</span>
-              <span className="text-[9px] text-text-secondary uppercase tracking-wider font-bold mt-0.5 truncate max-w-[160px]">
+              <span className="text-text-primary text-base font-black">₹{total}</span>
+              <span className="text-[10px] text-text-secondary uppercase tracking-wider font-bold mt-0.5 truncate max-w-[160px]">
                 {cartItems.reduce((acc, i) => acc + i.quantity, 0)} Items • {addresses.find(a => a.id === selectedAddressId)?.name || '...'}
               </span>
             </div>
@@ -2397,7 +2397,7 @@ export default function CartPage() {
             <button 
               onClick={handleCheckout} 
               disabled={isProcessingPayment || isCreditBlocked}
-              className="flex-1 max-w-[240px] py-3.5 bg-primary hover:bg-red-700 active:scale-[0.98] disabled:opacity-50 text-white font-extrabold text-xs uppercase tracking-wider rounded-[12px] shadow-lg transition-all text-center"
+              className="flex-1 max-w-[240px] py-3.5 bg-primary hover:bg-[#B80000] active:scale-[0.98] disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider rounded-[14px] shadow-lg shadow-primary/20 transition-all text-center"
             >
               {isProcessingPayment 
                 ? 'Processing Securely...' 

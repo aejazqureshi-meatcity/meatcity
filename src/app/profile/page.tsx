@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { useTheme } from '@/context/ThemeContext';
 
 interface UserProfile {
   id: string;
@@ -34,6 +35,7 @@ interface Order {
 }
 
 export default function ProfilePage() {
+  const { theme, setTheme } = useTheme();
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -438,14 +440,14 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="px-4 py-6 flex flex-col gap-6 bg-black min-h-screen text-white font-primary">
+    <div className="px-4 py-6 flex flex-col gap-6 bg-background min-h-screen text-text-primary font-primary pb-24">
       {/* Top Banner Header */}
-      <div className="flex items-center gap-4 pb-4 border-b border-white/5">
+      <div className="flex items-center gap-4 pb-4 border-b border-border">
         <div className="w-14 h-14 rounded-full bg-gold/15 border border-gold/30 flex items-center justify-center text-gold text-2xl font-black">
           {profile?.full_name?.charAt(0).toUpperCase()}
         </div>
         <div className="flex flex-col">
-          <h2 className="text-white text-lg font-black tracking-tight leading-none uppercase">
+          <h2 className="text-text-primary text-lg font-black tracking-tight leading-none uppercase">
             {profile?.full_name}
           </h2>
           <span className="text-[10px] text-gold font-extrabold uppercase tracking-wider mt-1.5 bg-gold/10 px-2.5 py-0.5 rounded-full w-max">
@@ -455,7 +457,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Tabs Menu */}
-      <div className="grid grid-cols-4 gap-1.5 p-1 bg-white/5 border border-white/5 rounded-[12px] text-center text-xs">
+      <div className="grid grid-cols-4 gap-1.5 p-1 bg-surface border border-border rounded-[14px] text-center text-xs shadow-xs">
         {(['profile', 'orders', 'addresses', 'support'] as const).map(tab => (
           <button
             key={tab}
@@ -464,10 +466,10 @@ export default function ProfilePage() {
               setShowAddEditAddress(false);
               setEditingAddressId(null);
             }}
-            className={`py-2 rounded-[9px] font-extrabold uppercase tracking-tight transition-all ${
+            className={`py-2 rounded-[10px] font-black uppercase tracking-tight transition-all ${
               activeTab === tab 
-                ? 'bg-gold text-black shadow-md' 
-                : 'text-text-secondary hover:text-white'
+                ? 'bg-primary text-white shadow-sm' 
+                : 'text-text-secondary hover:text-text-primary'
             }`}
           >
             {tab === 'profile' && 'Profile'}
@@ -480,24 +482,70 @@ export default function ProfilePage() {
 
       {/* Profile Details Tab */}
       {activeTab === 'profile' && (
-        <div className="flex flex-col gap-5 animate-in fade-in duration-300">
-          <div className="bg-neutral-900 border border-white/5 rounded-[16px] p-5 flex flex-col gap-4">
-            <h3 className="text-white text-xs font-extrabold uppercase tracking-wide border-b border-white/5 pb-2">
+        <div className="flex flex-col gap-4 animate-in fade-in duration-300">
+          {/* Appearance Settings */}
+          <div className="bg-surface border border-border rounded-[18px] p-4 flex flex-col gap-3 shadow-xs">
+            <h3 className="text-text-primary text-xs font-black uppercase tracking-wider border-b border-border pb-2 flex items-center justify-between">
+              <span>🎨 Appearance</span>
+              <span className="text-[10px] text-text-secondary font-semibold capitalize">{theme} Mode</span>
+            </h3>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setTheme('light')}
+                className={`py-2.5 px-3 rounded-[12px] text-xs font-bold flex flex-col items-center gap-1 border transition-all ${
+                  theme === 'light'
+                    ? 'bg-primary/10 border-primary text-primary font-black shadow-xs'
+                    : 'bg-surface border-border text-text-secondary hover:border-primary/40'
+                }`}
+              >
+                <span>☀️</span>
+                <span>Light</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTheme('dark')}
+                className={`py-2.5 px-3 rounded-[12px] text-xs font-bold flex flex-col items-center gap-1 border transition-all ${
+                  theme === 'dark'
+                    ? 'bg-primary/10 border-primary text-primary font-black shadow-xs'
+                    : 'bg-surface border-border text-text-secondary hover:border-primary/40'
+                }`}
+              >
+                <span>🌙</span>
+                <span>Dark</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTheme('system')}
+                className={`py-2.5 px-3 rounded-[12px] text-xs font-bold flex flex-col items-center gap-1 border transition-all ${
+                  theme === 'system'
+                    ? 'bg-primary/10 border-primary text-primary font-black shadow-xs'
+                    : 'bg-surface border-border text-text-secondary hover:border-primary/40'
+                }`}
+              >
+                <span>💻</span>
+                <span>System</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-surface border border-border rounded-[18px] p-5 flex flex-col gap-4 shadow-xs">
+            <h3 className="text-text-primary text-xs font-black uppercase tracking-wide border-b border-border pb-2">
               👤 Personal Information
             </h3>
             
             <div className="flex flex-col gap-3.5">
               <div>
                 <span className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold block">Full Name</span>
-                <span className="text-white text-sm font-bold block mt-0.5">{profile?.full_name}</span>
+                <span className="text-text-primary text-sm font-bold block mt-0.5">{profile?.full_name}</span>
               </div>
               <div>
                 <span className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold block">Mobile Number</span>
-                <span className="text-white text-sm font-bold block mt-0.5">{profile?.phone || 'Not provided'}</span>
+                <span className="text-text-primary text-sm font-bold block mt-0.5">{profile?.phone || 'Not provided'}</span>
               </div>
               <div>
                 <span className="text-[10px] text-text-secondary uppercase tracking-wider font-extrabold block">Email Address</span>
-                <span className="text-white text-sm font-bold block mt-0.5">{profile?.email}</span>
+                <span className="text-text-primary text-sm font-bold block mt-0.5">{profile?.email}</span>
               </div>
             </div>
           </div>
@@ -505,15 +553,15 @@ export default function ProfilePage() {
           <div className="flex flex-col gap-3">
             <Link 
               href="/about"
-              className="flex justify-between items-center px-5 py-4 bg-neutral-900 hover:bg-neutral-800 border border-white/5 rounded-[16px] text-white text-sm font-bold transition-all active:scale-[0.98]"
+              className="flex justify-between items-center px-5 py-4 bg-surface hover:bg-neutral-50 dark:hover:bg-neutral-850 border border-border rounded-[18px] text-text-primary text-sm font-bold transition-all active:scale-[0.98] shadow-xs"
             >
               <span>ℹ️ About MeatCity</span>
-              <span className="text-gold">→</span>
+              <span className="text-primary font-black">→</span>
             </Link>
 
             <button 
               onClick={handleLogout}
-              className="w-full py-4 bg-primary/10 border border-primary/20 hover:bg-primary/15 text-primary font-black text-sm uppercase tracking-wider rounded-[16px] transition-transform active:scale-[0.98]"
+              className="w-full py-3.5 bg-primary/10 border border-primary/20 hover:bg-primary/15 text-primary font-black text-sm uppercase tracking-wider rounded-[18px] transition-transform active:scale-[0.98]"
             >
               🚪 Sign Out Account
             </button>

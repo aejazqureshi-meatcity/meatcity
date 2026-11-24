@@ -42,17 +42,27 @@ export default function RegisterB2C() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-black text-white px-6 py-8 font-primary justify-between">
+    <div className="flex flex-col min-h-screen bg-background text-text-primary px-6 py-8 font-primary justify-between">
       {/* Header */}
       <div className="flex flex-col items-center mt-4 select-none">
-        <svg className="w-14 h-14 mb-3" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="50" cy="50" r="45" stroke="#D4AF37" strokeWidth="3" fill="#111" />
-          <path d="M30 65V35L50 50L70 35V65" stroke="#D60000" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        <h2 className="text-white text-xl font-black uppercase tracking-tight leading-none">
+        <div className="w-14 h-14 mb-2 flex items-center justify-center">
+          <img
+            src="/images/brand/meatcity-icon.png"
+            alt="MeatCity Icon"
+            className="w-full h-full object-contain dark:hidden"
+          />
+          <img
+            src="/images/brand/meatcity-icon-dark.png"
+            alt="MeatCity Icon"
+            className="w-full h-full object-contain hidden dark:block"
+          />
+        </div>
+        <h2 className="text-text-primary text-xl font-black uppercase tracking-tight leading-none">
           Create Account
         </h2>
-        <p className="text-text-secondary text-[11px] mt-1.5 uppercase font-bold tracking-wider">Order fresh cuts to your door</p>
+        <p className="text-text-secondary text-[11px] mt-1.5 uppercase font-bold tracking-wider">
+          Order fresh cuts to your door
+        </p>
       </div>
 
       {/* Form scroll container */}
@@ -116,7 +126,7 @@ export default function RegisterB2C() {
       <div className="w-full max-w-sm mx-auto text-center mb-2">
         <p className="text-text-secondary text-[11px] font-bold">
           Already have an account?{' '}
-          <Link href="/login" className="text-gold font-extrabold uppercase hover:underline">
+          <Link href="/login" className="text-primary font-black uppercase hover:underline ml-1">
             Login Here
           </Link>
         </p>

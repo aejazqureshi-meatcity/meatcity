@@ -424,6 +424,10 @@ export default function Home() {
       } else if (view === 'catalog') {
         setB2bActiveView('catalog');
       }
+      const catParam = params.get('category');
+      if (catParam) {
+        setActiveTab(catParam);
+      }
     }
   }, [router]);
 
@@ -1049,41 +1053,14 @@ export default function Home() {
             />
           )}
 
-          {/* Best Sellers Section */}
-          {bestSellers.length > 0 && !searchQuery && (
-            <section className="flex flex-col gap-3">
-              <h3 className="text-white text-sm font-extrabold uppercase tracking-wide">⭐ Best Sellers</h3>
-              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory">
-                {bestSellers.map(product => (
-                  <div key={product.id} className="min-w-[150px] max-w-[150px] snap-start bg-[#111111] border border-white/5 p-3 rounded-[16px] flex flex-col gap-2.5 justify-between">
-                    <div className="relative aspect-square rounded-[12px] bg-neutral-950 overflow-hidden flex items-center justify-center">
-                      {product.image_url ? (
-                        <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-2xl">🥩</span>
-                      )}
-                    </div>
-                    <div>
-                      <h4 className="text-white text-xs font-extrabold tracking-tight truncate leading-tight">{product.name}</h4>
-                      <div className="flex justify-between items-center mt-2.5 pt-1.5 border-t border-white/5">
-                        <span className="text-white font-extrabold text-xs">₹{userRole === 'b2b' ? product.price_b2b : product.price_b2c}</span>
-                        <button 
-                          onClick={() => handleAddToCart(product.id)}
-                          className="px-2.5 py-1 bg-primary text-white text-[10px] font-black rounded-[8px] active:scale-95 transition-all"
-                        >
-                          {cart[product.id] ? `${cart[product.id]} Added` : '+ Add'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Category Selection Tabs */}
+          {/* Shop by Category Section */}
           <div className="flex flex-col gap-3">
-            <h3 className="text-white text-sm font-extrabold uppercase tracking-wide">Browse Categories</h3>
+            <div className="flex justify-between items-center">
+              <h2 className="text-text-primary text-base font-black tracking-tight">Shop by Category</h2>
+              <Link href="/categories" className="text-xs font-bold text-primary hover:underline">
+                View All
+              </Link>
+            </div>
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
               {categories.map((cat) => (
                 <CategoryCard
@@ -1096,18 +1073,84 @@ export default function Home() {
             </div>
           </div>
 
+          {/* Bestsellers Section */}
+          {bestSellers.length > 0 && !searchQuery && (
+            <section className="flex flex-col gap-3">
+              <h2 className="text-text-primary text-base font-black tracking-tight">Bestsellers</h2>
+              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory">
+                {bestSellers.map(product => (
+                  <div key={product.id} className="min-w-[155px] max-w-[155px] snap-start bg-surface border border-border p-2.5 rounded-[18px] flex flex-col gap-2 justify-between shadow-xs hover:shadow-sm transition-all group">
+                    <Link href={`/product/${product.id}`} className="block">
+                      <div className="relative aspect-square rounded-[14px] bg-neutral-100 dark:bg-neutral-900 overflow-hidden flex items-center justify-center p-1.5">
+                        {product.image_url ? (
+                          <img src={product.image_url} alt={product.name} className="w-full h-full object-cover rounded-[10px] group-hover:scale-105 transition-transform duration-300" />
+                        ) : (
+                          <span className="text-2xl">🥩</span>
+                        )}
+                        <span className="absolute top-2 left-2 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 rounded-full backdrop-blur-md">
+                          Halal
+                        </span>
+                      </div>
+                    </Link>
+                    <div>
+                      <Link href={`/product/${product.id}`}>
+                        <h4 className="text-text-primary text-xs font-black tracking-tight truncate leading-tight group-hover:text-primary transition-colors">
+                          {product.name}
+                        </h4>
+                        <p className="text-[10px] text-text-secondary font-medium truncate mt-0.5">
+                          {product.unit || '1 kg'}
+                        </p>
+                      </Link>
+                      <div className="flex justify-between items-center mt-2 pt-1.5 border-t border-border">
+                        <span className="text-text-primary font-black text-xs">
+                          ₹{userRole === 'b2b' ? product.price_b2b : product.price_b2c}
+                        </span>
+                        {cart[product.id] ? (
+                          <div className="flex items-center bg-primary text-white rounded-[8px] p-0.5">
+                            <button 
+                              onClick={() => handleDecrement(product.id)}
+                              className="w-5 h-5 flex items-center justify-center font-black text-xs active:scale-75"
+                            >
+                              -
+                            </button>
+                            <span className="px-1 text-[10px] font-black min-w-[14px] text-center">
+                              {cart[product.id]}
+                            </span>
+                            <button 
+                              onClick={() => handleIncrement(product.id)}
+                              className="w-5 h-5 flex items-center justify-center font-black text-xs active:scale-75"
+                            >
+                              +
+                            </button>
+                          </div>
+                        ) : (
+                          <button 
+                            onClick={() => handleAddToCart(product.id)}
+                            className="px-2.5 py-1 bg-primary hover:bg-[#B80000] text-white text-[10px] font-black rounded-[8px] active:scale-95 transition-all shadow-xs"
+                          >
+                            + ADD
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Products grid */}
           <div className="flex flex-col gap-3.5">
             <div className="flex justify-between items-center">
-              <h3 className="text-white text-sm font-extrabold uppercase tracking-wide">
-                {activeTab} Selection
-              </h3>
-              <span className="text-[10px] text-text-secondary font-bold">
+              <h2 className="text-text-primary text-base font-black tracking-tight">
+                {activeTab} Cuts
+              </h2>
+              <span className="text-xs text-text-secondary font-bold">
                 {filteredProducts.length} items
               </span>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3.5">
               {filteredProducts.length > 0 ? (
                 filteredProducts.map((product) => (
                    <ProductCard
@@ -1123,7 +1166,7 @@ export default function Home() {
                   />
                 ))
               ) : (
-                <div className="col-span-2 py-12 flex flex-col items-center gap-2 text-center">
+                <div className="col-span-2 py-12 flex flex-col items-center gap-2 text-center bg-surface border border-border rounded-[18px]">
                   <span className="text-3xl">🥩</span>
                   <p className="text-text-secondary text-xs font-bold mt-1">No fresh cuts found in this category.</p>
                 </div>
@@ -1137,15 +1180,15 @@ export default function Home() {
           {/* Customer Reviews Section */}
           {!searchQuery && reviews.length > 0 && (
             <section className="flex flex-col gap-3 mt-4">
-              <h3 className="text-white text-sm font-extrabold uppercase tracking-wide">⭐ Customer Reviews</h3>
+              <h3 className="text-text-primary text-sm font-black uppercase tracking-wide">Customer Reviews</h3>
               <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-none snap-x snap-mandatory">
                 {reviews.map((rev) => (
                   <div 
                     key={rev.id} 
-                    className="min-w-[280px] max-w-[280px] snap-start bg-[#111111] border border-white/5 p-4 rounded-[16px] flex flex-col gap-2"
+                    className="min-w-[280px] max-w-[280px] snap-start bg-surface border border-border p-4 rounded-[18px] flex flex-col gap-2 shadow-xs"
                   >
                     <div className="flex justify-between items-center">
-                      <strong className="text-white text-xs font-black truncate max-w-[160px]">{rev.customer_name}</strong>
+                      <strong className="text-text-primary text-xs font-black truncate max-w-[160px]">{rev.customer_name}</strong>
                       <span className="text-gold text-xs font-bold">
                         {'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}
                       </span>
@@ -1163,14 +1206,14 @@ export default function Home() {
 
       {/* Floating Bottom Cart Bar */}
       {cartItemCount > 0 && (
-        <div className="fixed bottom-[74px] left-4 right-4 z-40 bg-emerald-500 border border-emerald-400 p-4 rounded-[16px] shadow-2xl flex items-center justify-between max-w-[448px] mx-auto animate-in slide-in-from-bottom-8 duration-300">
+        <div className="fixed bottom-[68px] left-4 right-4 z-40 bg-primary text-white p-3.5 rounded-[16px] shadow-2xl flex items-center justify-between max-w-[448px] mx-auto animate-in slide-in-from-bottom-8 duration-300">
           <div className="flex flex-col">
-            <span className="text-white text-[10px] font-black uppercase tracking-wider leading-none">
+            <span className="text-white/80 text-[10px] font-black uppercase tracking-wider leading-none">
               {cartItemCount} Item{cartItemCount > 1 ? 's' : ''} added
             </span>
-            <span className="text-white text-sm font-black tracking-tight mt-0.5">₹{cartTotal}</span>
+            <span className="text-white text-base font-black tracking-tight mt-0.5">₹{cartTotal}</span>
           </div>
-          <Link href="/cart" className="flex items-center gap-1.5 px-4 py-2 bg-black text-white text-xs font-black uppercase rounded-[12px] shadow-md transition-all active:scale-95 select-none">
+          <Link href="/cart" className="flex items-center gap-1.5 px-4 py-2 bg-black text-white text-xs font-black uppercase rounded-[10px] shadow-md transition-all active:scale-95 select-none hover:bg-neutral-900">
             View Cart 🛒
           </Link>
         </div>

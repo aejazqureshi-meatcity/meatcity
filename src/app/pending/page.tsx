@@ -74,23 +74,35 @@ export default function PendingApproval() {
   }, [supabase, router]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen text-center px-6 py-10 bg-black text-white font-primary">
-      <div className="text-6xl mb-6 animate-pulse select-none">⏳</div>
-      <h2 className="text-gold text-xl font-black tracking-tight mb-3">
+    <div className="flex flex-col items-center justify-center min-h-screen text-center px-6 py-10 bg-background text-text-primary font-primary">
+      <div className="w-16 h-16 mb-4 flex items-center justify-center">
+        <img
+          src="/images/brand/meatcity-icon.png"
+          alt="MeatCity Icon"
+          className="w-full h-full object-contain dark:hidden"
+        />
+        <img
+          src="/images/brand/meatcity-icon-dark.png"
+          alt="MeatCity Icon"
+          className="w-full h-full object-contain hidden dark:block"
+        />
+      </div>
+      <div className="text-4xl mb-3 animate-pulse select-none">⏳</div>
+      <h2 className="text-primary text-xl font-black tracking-tight mb-2">
         {isApproved ? 'Application Approved!' : 'Application Under Review'}
       </h2>
       <p className="text-text-secondary text-xs leading-relaxed max-w-[280px] mb-8">
         {isApproved 
           ? 'Your B2B retail partner account has been approved! Redirecting you to the catalog...' 
-          : 'Your B2B account registration has been received and is currently waiting for admin approval. We will contact you shortly once our Turbhe office processes your credentials.'}
+          : 'Your B2B wholesale partner registration has been received and is currently waiting for admin review. Our onboarding desk will verify your details shortly.'}
       </p>
       
       {!isApproved && (
         <Link 
           href="/" 
-          className="w-full max-w-[200px] py-3.5 bg-primary hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-[12px] shadow-lg transition-transform active:scale-[0.98] text-center"
+          className="w-full max-w-[220px] py-3.5 bg-primary hover:bg-[#B80000] text-white font-black text-xs uppercase tracking-wider rounded-[14px] shadow-lg shadow-primary/20 transition-transform active:scale-[0.98] text-center"
         >
-          Check Status / Home
+          Back to Store
         </Link>
       )}
     </div>
