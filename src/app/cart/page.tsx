@@ -870,29 +870,6 @@ export default function CartPage() {
     const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
     const activeRole = freshProfile?.user_type || freshUser.user_metadata?.user_type || userRole;
 
-    if (activeRole === 'b2b' && (paymentMethod === 'Credit' || paymentMethod === 'COD')) {
-      const outstandingBalance = (freshProfile?.outstanding_balance || 0) + total;
-      const creditUsed = (freshProfile?.credit_used || 0) + total;
-      const creditAvailable = (freshProfile?.credit_available || 0) - total;
-      
-      const ledgerEntry = {
-        date: new Date().toISOString(),
-        description: `Order #${orderId} (${paymentMethod === 'Credit' ? 'Credit' : 'COD'})`,
-        debit: total,
-        credit: 0,
-        balance: outstandingBalance
-      };
-
-      const updatedLedger = [...(freshProfile?.ledger || []), ledgerEntry];
-
-      await supabase.from('users').update({
-        outstanding_balance: outstandingBalance,
-        credit_used: creditUsed,
-        credit_available: creditAvailable,
-        ledger: updatedLedger
-      }).eq('id', freshUser.id);
-    }
-
     const orderPayload = {
       id: orderId,
       order_id: orderId,
@@ -939,6 +916,7 @@ export default function CartPage() {
     const dbOrderPayload = {
       id: orderPayload.id,
       user_id: orderPayload.user_id,
+      customer_id: orderPayload.customer_id,
       customer_name: orderPayload.customer_name,
       business_name: orderPayload.business_name,
       customer_phone: orderPayload.customer_phone,
@@ -962,11 +940,52 @@ export default function CartPage() {
       claimed_reward_code: orderPayload.claimed_reward_code
     };
 
-    const { error } = await supabase.from('orders').insert(dbOrderPayload);
+    let { error } = await supabase.from('orders').insert(dbOrderPayload);
+
+    // Fail-safe schema cache fallback: if any optional/loyalty column triggers a PostgREST schema cache error,
+    // retry with core verified orders schema so the customer checkout is never blocked
+    if (error && (
+      error.message?.includes('schema cache') ||
+      error.message?.includes('Could not find') ||
+      error.code === 'PGRST204'
+    )) {
+      console.warn('[SCHEMA CACHE FALLBACK] Retrying order insert with core fields due to:', error.message);
+      const corePayload = {
+        id: dbOrderPayload.id,
+        user_id: dbOrderPayload.user_id,
+        customer_name: dbOrderPayload.customer_name,
+        business_name: dbOrderPayload.business_name,
+        customer_phone: dbOrderPayload.customer_phone,
+        delivery_address: dbOrderPayload.delivery_address,
+        subtotal: dbOrderPayload.subtotal,
+        discount: dbOrderPayload.discount,
+        delivery_fee: dbOrderPayload.delivery_fee,
+        total: dbOrderPayload.total,
+        payment_method: dbOrderPayload.payment_method,
+        payment_status: dbOrderPayload.payment_status,
+        payment_ref: dbOrderPayload.payment_ref,
+        status: dbOrderPayload.status,
+        items: dbOrderPayload.items,
+        delivery_slot: dbOrderPayload.delivery_slot
+      };
+      const retryResult = await supabase.from('orders').insert(corePayload);
+      error = retryResult.error;
+    }
+
     setIsProcessingPayment(false);
 
     if (error) {
-      // Release reservation if insert failed
+      // Securely log technical error on server/console
+      console.error('[CRITICAL] Order placement database failure:', {
+        orderId,
+        userId: freshUser.id,
+        errorMessage: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+
+      // Release loyalty points reservation so points are not deducted
       if (currentReservationId) {
         fetch('/api/loyalty/release', {
           method: 'POST',
@@ -975,8 +994,38 @@ export default function CartPage() {
         }).catch(console.warn);
         setReservationId(null);
       }
-      alert('Failed to place order: ' + error.message);
+
+      // Customer-friendly message (replacing raw database errors)
+      alert('We were unable to complete your order due to a temporary service issue. Please try again. Your cart items and loyalty rewards are safe.');
       return;
+    }
+
+    // Update B2B credit ledger only AFTER order is successfully confirmed in database
+    if (activeRole === 'b2b' && paymentMethod === 'Credit') {
+      try {
+        const outstandingBalance = (freshProfile?.outstanding_balance || 0) + total;
+        const creditUsed = (freshProfile?.credit_used || 0) + total;
+        const creditAvailable = (freshProfile?.credit_available || 0) - total;
+        
+        const ledgerEntry = {
+          date: new Date().toISOString(),
+          description: `Order #${orderId} (Credit)`,
+          debit: total,
+          credit: 0,
+          balance: outstandingBalance
+        };
+
+        const updatedLedger = [...(freshProfile?.ledger || []), ledgerEntry];
+
+        await supabase.from('users').update({
+          outstanding_balance: outstandingBalance,
+          credit_used: creditUsed,
+          credit_available: creditAvailable,
+          ledger: updatedLedger
+        }).eq('id', freshUser.id);
+      } catch (ledgerErr) {
+        console.error('Failed to update B2B ledger after order:', ledgerErr);
+      }
     }
 
     // Mark reward claim as redeemed if free reward was claimed

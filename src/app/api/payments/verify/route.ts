@@ -131,10 +131,49 @@ export async function POST(request: Request) {
       };
 
       // Write order directly to database
-      const { error: orderError } = await supabase.from('orders').insert(dbOrderPayload);
+      let { error: orderError } = await supabase.from('orders').insert(dbOrderPayload);
+
+      // Fail-safe schema cache fallback: if any optional/loyalty column triggers a PostgREST schema cache error,
+      // retry with core verified orders schema so the verified payment order is recorded securely
+      if (orderError && (
+        orderError.message?.includes('schema cache') ||
+        orderError.message?.includes('Could not find') ||
+        orderError.code === 'PGRST204'
+      )) {
+        console.warn('[VERIFY SCHEMA CACHE FALLBACK] Retrying order insert with core fields due to:', orderError.message);
+        const corePayload = {
+          id: dbOrderPayload.id,
+          user_id: dbOrderPayload.user_id,
+          customer_name: dbOrderPayload.customer_name,
+          business_name: dbOrderPayload.business_name,
+          customer_phone: dbOrderPayload.customer_phone,
+          delivery_address: dbOrderPayload.delivery_address,
+          subtotal: dbOrderPayload.subtotal,
+          discount: dbOrderPayload.discount,
+          delivery_fee: dbOrderPayload.delivery_fee,
+          total: dbOrderPayload.total,
+          payment_method: dbOrderPayload.payment_method,
+          payment_status: dbOrderPayload.payment_status,
+          payment_ref: dbOrderPayload.payment_ref,
+          status: dbOrderPayload.status,
+          items: dbOrderPayload.items,
+          delivery_slot: dbOrderPayload.delivery_slot
+        };
+        const retryResult = await supabase.from('orders').insert(corePayload);
+        orderError = retryResult.error;
+      }
+
       if (orderError) {
-        console.error('Failed to save verified order:', orderError);
-        return NextResponse.json({ error: 'Failed to write order: ' + orderError.message }, { status: 500 });
+        console.error('[CRITICAL] Failed to save verified order to database:', {
+          orderId: secureOrderPayload.id,
+          userId: secureOrderPayload.user_id,
+          errorMessage: orderError.message,
+          code: orderError.code,
+          details: orderError.details
+        });
+        return NextResponse.json({ 
+          error: 'Order could not be saved due to a server error. Please contact MeatCity support with payment ID ' + secureOrderPayload.payment_ref 
+        }, { status: 500 });
       }
 
       // Mark claimed reward code as redeemed in database

@@ -2291,6 +2291,22 @@
       "title": "New Order Verified 📦",
       "message": "Order ORD-TEST-COMBINED-1795638206587 placed by Customer B for ₹770 has been paid and verified.",
       "type": "new_order"
+    },
+    {
+      "id": "uuid-5fod8g7mv-mwwlrc0q",
+      "created_at": "2026-11-25T20:55:09.722Z",
+      "user_id": "usr-customer-b",
+      "title": "Order Placed successfully 🎉",
+      "message": "Your order ORD-TEST-COMBINED-1795640109093 for ₹770 has been verified and placed.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-x00qbvmen-mwwlrc0v",
+      "created_at": "2026-11-25T20:55:09.727Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Order Verified 📦",
+      "message": "Order ORD-TEST-COMBINED-1795640109093 placed by Customer B for ₹770 has been paid and verified.",
+      "type": "new_order"
     }
   ],
   "payments": [
@@ -2530,8 +2546,8 @@
       "lifetime_spend": 4500,
       "total_orders_completed": 9,
       "referral_code": "MC-CUST-A",
-      "created_at": "2026-11-25T20:23:43.172Z",
-      "updated_at": "2026-11-25T20:23:43.173Z"
+      "created_at": "2026-11-25T20:55:23.789Z",
+      "updated_at": "2026-11-25T20:55:23.791Z"
     },
     {
       "id": "acc-customer-b",
@@ -2543,8 +2559,8 @@
       "lifetime_spend": 5000,
       "total_orders_completed": 10,
       "referral_code": "MC-CUST-B",
-      "created_at": "2026-11-25T20:23:43.173Z",
-      "updated_at": "2026-11-25T20:23:43.173Z"
+      "created_at": "2026-11-25T20:55:23.791Z",
+      "updated_at": "2026-11-25T20:55:23.791Z"
     },
     {
       "id": "acc-customer-c",
@@ -2556,8 +2572,8 @@
       "lifetime_spend": 0,
       "total_orders_completed": 0,
       "referral_code": "MC-CUST-C",
-      "created_at": "2026-11-25T20:23:43.173Z",
-      "updated_at": "2026-11-25T20:23:43.173Z"
+      "created_at": "2026-11-25T20:55:23.791Z",
+      "updated_at": "2026-11-25T20:55:23.791Z"
     },
     {
       "id": "acc-customer-d",
@@ -2569,8 +2585,8 @@
       "lifetime_spend": 5000,
       "total_orders_completed": 10,
       "referral_code": "MC-CUST-D",
-      "created_at": "2026-05-09T20:23:43.173Z",
-      "updated_at": "2026-11-25T20:23:43.173Z"
+      "created_at": "2026-05-09T20:55:23.791Z",
+      "updated_at": "2026-11-25T20:55:23.791Z"
     }
   ],
   "loyalty_points_ledger": [
@@ -2582,7 +2598,7 @@
       "balance_after": 100,
       "rupee_equivalent": 100,
       "description": "Earned 100 points on qualifying orders",
-      "created_at": "2026-11-25T20:23:43.173Z"
+      "created_at": "2026-11-25T20:55:23.791Z"
     },
     {
       "id": "ledg-cust-b-1",
@@ -2592,7 +2608,7 @@
       "balance_after": 100,
       "rupee_equivalent": 100,
       "description": "Earned 100 points on qualifying orders",
-      "created_at": "2026-11-25T20:23:43.173Z"
+      "created_at": "2026-11-25T20:55:23.791Z"
     },
     {
       "id": "ledg-cust-d-1",
@@ -2603,8 +2619,8 @@
       "rupee_equivalent": 0,
       "description": "Points expired past 180 days validity window",
       "is_expired": true,
-      "expires_at": "2026-11-15T20:23:43.173Z",
-      "created_at": "2026-05-09T20:23:43.173Z"
+      "expires_at": "2026-11-15T20:55:23.791Z",
+      "created_at": "2026-05-09T20:55:23.791Z"
     }
   ],
   "loyalty_points_reservations": [],
@@ -2616,7 +2632,7 @@
       "stamps_collected": 9,
       "stamps_required": 10,
       "status": "active",
-      "created_at": "2026-11-25T20:23:43.173Z"
+      "created_at": "2026-11-25T20:55:23.791Z"
     },
     {
       "id": "sc-customer-b",
@@ -2626,8 +2642,8 @@
       "stamps_required": 10,
       "status": "completed",
       "reward_code": "MC-FREE-CHICKEN-250G",
-      "completed_at": "2026-11-25T20:23:43.173Z",
-      "created_at": "2026-11-25T20:23:43.173Z"
+      "completed_at": "2026-11-25T20:55:23.791Z",
+      "created_at": "2026-11-25T20:55:23.791Z"
     },
     {
       "id": "sc-customer-d",
@@ -2637,8 +2653,8 @@
       "stamps_required": 10,
       "status": "expired",
       "reward_code": "MC-EXPIRED-CHICKEN",
-      "completed_at": "2026-05-09T20:23:43.173Z",
-      "created_at": "2026-05-09T20:23:43.173Z"
+      "completed_at": "2026-05-09T20:55:23.791Z",
+      "created_at": "2026-05-09T20:55:23.791Z"
     }
   ],
   "loyalty_rewards": [
@@ -2664,10 +2680,10 @@
       "product_id": "prod-1",
       "quantity_grams": 250,
       "status": "active",
-      "expires_at": "2026-12-25T20:23:43.173Z",
-      "created_at": "2026-11-25T20:23:43.173Z",
-      "redeemed_order_id": "ORD-TEST-COMBINED-1795638206587",
-      "redeemed_at": "2026-11-25T20:23:27.252Z"
+      "expires_at": "2026-12-25T20:55:23.791Z",
+      "created_at": "2026-11-25T20:55:23.791Z",
+      "redeemed_order_id": "ORD-TEST-COMBINED-1795640109093",
+      "redeemed_at": "2026-11-25T20:55:09.705Z"
     },
     {
       "id": "claim-customer-d-expired",
@@ -2679,8 +2695,8 @@
       "product_id": "prod-1",
       "quantity_grams": 250,
       "status": "expired",
-      "expires_at": "2026-11-15T20:23:43.173Z",
-      "created_at": "2026-10-16T20:23:43.173Z"
+      "expires_at": "2026-11-15T20:55:23.791Z",
+      "created_at": "2026-10-16T20:55:23.791Z"
     },
     {
       "id": "uuid-meep2euxa-mwwgyydi",
@@ -2733,6 +2749,19 @@
       "status": "active",
       "expires_at": "2026-12-25T20:23:30.416Z",
       "created_at": "2026-11-25T20:23:30.416Z"
+    },
+    {
+      "id": "uuid-wd713jjfl-mwwlrejl",
+      "reward_id": "rwd-free-chicken-250g",
+      "user_id": "usr-customer-a",
+      "claim_code": "MC-CHICKEN-250G-V5WETV",
+      "points_spent": 0,
+      "title": "250g Chicken Curry Cut FREE",
+      "product_id": "prod-1",
+      "quantity_grams": 250,
+      "status": "active",
+      "expires_at": "2026-12-25T20:55:12.993Z",
+      "created_at": "2026-11-25T20:55:12.993Z"
     }
   ],
   "loyalty_audit_logs": []
