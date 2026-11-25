@@ -4,7 +4,7 @@
  * Fail-safe: Notification errors are logged and never block customer checkout or payment.
  */
 
-// Set to track sent order IDs to prevent duplicate alerts within server lifecycle
+// In-memory set to track sent order IDs during warm lambda lifecycle
 const notifiedOrderIds = new Set<string>();
 
 interface TelegramButton {
@@ -16,6 +16,11 @@ interface SendTelegramOptions {
   replyMarkup?: {
     inline_keyboard: TelegramButton[][];
   };
+}
+
+export interface OrderAlertOptions {
+  isRecovery?: boolean;
+  force?: boolean;
 }
 
 /**
@@ -47,13 +52,18 @@ export async function sendTelegramMessage(
       payload.reply_markup = options.replyMarkup;
     }
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+
     const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     const data = await res.json();
     if (!res.ok || !data.ok) {
@@ -70,82 +80,168 @@ export async function sendTelegramMessage(
 }
 
 /**
- * Send formatted MeatCity Order Alert
+ * Fetch authoritative order from Supabase if payload is minimal or missing items
  */
-export async function sendTelegramOrderAlert(order: any): Promise<{ success: boolean; data?: any; error?: string }> {
+async function fetchAuthoritativeOrder(orderId: string): Promise<any | null> {
   try {
-    if (!order || !order.id) {
-      return { success: false, error: 'Invalid order payload' };
-    }
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://yvbhclahfwcimopbfetc.supabase.co';
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!serviceKey) return null;
 
-    // 1. Duplicate alert prevention (idempotency)
-    const orderKey = String(order.id);
-    if (notifiedOrderIds.has(orderKey)) {
-      console.log(`[Telegram Notification] Order #${orderKey} already notified. Skipping duplicate alert.`);
-      return { success: true, error: 'Already notified' };
-    }
-
-    // 2. Format order details
-    const userRole = (order.user_role || order.role || (order.business_name ? 'b2b' : 'b2c')).toLowerCase();
-    const isB2B = userRole === 'b2b';
-    const customerType = isB2B ? '🏢 B2B Wholesale' : '🛒 B2C Retail';
-
-    const customerName = order.customer_name || 'Valued Customer';
-    const businessName = isB2B && order.business_name ? ` (${order.business_name})` : '';
-    const phone = order.customer_phone ? `+91 ${order.customer_phone}` : 'N/A';
-
-    // Format ordered items
-    const items = order.items || [];
-    const itemsList = items.map((item: any) => {
-      const name = item.product_name || item.name || 'Cut';
-      const qty = item.quantity || item.qty || 1;
-      const isFree = item.is_free_reward || item.price === 0;
-      const priceText = isFree ? '🎁 FREE' : `₹${item.total || ((item.price || item.unit_price || 0) * qty)}`;
-      return `  • <b>${escapeHtml(name)}</b> × ${qty} — <i>${priceText}</i>`;
-    }).join('\n') || '  • Standard Meat Cuts';
-
-    // Formatting totals and payment
-    const totalAmount = `₹${Number(order.total || 0).toLocaleString('en-IN')}`;
-    const paymentMethod = order.payment_method || 'COD';
-    const paymentStatus = order.payment_status || 'Pending';
-    const paymentStatusIcon = paymentStatus.toLowerCase() === 'paid' ? '🟢 Paid' : '⏳ Pending / Pay on Delivery';
-
-    const deliveryType = isB2B ? 'Free Commercial Delivery' : (Number(order.delivery_fee || 0) === 0 ? 'Free Standard Delivery' : `Standard Delivery (₹${order.delivery_fee})`);
-    const deliverySlot = order.delivery_slot || 'ASAP Delivery';
-    
-    // Order timestamp in Indian Standard Time
-    const orderDate = new Date(order.created_at || Date.now()).toLocaleString('en-IN', {
-      timeZone: 'Asia/Kolkata',
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
+    const res = await fetch(`${supabaseUrl}/rest/v1/orders?id=eq.${encodeURIComponent(orderId)}&select=*`, {
+      headers: {
+        apikey: serviceKey,
+        Authorization: `Bearer ${serviceKey}`,
+      },
     });
 
-    // 3. Compose rich Telegram HTML message
-    const message = `🥩 <b>MEATCITY — NEW ORDER ALERT</b> 🔔
+    if (!res.ok) return null;
+    const rows = await res.json();
+    if (Array.isArray(rows) && rows.length > 0) {
+      return rows[0];
+    }
+  } catch (err) {
+    console.warn('[Telegram Notification] Error fetching order from Supabase:', err);
+  }
+  return null;
+}
+
+/**
+ * Format order into rich HTML message for Telegram
+ */
+export function formatTelegramOrderMessage(order: any, options?: OrderAlertOptions): {
+  message: string;
+  adminUrl: string;
+} {
+  const orderKey = String(order.id);
+  const isRecovery = Boolean(options?.isRecovery);
+
+  const userRole = (order.order_type || order.user_role || order.role || (order.business_name ? 'b2b' : 'b2c')).toLowerCase();
+  const isB2B = userRole === 'b2b';
+  const customerType = isB2B ? '🏢 B2B Wholesale' : '🛒 B2C Retail';
+
+  const customerName = order.customer_name || 'Valued Customer';
+  const businessName = isB2B && order.business_name ? ` (${order.business_name})` : '';
+  
+  let rawPhone = String(order.customer_phone || '').trim();
+  if (rawPhone.startsWith('+91')) {
+    rawPhone = rawPhone.replace('+91', '').trim();
+  }
+  const phone = rawPhone ? `+91 ${rawPhone}` : 'N/A';
+
+  // Format ordered items
+  const items = Array.isArray(order.items) ? order.items : [];
+  const itemsList = items.map((item: any) => {
+    const name = item.product_name || item.name || 'Cut';
+    const qty = item.quantity || item.qty || 1;
+    const isFree = item.is_free_reward === true || item.price === 0;
+    const price = item.total != null ? item.total : ((item.price || item.unit_price || 0) * qty);
+    const priceText = isFree ? '🎁 FREE REWARD' : `₹${Number(price).toLocaleString('en-IN')}`;
+    return `  • <b>${escapeHtml(name)}</b> × ${qty} — <i>${priceText}</i>`;
+  }).join('\n') || '  • Fresh Cuts Selection';
+
+  // Financial calculations
+  const subtotalVal = Number(order.subtotal != null ? order.subtotal : (order.total || 0));
+  const discountVal = Number(order.discount || order.coupon_discount || order.points_discount || 0);
+  const deliveryFeeVal = Number(order.delivery_fee != null ? order.delivery_fee : (order.delivery_charge || 0));
+  const totalVal = Number(order.total || (subtotalVal - discountVal + deliveryFeeVal));
+
+  const subtotalText = `₹${subtotalVal.toLocaleString('en-IN')}`;
+  const discountText = discountVal > 0 ? `₹${discountVal.toLocaleString('en-IN')}` : '₹0';
+  const deliveryFeeText = isB2B ? 'Free Commercial Delivery' : (deliveryFeeVal === 0 ? 'Free Standard Delivery' : `₹${deliveryFeeVal.toLocaleString('en-IN')}`);
+  const totalAmount = `₹${totalVal.toLocaleString('en-IN')}`;
+
+  // Payment details
+  const rawPaymentMethod = String(order.payment_method || 'COD').toUpperCase();
+  let paymentMethod = rawPaymentMethod;
+  if (rawPaymentMethod === 'CREDIT') paymentMethod = 'Commercial Credit (Pay Later)';
+  else if (rawPaymentMethod === 'COD') paymentMethod = 'Cash on Delivery (COD)';
+  else if (rawPaymentMethod === 'UPI') paymentMethod = 'UPI QR Instant Pay';
+  else if (rawPaymentMethod === 'RAZORPAY') paymentMethod = 'Razorpay Online';
+
+  const rawPaymentStatus = String(order.payment_status || 'Pending').toLowerCase();
+  let paymentStatusIcon = '⏳ Pending / Pay on Delivery';
+  if (rawPaymentStatus === 'paid' || rawPaymentStatus === 'captured') {
+    paymentStatusIcon = '🟢 Paid & Verified';
+  } else if (rawPaymentMethod === 'CREDIT') {
+    paymentStatusIcon = '📜 Credit Ledger (Pending Settlement)';
+  }
+
+  const deliverySlot = order.delivery_slot || 'ASAP Delivery';
+  
+  // Order timestamp in Indian Standard Time
+  const orderDate = new Date(order.created_at || Date.now()).toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+
+  const headerTitle = isRecovery 
+    ? `🔔 <b>MEATCITY — NEW ORDER RECEIVED [RECOVERED ORDER ALERT]</b>`
+    : `🔔 <b>MEATCITY — NEW ORDER RECEIVED</b>`;
+
+  const message = `${headerTitle}
 ━━━━━━━━━━━━━━━━━━━━━━
 📦 <b>Order ID:</b> <code>#${escapeHtml(orderKey)}</code>
-🏷️ <b>Customer Type:</b> ${customerType}
+🏷️ <b>Order Type:</b> ${customerType}
 👤 <b>Customer:</b> <b>${escapeHtml(customerName)}</b>${escapeHtml(businessName)}
 📞 <b>Contact:</b> <code>${escapeHtml(phone)}</code>
-📍 <b>Address:</b> <i>${escapeHtml(order.delivery_address || 'Navi Mumbai')}</i>
+📍 <b>Delivery Address:</b> <i>${escapeHtml(order.delivery_address || 'Navi Mumbai')}</i>
+⏰ <b>Delivery Slot:</b> ${escapeHtml(deliverySlot)}
 ━━━━━━━━━━━━━━━━━━━━━━
 🍗 <b>Ordered Items:</b>
 ${itemsList}
 ━━━━━━━━━━━━━━━━━━━━━━
+💵 <b>Subtotal:</b> ${subtotalText}
+🎟️ <b>Discount:</b> ${discountText}
+🚚 <b>Delivery Fee:</b> ${escapeHtml(deliveryFeeText)}
 💰 <b>Total Amount:</b> <b>${totalAmount}</b>
 💳 <b>Payment Method:</b> ${escapeHtml(paymentMethod)}
 ⚡ <b>Payment Status:</b> ${paymentStatusIcon}
-🚚 <b>Delivery Type:</b> ${escapeHtml(deliveryType)}
-⏰ <b>Delivery Slot:</b> ${escapeHtml(deliverySlot)}
-🕒 <b>Order Date:</b> ${orderDate} IST
+🕒 <b>Order Time:</b> ${orderDate} IST
 ━━━━━━━━━━━━━━━━━━━━━━`;
 
-    // 4. Admin panel deep link button
-    const adminUrl = `https://www.meatcity.in/admin?tab=orders&orderId=${encodeURIComponent(orderKey)}`;
+  const adminUrl = `https://www.meatcity.in/admin?tab=orders&order=${encodeURIComponent(orderKey)}`;
+
+  return { message, adminUrl };
+}
+
+/**
+ * Send formatted MeatCity Order Alert
+ */
+export async function sendTelegramOrderAlert(
+  orderPayload: any, 
+  options?: OrderAlertOptions
+): Promise<{ success: boolean; data?: any; error?: string }> {
+  try {
+    if (!orderPayload || (!orderPayload.id && !orderPayload.orderId)) {
+      return { success: false, error: 'Invalid order payload' };
+    }
+
+    const orderId = String(orderPayload.id || orderPayload.orderId);
+
+    // 1. Duplicate alert prevention (idempotency check)
+    if (!options?.force && !options?.isRecovery && notifiedOrderIds.has(orderId)) {
+      console.log(`[Telegram Notification] Order #${orderId} already notified in current runtime. Skipping.`);
+      return { success: true, error: 'Already notified' };
+    }
+
+    // 2. Fetch authoritative database order record if items are missing
+    let order = orderPayload;
+    if (!Array.isArray(order.items) || order.items.length === 0) {
+      const dbOrder = await fetchAuthoritativeOrder(orderId);
+      if (dbOrder) {
+        order = { ...order, ...dbOrder };
+      }
+    }
+
+    // 3. Format message and deep link
+    const { message, adminUrl } = formatTelegramOrderMessage(order, options);
+
     const replyMarkup = {
       inline_keyboard: [
         [
@@ -157,18 +253,17 @@ ${itemsList}
       ],
     };
 
-    // 5. Dispatch message
+    // 4. Dispatch message via Telegram API
     const result = await sendTelegramMessage(message, { replyMarkup });
 
     if (result.success) {
-      notifiedOrderIds.add(orderKey);
-      console.log(`[Telegram Notification] Successfully dispatched alert for Order #${orderKey}`);
+      notifiedOrderIds.add(orderId);
+      console.log(`[Telegram Notification] Successfully dispatched alert for Order #${orderId} (isRecovery: ${Boolean(options?.isRecovery)})`);
     }
 
     return result;
   } catch (err: any) {
-    console.error(`[Telegram Notification] Unexpected error processing Order #${order?.id}:`, err);
-    // Never throw or fail caller
+    console.error(`[Telegram Notification] Unexpected error processing Order #${orderPayload?.id}:`, err);
     return { success: false, error: err.message || 'Notification failure' };
   }
 }

@@ -1091,15 +1091,18 @@ export default function CartPage() {
       console.error('Failed to dispatch order email trigger:', eErr);
     }
 
-    // Trigger Telegram order notification via server-side API endpoint (non-blocking)
+    // Trigger Telegram order notification via server-side API endpoint (bounded 2.5s wait so request reliably reaches network before navigation)
     try {
-      fetch('/api/notifications/telegram', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ order: dbOrderPayload })
-      }).catch(err => console.error('Fetch post error on telegram alert:', err));
+      await Promise.race([
+        fetch('/api/notifications/telegram', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ order: dbOrderPayload, orderId })
+        }).then(r => r.json().catch(() => ({}))),
+        new Promise(resolve => setTimeout(resolve, 2500))
+      ]);
     } catch (tErr) {
       console.error('Failed to dispatch telegram notification trigger:', tErr);
     }
