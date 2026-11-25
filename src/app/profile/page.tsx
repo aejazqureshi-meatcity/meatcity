@@ -30,6 +30,11 @@ interface Order {
   id: string;
   created_at: string;
   total: number;
+  subtotal?: number;
+  discount?: number;
+  points_discount?: number;
+  points_redeemed?: number;
+  claimed_reward_code?: string;
   status: string;
   delivery_slot?: string;
   items: any[];
@@ -331,6 +336,8 @@ export default function ProfilePage() {
     await supabase.auth.signOut();
     localStorage.removeItem(`meatcity_addresses_${user?.id || ''}`);
     localStorage.removeItem('meatcity_cart');
+    localStorage.removeItem('meatcity_claimed_free_reward');
+    localStorage.removeItem('meatcity_session');
     window.dispatchEvent(new Event('cart-updated'));
     router.push('/login');
     router.refresh();
@@ -575,7 +582,7 @@ export default function ProfilePage() {
 
       {/* Rewards Tab */}
       {activeTab === 'rewards' && (
-        <RewardsDashboard user={user} onNavigateTab={setActiveTab} />
+        <RewardsDashboard user={user} onNavigateTab={(tab: string) => setActiveTab(tab as any)} />
       )}
 
       {/* Orders Tab */}
@@ -630,6 +637,12 @@ export default function ProfilePage() {
                     <div className="text-right">
                       <span className="text-text-secondary block text-[10px]">Total Amount</span>
                       <strong className="text-gold font-extrabold text-sm">₹{order.total}</strong>
+                      {Boolean(order.points_discount && order.points_discount > 0) && (
+                        <span className="text-emerald-400 block text-[9px] font-bold">Saved ₹{order.points_discount} with Points</span>
+                      )}
+                      {order.claimed_reward_code && (
+                        <span className="text-gold block text-[9px] font-bold">🎁 Free Item Included</span>
+                      )}
                     </div>
                   </div>
 

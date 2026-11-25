@@ -7,16 +7,25 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { subtotal = 0, userRole = 'b2c' } = body;
+    const subtotal = Number(body.subtotal || 0);
+    const userRole = body.userRole || body.role || 'b2c';
+    const couponApplied = Boolean(body.couponApplied);
 
     // Optional user verification to get available balance and tier multiplier
     let userId: string | undefined = undefined;
     const auth = await verifyUserSession(request);
     if (auth.authorized && auth.user) {
       userId = auth.user.id;
+    } else if (body.userId) {
+      userId = String(body.userId);
     }
 
-    const estimate = await estimateOrderPoints(Number(subtotal), userId, userRole);
+    const estimate = await estimateOrderPoints(
+      Number(subtotal), 
+      userId, 
+      userRole, 
+      Boolean(couponApplied)
+    );
 
     return NextResponse.json({
       success: true,

@@ -14,7 +14,7 @@ export interface LoyaltySettings {
   stamp_card_enabled: boolean;
   stamps_required_per_card: number;
   min_order_for_stamp: number;
-  stamp_reward_type: 'flat_discount' | 'percentage_discount' | 'free_delivery';
+  stamp_reward_type: 'flat_discount' | 'percentage_discount' | 'free_delivery' | 'free_product';
   stamp_reward_value: number;
   max_stamps_per_day: number;
   referral_enabled: boolean;

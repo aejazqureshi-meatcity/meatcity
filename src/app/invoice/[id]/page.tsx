@@ -32,6 +32,9 @@ interface Order {
   delivery_slot?: string;
   coupon_code?: string;
   coupon_discount?: number;
+  points_discount?: number;
+  points_redeemed?: number;
+  claimed_reward_code?: string;
   items: OrderItem[];
 }
 
@@ -283,8 +286,15 @@ export default function InvoicePage() {
             
             {order.discount > 0 && (
               <div className="flex justify-between text-emerald-400 print:text-emerald-600 font-bold">
-                <span>Discount {order.coupon_code ? `(${order.coupon_code})` : ''}</span>
+                <span>Coupon Discount {order.coupon_code ? `(${order.coupon_code})` : ''}</span>
                 <span>-₹{order.discount}</span>
+              </div>
+            )}
+
+            {Boolean(order.points_discount && order.points_discount > 0) && (
+              <div className="flex justify-between text-emerald-400 print:text-emerald-600 font-bold">
+                <span>Loyalty Rewards ({order.points_redeemed || order.points_discount} pts)</span>
+                <span>-₹{order.points_discount}</span>
               </div>
             )}
 

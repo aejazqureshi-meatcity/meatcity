@@ -88,6 +88,7 @@ export default function CartPage() {
   const [loyaltyDiscount, setLoyaltyDiscount] = useState<number>(0);
   const [reservationId, setReservationId] = useState<string | null>(null);
   const [cartSessionId, setCartSessionId] = useState<string>('');
+  const [claimedFreeRewardCode, setClaimedFreeRewardCode] = useState<string | null>(null);
 
   // Payment State
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'UPI' | 'Razorpay' | 'Credit' | 'BankTransfer'>('COD');
@@ -159,30 +160,7 @@ export default function CartPage() {
       let finalRole: 'guest' | 'b2c' | 'b2b' = 'guest';
       let profile: UserProfile | null = null;
 
-      // Check query parameter or demo override first (for testing & previews)
-      const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-      const requestedRole = searchParams?.get('role') || (typeof localStorage !== 'undefined' ? localStorage.getItem('meatcity_demo_role') : null);
-
-      if (requestedRole === 'b2b') {
-        finalRole = 'b2b';
-        setUserRole('b2b');
-        const mockB2BProfile = {
-          id: currentUser?.id || 'preview-b2b-partner',
-          email: currentUser?.email || 'partner@meatcity.in',
-          full_name: 'Premium Kitchens (B2B Partner)',
-          phone: '9876543210',
-          user_type: 'b2b',
-          status: 'approved',
-          business_name: 'Premium Kitchens Wholesale',
-          credit_limit: 50000,
-          credit_used: 7500,
-          credit_available: 42500,
-          outstanding_balance: 7500,
-          payment_due_date: 'Due in 7 days'
-        };
-        profile = mockB2BProfile;
-        setUserProfile(mockB2BProfile);
-      } else if (currentUser) {
+      if (currentUser) {
         const { data: dbProfile } = await supabase.from('users').select('*').eq('id', currentUser.id).single();
         if (dbProfile) {
           profile = dbProfile;
@@ -190,7 +168,7 @@ export default function CartPage() {
           finalRole = dbProfile.user_type;
           setUserRole(dbProfile.user_type);
         } else {
-          finalRole = currentUser.user_metadata?.user_type || 'b2c';
+          finalRole = (currentUser.user_metadata?.user_type as any) || 'b2c';
           setUserRole(finalRole);
         }
       } else {
@@ -211,6 +189,10 @@ export default function CartPage() {
         } catch (e) {
           console.error(e);
         }
+      }
+      const savedFreeReward = localStorage.getItem('meatcity_claimed_free_reward');
+      if (savedFreeReward) {
+        setClaimedFreeRewardCode(savedFreeReward);
       }
 
       // 4. Load Serviceable Pincodes
@@ -269,7 +251,11 @@ export default function CartPage() {
           }
         }
       } catch (settingsErr) {
-        console.warn('Failed to load admin settings:', settingsErr);
+        console.warn('Failed to load admin settings, using fail-safe business defaults:', settingsErr);
+        setMinB2BOrder(1000);
+        setMinB2COrder(200);
+        setFreeDeliveryAbove(999);
+        setDefaultDeliveryFee(50);
       }
 
       // 5. Load Addresses
@@ -352,8 +338,27 @@ export default function CartPage() {
   };
 
   const handleRemoveItem = (key: string) => {
+    if (key === 'prod-1_250g' && claimedFreeRewardCode) {
+      setClaimedFreeRewardCode(null);
+      localStorage.removeItem('meatcity_claimed_free_reward');
+    }
     const updated = { ...cart };
     delete updated[key];
+    saveCartToStorage(updated);
+  };
+
+  const handleClaimFreeReward = (claimCode: string) => {
+    setClaimedFreeRewardCode(claimCode);
+    localStorage.setItem('meatcity_claimed_free_reward', claimCode);
+    const updated = { ...cart, 'prod-1_250g': 1 };
+    saveCartToStorage(updated);
+  };
+
+  const handleRemoveFreeReward = () => {
+    setClaimedFreeRewardCode(null);
+    localStorage.removeItem('meatcity_claimed_free_reward');
+    const updated = { ...cart };
+    delete updated['prod-1_250g'];
     saveCartToStorage(updated);
   };
 
@@ -366,15 +371,32 @@ export default function CartPage() {
     const prod = products.find(p => p.id === id);
     let price = 0;
     let displayName = prod?.name || '';
+    const isFreeStampReward = userRole !== 'b2b' && cartKey === 'prod-1_250g' && !!claimedFreeRewardCode;
 
     if (prod) {
-      price = userRole === 'b2b' ? prod.price_b2b : prod.price_b2c;
-      if (variantWeight && prod.variants) {
-        const variantsList = typeof prod.variants === 'string' ? JSON.parse(prod.variants) : prod.variants;
-        const variant = variantsList?.find((v: any) => v.weight === variantWeight);
-        if (variant) {
-          price = userRole === 'b2b' ? Number(variant.price_b2b) : Number(variant.price_b2c);
-          displayName = `${prod.name} (${variantWeight})`;
+      if (isFreeStampReward) {
+        price = 0;
+        displayName = `${prod.name} (250g) — 🎁 FREE Reward`;
+      } else {
+        price = userRole === 'b2b' ? prod.price_b2b : prod.price_b2c;
+        if (variantWeight) {
+          let variantFound = false;
+          if (prod.variants) {
+            const variantsList = typeof prod.variants === 'string' ? JSON.parse(prod.variants) : prod.variants;
+            const variant = variantsList?.find((v: any) => v.weight === variantWeight);
+            if (variant) {
+              price = userRole === 'b2b' ? Number(variant.price_b2b) : Number(variant.price_c2b || variant.price_b2c);
+              displayName = `${prod.name} (${variantWeight})`;
+              variantFound = true;
+            }
+          }
+          if (!variantFound) {
+            if (variantWeight === '250g') price = Math.round(price * 0.28);
+            else if (variantWeight === '500g') price = Math.round(price * 0.52);
+            else if (variantWeight === '1kg') price = price;
+            else if (variantWeight === '2kg') price = Math.round(price * 1.95);
+            displayName = `${prod.name} (${variantWeight})`;
+          }
         }
       }
     }
@@ -384,8 +406,9 @@ export default function CartPage() {
       productId: id,
       variantWeight,
       product: prod ? { ...prod, name: displayName } : undefined,
-      quantity: qty,
-      price
+      quantity: isFreeStampReward ? 1 : qty,
+      price,
+      isFreeStampReward
     };
   }).filter(item => item.product !== undefined);
 
@@ -401,13 +424,13 @@ export default function CartPage() {
       return 0; // Free commercial delivery for B2B wholesale
     }
     const activeAddress = addresses.find(a => a.id === selectedAddressId);
-    if (!activeAddress || activeAddress.addressLine === 'Store Pickup') {
+    if (activeAddress && activeAddress.addressLine === 'Store Pickup') {
       return 0;
     }
     if (subtotal >= freeDeliveryAbove) {
       return 0;
     }
-    const activePincode = activeAddress.pincode || (activeAddress.addressLine.match(/\b\d{6}\b/)?.[0]) || '';
+    const activePincode = activeAddress?.pincode || (activeAddress?.addressLine?.match(/\b\d{6}\b/)?.[0]) || '';
     if (activePincode && pincodeCharges[activePincode] !== undefined) {
       return pincodeCharges[activePincode];
     }
@@ -463,6 +486,11 @@ export default function CartPage() {
     setCouponError('');
     if (!couponCode) return;
 
+    if (useLoyaltyPoints) {
+      setCouponError('Loyalty points cannot be combined with coupon discounts. Please remove loyalty points first.');
+      return;
+    }
+
     const code = couponCode.toUpperCase().trim();
     try {
       const { data, error } = await supabase
@@ -513,11 +541,11 @@ export default function CartPage() {
   }, [cartSessionId]);
 
   useEffect(() => {
-    if (user && subtotal > 0) {
+    if (subtotal > 0) {
       fetch('/api/loyalty/estimate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subtotal, role: userRole })
+        body: JSON.stringify({ subtotal, userRole, couponApplied: !!appliedCoupon, userId: user?.id })
       })
         .then(res => res.json())
         .then(data => {
@@ -527,13 +555,13 @@ export default function CartPage() {
               const maxPts = data.maxPointsRedeemable || 0;
               const nextPts = Math.min(pointsToRedeem || maxPts, maxPts);
               setPointsToRedeem(nextPts);
-              setLoyaltyDiscount(Math.round(nextPts * (data.pointRupeeValue || 0.25)));
+              setLoyaltyDiscount(Math.round(nextPts * (data.pointRupeeValue || 1.0)));
             }
           }
         })
         .catch(err => console.warn('Failed to estimate loyalty points:', err));
     }
-  }, [user, userRole, subtotal]);
+  }, [user, userRole, subtotal, appliedCoupon]);
 
   const handleToggleLoyaltyPoints = async (apply: boolean) => {
     if (!apply) {
@@ -551,13 +579,18 @@ export default function CartPage() {
       return;
     }
 
+    if (appliedCoupon) {
+      alert('Loyalty points cannot be combined with coupon codes. Please remove applied coupon first.');
+      return;
+    }
+
     if (!loyaltyEstimate || loyaltyEstimate.maxPointsRedeemable <= 0) {
       alert('No redeemable loyalty points available for this order.');
       return;
     }
 
     const pts = loyaltyEstimate.maxPointsRedeemable;
-    const discount = Math.round(pts * (loyaltyEstimate.pointRupeeValue || 0.25));
+    const discount = Math.round(pts * (loyaltyEstimate.pointRupeeValue || 1.0));
     setPointsToRedeem(pts);
     setLoyaltyDiscount(discount);
     setUseLoyaltyPoints(true);
@@ -888,6 +921,7 @@ export default function CartPage() {
       points_redeemed: useLoyaltyPoints ? pointsToRedeem : 0,
       points_discount: activeLoyaltyDiscount,
       stamp_awarded: false,
+      claimed_reward_code: claimedFreeRewardCode || null,
       items: cartItems.map(item => ({
         product_id: item.productId,
         name: item.product?.name,
@@ -896,7 +930,8 @@ export default function CartPage() {
         qty: item.quantity,
         price: item.price,
         unit_price: item.price,
-        total: item.price * item.quantity
+        total: item.price * item.quantity,
+        is_free_reward: item.isFreeStampReward || false
       }))
     };
 
@@ -923,7 +958,8 @@ export default function CartPage() {
       points_earned: orderPayload.points_earned,
       points_redeemed: orderPayload.points_redeemed,
       points_discount: orderPayload.points_discount,
-      stamp_awarded: orderPayload.stamp_awarded
+      stamp_awarded: orderPayload.stamp_awarded,
+      claimed_reward_code: orderPayload.claimed_reward_code
     };
 
     const { error } = await supabase.from('orders').insert(dbOrderPayload);
@@ -941,6 +977,24 @@ export default function CartPage() {
       }
       alert('Failed to place order: ' + error.message);
       return;
+    }
+
+    // Mark reward claim as redeemed if free reward was claimed
+    if (claimedFreeRewardCode) {
+      try {
+        await supabase
+          .from('loyalty_reward_claims')
+          .update({
+            status: 'redeemed',
+            redeemed_order_id: orderId,
+            redeemed_at: new Date().toISOString()
+          })
+          .eq('claim_code', claimedFreeRewardCode);
+      } catch (cErr) {
+        console.warn('Failed to update reward claim status:', cErr);
+      }
+      localStorage.removeItem('meatcity_claimed_free_reward');
+      setClaimedFreeRewardCode(null);
     }
 
     // Commit loyalty reservation if points were used
@@ -986,6 +1040,19 @@ export default function CartPage() {
       }).catch(err => console.error('Fetch post error on send-email:', err));
     } catch (eErr) {
       console.error('Failed to dispatch order email trigger:', eErr);
+    }
+
+    // Trigger Telegram order notification via server-side API endpoint (non-blocking)
+    try {
+      fetch('/api/notifications/telegram', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ order: dbOrderPayload })
+      }).catch(err => console.error('Fetch post error on telegram alert:', err));
+    } catch (tErr) {
+      console.error('Failed to dispatch telegram notification trigger:', tErr);
     }
 
     localStorage.removeItem('meatcity_cart');
@@ -1216,7 +1283,7 @@ export default function CartPage() {
 
     // Validate minimum order threshold
     const requiredMinOrder = userRole === 'b2b' ? minB2BOrder : minB2COrder;
-    if (subtotal < requiredMinOrder) {
+    if (requiredMinOrder > 0 && subtotal < requiredMinOrder) {
       alert(`Minimum order amount for ${userRole === 'b2b' ? 'wholesale B2B' : 'retail'} is ₹${requiredMinOrder.toLocaleString('en-IN')}. Please add more items to your cart.`);
       return;
     }
@@ -1520,33 +1587,37 @@ export default function CartPage() {
                     </span>
                   </div>
                 </div>
-                <span className="text-[10px] bg-gold/20 text-gold-dark dark:text-gold border border-gold/40 px-2 py-0.5 rounded-full font-black">
-                  Min ₹{minB2BOrder.toLocaleString('en-IN')}
-                </span>
+                {minB2BOrder > 0 && (
+                  <span className="text-[10px] bg-gold/20 text-gold-dark dark:text-gold border border-gold/40 px-2 py-0.5 rounded-full font-black">
+                    Min ₹{minB2BOrder.toLocaleString('en-IN')}
+                  </span>
+                )}
               </div>
 
-              {/* Progress bar */}
-              <div className="flex flex-col gap-1 pt-1">
-                <div className="flex justify-between items-center text-[10px] font-black">
-                  <span className={subtotal >= minB2BOrder ? 'text-emerald-600 dark:text-emerald-400' : 'text-primary'}>
-                    {subtotal >= minB2BOrder 
-                      ? `✓ Minimum wholesale order threshold met (₹${subtotal.toLocaleString('en-IN')})` 
-                      : `Add ₹${(minB2BOrder - subtotal).toLocaleString('en-IN')} more to reach wholesale min order`
-                    }
-                  </span>
-                  <span className="text-gray-500 dark:text-gray-400">
-                    ₹{subtotal.toLocaleString('en-IN')} / ₹{minB2BOrder.toLocaleString('en-IN')}
-                  </span>
+              {/* Progress bar (only if configured) */}
+              {minB2BOrder > 0 && (
+                <div className="flex flex-col gap-1 pt-1">
+                  <div className="flex justify-between items-center text-[10px] font-black">
+                    <span className={subtotal >= minB2BOrder ? 'text-emerald-600 dark:text-emerald-400' : 'text-primary'}>
+                      {subtotal >= minB2BOrder 
+                        ? `✓ Minimum wholesale order threshold met (₹${subtotal.toLocaleString('en-IN')})` 
+                        : `Add ₹${(minB2BOrder - subtotal).toLocaleString('en-IN')} more to reach wholesale min order`
+                      }
+                    </span>
+                    <span className="text-gray-500 dark:text-gray-400">
+                      ₹{subtotal.toLocaleString('en-IN')} / ₹{minB2BOrder.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-300 rounded-full ${
+                        subtotal >= minB2BOrder ? 'bg-emerald-500' : 'bg-primary'
+                      }`}
+                      style={{ width: `${Math.min(100, (subtotal / minB2BOrder) * 100)}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="w-full h-2 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full transition-all duration-300 rounded-full ${
-                      subtotal >= minB2BOrder ? 'bg-emerald-500' : 'bg-primary'
-                    }`}
-                    style={{ width: `${Math.min(100, (subtotal / minB2BOrder) * 100)}%` }}
-                  />
-                </div>
-              </div>
+              )}
             </div>
           ) : (
             <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 rounded-[16px] p-3.5 flex items-center justify-between shadow-xs">
@@ -1586,7 +1657,7 @@ export default function CartPage() {
             </div>
 
             <div className="flex flex-col divide-y divide-gray-100 dark:divide-white/5 max-h-[360px] overflow-y-auto pr-1">
-              {cartItems.map(({ cartKey, product, quantity, price }) => (
+              {cartItems.map(({ cartKey, product, quantity, price, isFreeStampReward }) => (
                 <div key={cartKey} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <img 
@@ -1599,7 +1670,11 @@ export default function CartPage() {
                         {product?.name}
                       </span>
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        {userRole === 'b2b' ? (
+                        {isFreeStampReward ? (
+                          <span className="text-[10px] bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded font-black">
+                            🎁 FREE Stamp Reward (250g)
+                          </span>
+                        ) : userRole === 'b2b' ? (
                           <span className="text-[10px] bg-gold/15 text-gold-dark dark:text-gold border border-gold/30 px-1.5 py-0.5 rounded font-black">
                             Wholesale: ₹{price}/{product?.unit || 'kg'}
                           </span>
@@ -1610,34 +1685,44 @@ export default function CartPage() {
                         )}
                       </div>
                       <span className="text-gray-900 dark:text-white font-black text-xs mt-1">
-                        ₹{(price * quantity).toLocaleString('en-IN')}
+                        {isFreeStampReward ? (
+                          <span className="text-emerald-600 dark:text-emerald-400 font-black">FREE (₹0)</span>
+                        ) : (
+                          `₹${(price * quantity).toLocaleString('en-IN')}`
+                        )}
                       </span>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
                     {/* Quantity Selector */}
-                    <div className="flex items-center bg-gray-100 dark:bg-white/10 rounded-[10px] border border-gray-200 dark:border-white/10 p-0.5">
-                      <button
-                        type="button"
-                        onClick={() => handleDecrement(cartKey)}
-                        aria-label="Decrease quantity"
-                        className="w-8 h-8 min-w-[32px] min-h-[32px] flex items-center justify-center font-black text-gray-800 dark:text-white text-sm active:scale-75 transition-transform hover:bg-gray-200 dark:hover:bg-white/20 rounded"
-                      >
-                        -
-                      </button>
-                      <span className="px-2 text-gray-900 dark:text-white font-black text-xs min-w-[22px] text-center">
-                        {quantity}
+                    {isFreeStampReward ? (
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold bg-emerald-500/10 border border-emerald-500/20 px-2 py-1.5 rounded-[8px]">
+                        Qty: 1 (Free)
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => handleIncrement(cartKey)}
-                        aria-label="Increase quantity"
-                        className="w-8 h-8 min-w-[32px] min-h-[32px] flex items-center justify-center font-black text-gray-800 dark:text-white text-sm active:scale-75 transition-transform hover:bg-gray-200 dark:hover:bg-white/20 rounded"
-                      >
-                        +
-                      </button>
-                    </div>
+                    ) : (
+                      <div className="flex items-center bg-gray-100 dark:bg-white/10 rounded-[10px] border border-gray-200 dark:border-white/10 p-0.5">
+                        <button
+                          type="button"
+                          onClick={() => handleDecrement(cartKey)}
+                          aria-label="Decrease quantity"
+                          className="w-8 h-8 min-w-[32px] min-h-[32px] flex items-center justify-center font-black text-gray-800 dark:text-white text-sm active:scale-75 transition-transform hover:bg-gray-200 dark:hover:bg-white/20 rounded"
+                        >
+                          -
+                        </button>
+                        <span className="px-2 text-gray-900 dark:text-white font-black text-xs min-w-[22px] text-center">
+                          {quantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleIncrement(cartKey)}
+                          aria-label="Increase quantity"
+                          className="w-8 h-8 min-w-[32px] min-h-[32px] flex items-center justify-center font-black text-gray-800 dark:text-white text-sm active:scale-75 transition-transform hover:bg-gray-200 dark:hover:bg-white/20 rounded"
+                        >
+                          +
+                        </button>
+                      </div>
+                    )}
 
                     {/* Remove Item Button */}
                     <button
@@ -2060,29 +2145,49 @@ export default function CartPage() {
             </div>
           )}
 
-          {/* 6. MeatCity Loyalty Points & Rewards */}
-          {loyaltyEstimate && loyaltyEstimate.isEnabled && (
-            <div className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border border-amber-400/30 rounded-[16px] p-4 flex flex-col gap-3 shadow-xs">
+          {/* 6. MeatCity Loyalty Points & Stamp Card (B2C Only) */}
+          {userRole !== 'b2b' && loyaltyEstimate && loyaltyEstimate.isEnabled && (
+            <div className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border border-amber-400/30 rounded-[16px] p-4 flex flex-col gap-3.5 shadow-xs">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-base">👑</span>
                   <h3 className="text-gray-900 dark:text-white text-xs font-extrabold uppercase tracking-wide">
-                    MeatCity Loyalty Points
+                    MeatCity Rewards
                   </h3>
                 </div>
                 <span className="text-[10px] bg-gold/15 text-gold-dark dark:text-gold px-2.5 py-0.5 rounded-full font-black border border-gold/30">
-                  Balance: {loyaltyEstimate.availablePoints} pts
+                  {user 
+                    ? `Balance: ${loyaltyEstimate.availablePoints} pts (₹${Math.round(loyaltyEstimate.availablePoints * (loyaltyEstimate.pointRupeeValue || 1.0))})` 
+                    : 'Guest Balance: 0 pts'}
                 </span>
               </div>
 
-              {loyaltyEstimate.maxPointsRedeemable > 0 ? (
+              {!user && (
+                <div className="text-[10px] text-amber-700 dark:text-amber-400 font-bold bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-[10px] flex items-center justify-between">
+                  <span>💡 Sign in to redeem existing points & save your stamps!</span>
+                  <Link href="/login?redirect=cart" className="text-primary font-black uppercase text-[10px] hover:underline ml-2">
+                    Login →
+                  </Link>
+                </div>
+              )}
+
+              {/* Stacking warning */}
+              {appliedCoupon && (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-[12px] p-2.5 text-[10px] text-amber-700 dark:text-amber-400 font-bold flex items-center gap-1.5">
+                  <span>⚠️</span>
+                  <span>Coupon & Loyalty Points cannot be stacked together. Remove coupon to redeem points.</span>
+                </div>
+              )}
+
+              {/* Points Redemption */}
+              {!appliedCoupon && loyaltyEstimate.maxPointsRedeemable > 0 ? (
                 <div className="flex items-center justify-between bg-white dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded-[12px] p-3">
                   <div className="flex flex-col">
                     <span className="text-xs text-gray-900 dark:text-white font-bold">
                       Redeem {loyaltyEstimate.maxPointsRedeemable} points
                     </span>
                     <span className="text-[10px] text-gold font-bold">
-                      Get flat ₹{loyaltyEstimate.maxRupeeDiscount} off this order
+                      Get flat ₹{loyaltyEstimate.maxRupeeDiscount} off this order (Max 10% subtotal)
                     </span>
                   </div>
                   <button
@@ -2097,20 +2202,88 @@ export default function CartPage() {
                     {useLoyaltyPoints ? 'Remove' : 'Apply'}
                   </button>
                 </div>
-              ) : (
+              ) : !appliedCoupon ? (
                 <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed">
-                  {loyaltyEstimate.availablePoints < (loyaltyEstimate.minPointsForRedemption || 100)
-                    ? `Minimum ${loyaltyEstimate.minPointsForRedemption || 100} points required to redeem on orders (Current: ${loyaltyEstimate.availablePoints} pts).`
+                  {loyaltyEstimate.availablePoints < (loyaltyEstimate.minPointsForRedemption || 50)
+                    ? `Minimum ${loyaltyEstimate.minPointsForRedemption || 50} points required to redeem (Current: ${loyaltyEstimate.availablePoints} pts).`
                     : `No points eligible for redemption on this order.`}
                 </p>
-              )}
+              ) : null}
 
+              {/* Earn Points Notice */}
               {loyaltyEstimate.estimatedPointsEarned > 0 && (
                 <div className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-bold pt-1 border-t border-gray-200 dark:border-white/10">
                   <span>✨</span>
-                  <span>You'll earn +{loyaltyEstimate.estimatedPointsEarned} points upon successful delivery!</span>
+                  <span>You'll earn +{loyaltyEstimate.estimatedPointsEarned} points upon successful delivery! (2 pts per ₹100 spend)</span>
                 </div>
               )}
+
+              {/* Digital Stamp Card Section */}
+              <div className="bg-white/60 dark:bg-black/40 border border-amber-400/20 rounded-[14px] p-3 flex flex-col gap-2.5 mt-1">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm">🍗</span>
+                    <span className="text-xs font-black text-gray-900 dark:text-white">MeatCity Stamp Card</span>
+                  </div>
+                  <span className="text-[9px] font-black uppercase bg-amber-500/15 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full border border-amber-400/30">
+                    {loyaltyEstimate.stampsCollected || 0} / {loyaltyEstimate.stampsRequired || 10} Stamps
+                  </span>
+                </div>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
+                  Collect 10 stamps (orders ≥ ₹{loyaltyEstimate.minOrderForStamp || 400}) to unlock 1 Free 250g Chicken Curry Cut!
+                </p>
+
+                {/* Stamp visual icons */}
+                <div className="grid grid-cols-10 gap-1 pt-1">
+                  {Array.from({ length: loyaltyEstimate.stampsRequired || 10 }).map((_, sIdx) => {
+                    const isStamped = sIdx < (loyaltyEstimate.stampsCollected || 0);
+                    return (
+                      <div
+                        key={sIdx}
+                        className={`aspect-square rounded-full flex items-center justify-center text-[10px] font-black transition-all ${
+                          isStamped
+                            ? 'bg-primary text-white shadow-xs'
+                            : 'bg-gray-100 dark:bg-white/10 text-gray-400 border border-dashed border-gray-300 dark:border-white/20'
+                        }`}
+                        title={`Stamp #${sIdx + 1}`}
+                      >
+                        {isStamped ? '🍗' : sIdx + 1}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Unlocked Free Chicken Reward Claim */}
+                {loyaltyEstimate.activeRewards && loyaltyEstimate.activeRewards.length > 0 && (
+                  <div className="mt-2 bg-gradient-to-r from-emerald-500/15 to-emerald-500/5 border border-emerald-500/30 rounded-[12px] p-2.5 flex items-center justify-between gap-2">
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[11px] font-black text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                        <span>🎉</span> Free 250g Chicken Curry Cut Unlocked!
+                      </span>
+                      <span className="text-[9px] text-gray-600 dark:text-gray-400 truncate">
+                        Voucher: {loyaltyEstimate.activeRewards[0].claim_code}
+                      </span>
+                    </div>
+                    {claimedFreeRewardCode ? (
+                      <button
+                        type="button"
+                        onClick={handleRemoveFreeReward}
+                        className="px-2.5 py-1.5 bg-emerald-600/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 rounded-[8px] text-[10px] font-black uppercase whitespace-nowrap active:scale-95"
+                      >
+                        ✓ Claimed (Remove)
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleClaimFreeReward(loyaltyEstimate.activeRewards[0].claim_code)}
+                        className="px-3 py-1.5 bg-gold text-black rounded-[8px] text-[10px] font-black uppercase whitespace-nowrap shadow-sm shadow-gold/20 active:scale-95"
+                      >
+                        Claim Free Chicken 🎁
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -2136,8 +2309,14 @@ export default function CartPage() {
                   <span>-₹{activeLoyaltyDiscount.toLocaleString('en-IN')}</span>
                 </div>
               )}
+              {claimedFreeRewardCode && userRole !== 'b2b' && (
+                <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-bold">
+                  <span>🎁 Free Stamp Reward (250g Chicken)</span>
+                  <span className="font-black uppercase">FREE (₹0)</span>
+                </div>
+              )}
               <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                <span>Commercial Delivery</span>
+                <span>{userRole === 'b2b' ? 'Commercial Delivery' : 'Standard Delivery'}</span>
                 <span>
                   {deliveryFee === 0 
                     ? <strong className="text-emerald-600 dark:text-emerald-400 font-extrabold">FREE</strong> 
@@ -2181,7 +2360,8 @@ export default function CartPage() {
               onClick={handleCheckout} 
               disabled={
                 isProcessingPayment || 
-                (userRole === 'b2b' && subtotal < minB2BOrder) || 
+                (userRole === 'b2b' && minB2BOrder > 0 && subtotal < minB2BOrder) || 
+                (userRole === 'b2c' && minB2COrder > 0 && subtotal < minB2COrder) ||
                 (userRole === 'b2b' && paymentMethod === 'Credit' && isCreditBlocked)
               }
               className="flex-1 max-w-[260px] py-3.5 bg-primary hover:bg-[#B80000] active:scale-[0.98] disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider rounded-[14px] shadow-lg shadow-primary/20 transition-all text-center"
@@ -2190,11 +2370,13 @@ export default function CartPage() {
                 ? 'Processing Securely...' 
                 : userRole === 'guest' 
                   ? 'Login to Checkout' 
-                  : userRole === 'b2b' && subtotal < minB2BOrder
-                    ? `Min Order ₹${minB2BOrder.toLocaleString('en-IN')}`
-                    : userRole === 'b2b' && paymentMethod === 'Credit' && isCreditBlocked
-                      ? 'Credit Clearance Required'
-                      : `Proceed to Pay • ₹${total.toLocaleString('en-IN')}`
+                  : userRole === 'b2b' && minB2BOrder > 0 && subtotal < minB2BOrder
+                    ? `Min Wholesale Order ₹${minB2BOrder.toLocaleString('en-IN')}`
+                    : userRole === 'b2c' && minB2COrder > 0 && subtotal < minB2COrder
+                      ? `Min Order ₹${minB2COrder.toLocaleString('en-IN')}`
+                      : userRole === 'b2b' && paymentMethod === 'Credit' && isCreditBlocked
+                        ? 'Credit Clearance Required'
+                        : `Proceed to Pay • ₹${total.toLocaleString('en-IN')}`
               }
             </button>
           </div>

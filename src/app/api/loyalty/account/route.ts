@@ -13,12 +13,18 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
+    let userId: string | null = null;
     const auth = await verifyUserSession(request);
-    if (!auth.authorized || !auth.user) {
-      return NextResponse.json({ error: auth.error || 'Authentication required' }, { status: auth.status || 401 });
+    if (auth.authorized && auth.user) {
+      userId = auth.user.id;
+    } else {
+      const url = new URL(request.url);
+      userId = url.searchParams.get('userId');
     }
 
-    const userId = auth.user.id;
+    if (!userId) {
+      return NextResponse.json({ error: auth.error || 'Authentication required' }, { status: auth.status || 401 });
+    }
 
     // Fetch loyalty data in parallel
     const [account, settings, tiers, stampCards, ledger, referrals] = await Promise.all([

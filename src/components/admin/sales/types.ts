@@ -8,12 +8,14 @@ export interface SalesLead {
   area: string;     // Vashi, Nerul, Belapur, Turbhe, Kopar Khairane, Kharghar, Panvel, etc.
   address?: string;
   source_url?: string;
-  status: 'New' | 'Contacted' | 'Interested' | 'Quoted' | 'Trial Order' | 'Active Customer' | 'Not Interested' | 'Opted Out';
+  status: 'New' | 'Contacted' | 'Interested' | 'Quoted' | 'Trial Order' | 'Active Customer' | 'Not Interested' | 'Opted Out' | 'Verified';
   estimated_daily_kg?: number;
   preferred_items?: string;
   notes?: string;
   opt_out?: boolean;
   is_verified?: boolean;
+  verified_at?: string;
+  verified_by?: string;
   verification_status?: string;
   last_contacted_at?: string;
   created_at: string;

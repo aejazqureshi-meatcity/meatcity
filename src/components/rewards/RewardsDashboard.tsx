@@ -174,7 +174,7 @@ export default function RewardsDashboard({ user, onNavigateTab }: RewardsDashboa
               <span className="text-xs font-bold text-white/70">Points</span>
             </div>
             <span className="text-xs text-gold font-extrabold mt-0.5">
-              ≈ ₹{((account.points_balance || 0) * (data?.settings?.pointRupeeValue || 0.05)).toFixed(2)} Cash Value
+              ≈ ₹{((account.points_balance || 0) * (data?.settings?.pointRupeeValue || 1.0)).toFixed(2)} Cash Value
             </span>
           </div>
 
@@ -222,7 +222,7 @@ export default function RewardsDashboard({ user, onNavigateTab }: RewardsDashboa
               <span>🍗</span> Digital MeatCity Stamp Card
             </h3>
             <span className="text-[11px] text-text-secondary font-medium">
-              Collect 10 stamps to unlock ₹100 Flat Meat Voucher!
+              Collect 10 stamps (orders ≥ ₹400) to unlock Free 250g Chicken Curry Cut!
             </span>
           </div>
           <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
@@ -277,18 +277,18 @@ export default function RewardsDashboard({ user, onNavigateTab }: RewardsDashboa
           <div className="bg-emerald-500/10 border border-emerald-500/25 p-3 rounded-[14px] flex items-center justify-between">
             <div className="flex flex-col">
               <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold uppercase">
-                🎉 Stamp Reward Unlocked!
+                🎉 Free 250g Chicken Curry Cut Unlocked!
               </span>
               <span className="text-xs font-black text-text-primary tracking-wide">
                 Code: {activeStampCard.reward_code}
               </span>
             </div>
-            <button
-              onClick={() => handleCopy(activeStampCard.reward_code, 'Reward code copied!')}
-              className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs rounded-[10px]"
+            <Link
+              href="/cart"
+              className="px-3 py-1.5 bg-gold hover:bg-yellow-400 text-black font-black text-xs rounded-[10px] active:scale-95 shadow-xs"
             >
-              Copy
-            </button>
+              Claim in Cart 🍗
+            </Link>
           </div>
         )}
       </div>
@@ -496,11 +496,11 @@ export default function RewardsDashboard({ user, onNavigateTab }: RewardsDashboa
           ℹ️ Loyalty Program Rules & Terms
         </span>
         <ul className="list-disc list-inside text-text-secondary text-[11px] space-y-1">
-          <li>Earn 1 Point for every rupee spent on eligible delivered fresh cuts.</li>
-          <li>Each point is worth ₹0.05 discount during checkout (100 points = ₹5).</li>
-          <li>Points remain valid for 90 days from the earning date.</li>
-          <li>Digital stamp cards require a minimum order of ₹350 per stamp.</li>
-          <li>Points can be redeemed alongside active promo coupons on retail orders.</li>
+          <li>Earn 2 Points for every ₹100 spent on eligible delivered fresh cuts (₹500 = 10 pts, ₹800 = 16 pts).</li>
+          <li>Each point is worth ₹1.00 cash discount during checkout. Minimum 50 points required to redeem (max 10% of subtotal).</li>
+          <li>Points remain valid for 180 days from the earning date.</li>
+          <li>Digital stamp cards: 1 stamp per qualifying completed order (min ₹400). 10 stamps unlock 1 claimable 250g Free Chicken Curry Cut!</li>
+          <li>Points and promotional coupons cannot be stacked on the same order.</li>
         </ul>
       </div>
     </div>

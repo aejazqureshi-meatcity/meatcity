@@ -50,7 +50,58 @@ export function readDb() {
         { key: 'wholesale_payment_terms', value: 'Cash on Delivery / UPI / 7-Day Verified Credit' },
         { key: 'preferred_tone', value: 'respectful_roman_hinglish' },
         { key: 'delivery_slots', value: 'Morning 6:00 AM - 8:00 AM, Evening 4:00 PM - 6:00 PM' }
-      ]
+      ],
+      loyalty_settings: [
+        {
+          id: 1,
+          is_enabled: true,
+          points_per_rupee: 0.02,
+          point_rupee_value: 1.0,
+          min_order_amount_for_earn: 100,
+          min_points_for_redemption: 50,
+          max_redemption_percent_per_order: 10,
+          max_points_redemption_per_order: 1000,
+          points_expiry_days: 180,
+          can_combine_with_coupons: false,
+          discounted_products_earn_points: true,
+          eligible_customer_types: ['b2c'],
+          stamp_card_enabled: true,
+          stamps_required_per_card: 10,
+          min_order_for_stamp: 400,
+          stamp_reward_type: 'free_product',
+          stamp_reward_value: 0,
+          max_stamps_per_day: 1,
+          referral_enabled: false,
+          referrer_reward_points: 0,
+          referee_reward_discount: 0,
+          min_order_for_referral: 0,
+          birthday_reward_enabled: false,
+          birthday_reward_points: 0
+        }
+      ],
+      loyalty_tiers: [
+        { id: 'silver', name: 'Silver Member', min_spend: 0, min_orders: 0, points_multiplier: 1.0, badge_color: '#C0C0C0', icon: '🥈', priority_order: 1 },
+        { id: 'gold', name: 'Gold Member', min_spend: 2500, min_orders: 5, points_multiplier: 1.0, badge_color: '#D4AF37', icon: '🥇', priority_order: 2 },
+        { id: 'platinum', name: 'Platinum VIP', min_spend: 7500, min_orders: 15, points_multiplier: 1.0, badge_color: '#E5E4E2', icon: '💎', priority_order: 3 }
+      ],
+      loyalty_accounts: [],
+      loyalty_points_ledger: [],
+      loyalty_points_reservations: [],
+      loyalty_stamp_cards: [],
+      loyalty_rewards: [
+        {
+          id: 'rwd-free-chicken-250g',
+          title: '250g Chicken Curry Cut FREE',
+          description: '10 stamps reward entitlement — 250g fresh Chicken Curry Cut free with qualifying order.',
+          reward_type: 'free_product',
+          reward_value: 0,
+          points_cost: 0,
+          min_order_amount: 400,
+          is_active: true
+        }
+      ],
+      loyalty_reward_claims: [],
+      loyalty_audit_logs: []
     };
 
     if (!fs.existsSync(dbPath)) {
@@ -77,6 +128,15 @@ export function readDb() {
     if (!parsed.sales_quotations) { parsed.sales_quotations = []; changed = true; }
     if (!parsed.sales_follow_ups) { parsed.sales_follow_ups = defaultDb.sales_follow_ups; changed = true; }
     if (!parsed.sales_settings) { parsed.sales_settings = defaultDb.sales_settings; changed = true; }
+    if (!parsed.loyalty_settings || parsed.loyalty_settings.length === 0) { parsed.loyalty_settings = defaultDb.loyalty_settings; changed = true; }
+    if (!parsed.loyalty_tiers || parsed.loyalty_tiers.length === 0) { parsed.loyalty_tiers = defaultDb.loyalty_tiers; changed = true; }
+    if (!parsed.loyalty_accounts) { parsed.loyalty_accounts = []; changed = true; }
+    if (!parsed.loyalty_points_ledger) { parsed.loyalty_points_ledger = []; changed = true; }
+    if (!parsed.loyalty_points_reservations) { parsed.loyalty_points_reservations = []; changed = true; }
+    if (!parsed.loyalty_stamp_cards) { parsed.loyalty_stamp_cards = []; changed = true; }
+    if (!parsed.loyalty_rewards) { parsed.loyalty_rewards = defaultDb.loyalty_rewards; changed = true; }
+    if (!parsed.loyalty_reward_claims) { parsed.loyalty_reward_claims = []; changed = true; }
+    if (!parsed.loyalty_audit_logs) { parsed.loyalty_audit_logs = []; changed = true; }
 
     if (changed) {
       fs.writeFileSync(dbPath, JSON.stringify(parsed, null, 2), 'utf8');
@@ -222,5 +282,419 @@ export function executeServerQuery(query: any) {
   } catch (err: any) {
     console.error('Error executing mock query:', err);
     return { data: null, error: { message: err.message || 'Database error' } };
+  }
+}
+
+
+// Core server-side RPC executor for loyalty and atomic transactions
+export function executeServerRpc(functionName: string, params: any = {}) {
+  const db = readDb();
+
+  try {
+    if (functionName === 'get_or_create_loyalty_account') {
+      const userId = params.p_user_id || params.userId;
+      if (!userId) return { data: null, error: { message: 'User ID is required' } };
+
+      let account = (db.loyalty_accounts || []).find((a: any) => a.user_id === userId);
+      if (!account) {
+        account = {
+          id: generateUUID(),
+          user_id: userId,
+          tier_id: 'silver',
+          points_balance: 0,
+          lifetime_points_earned: 0,
+          lifetime_points_redeemed: 0,
+          lifetime_spend: 0,
+          total_orders_completed: 0,
+          referral_code: 'MC' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+          is_suspended: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        db.loyalty_accounts.push(account);
+
+        // Create initial active stamp card
+        db.loyalty_stamp_cards.push({
+          id: generateUUID(),
+          user_id: userId,
+          card_number: 1,
+          stamps_collected: 0,
+          stamps_required: 10,
+          status: 'active',
+          created_at: new Date().toISOString(),
+        });
+        writeDb(db);
+      }
+      return { data: account, error: null };
+    }
+
+    if (functionName === 'reserve_loyalty_points') {
+      const userId = params.p_user_id || params.userId;
+      const points = Number(params.p_points || params.points || 0);
+      const cartSessionId = String(params.p_cart_session_id || params.cartSessionId || 'default');
+
+      if (!userId || points <= 0) {
+        return { data: null, error: { message: 'Invalid user or points' } };
+      }
+
+      let account = (db.loyalty_accounts || []).find((a: any) => a.user_id === userId);
+      const user = (db.users || []).find((u: any) => u.id === userId);
+      if (user && user.user_type === 'b2b') {
+        return { data: null, error: { message: 'B2B accounts are not eligible for retail loyalty points.' } };
+      }
+
+      // Check active unexpired reservations to prevent concurrent double-spending
+      const activeHeldPoints = (db.loyalty_points_reservations || [])
+        .filter((r: any) => r.user_id === userId && r.status === 'reserved' && new Date(r.expires_at) > new Date())
+        .reduce((sum: number, r: any) => sum + (r.points || 0), 0);
+
+      const availableBalance = (account?.points_balance || 0) - activeHeldPoints;
+      if (!account || availableBalance < points) {
+        return { data: null, error: { message: `Insufficient unreserved points. Available: ${Math.max(0, availableBalance)} pts.` } };
+      }
+
+      const resId = 'res-' + generateUUID();
+      const reservation = {
+        id: resId,
+        user_id: userId,
+        points: points,
+        rupee_value: points * 1.0,
+        cart_session_id: cartSessionId,
+        status: 'reserved',
+        created_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString()
+      };
+
+      db.loyalty_points_reservations.push(reservation);
+      writeDb(db);
+      return { data: { reservation_id: resId, status: 'reserved' }, error: null };
+    }
+
+    if (functionName === 'release_loyalty_points_reservation') {
+      const resId = params.p_reservation_id || params.reservationId;
+      const reservation = (db.loyalty_points_reservations || []).find((r: any) => r.id === resId);
+      if (reservation && reservation.status === 'reserved') {
+        reservation.status = 'released';
+        reservation.released_at = new Date().toISOString();
+        writeDb(db);
+      }
+      return { data: { success: true }, error: null };
+    }
+
+    if (functionName === 'commit_loyalty_redemption') {
+      const resId = params.p_reservation_id || params.reservationId;
+      const orderId = params.p_order_id || params.orderId;
+
+      const reservation = (db.loyalty_points_reservations || []).find((r: any) => r.id === resId);
+      if (!reservation) {
+        return { data: null, error: { message: 'Reservation not found' } };
+      }
+
+      if (reservation.status === 'committed') {
+        return { data: { success: true, message: 'Already committed' }, error: null };
+      }
+
+      reservation.status = 'committed';
+      reservation.order_id = orderId;
+
+      const account = (db.loyalty_accounts || []).find((a: any) => a.user_id === reservation.user_id);
+      if (account) {
+        account.points_balance = Math.max(0, (account.points_balance || 0) - reservation.points);
+        account.lifetime_points_redeemed = (account.lifetime_points_redeemed || 0) + reservation.points;
+        account.updated_at = new Date().toISOString();
+
+        db.loyalty_points_ledger.push({
+          id: generateUUID(),
+          user_id: reservation.user_id,
+          order_id: orderId,
+          transaction_type: 'redeemed',
+          points: -reservation.points,
+          balance_after: account.points_balance,
+          rupee_equivalent: reservation.points * 1.0,
+          description: `Redeemed ${reservation.points} points on Order #${orderId}`,
+          created_at: new Date().toISOString()
+        });
+      }
+
+      writeDb(db);
+      return { data: { success: true }, error: null };
+    }
+
+    if (functionName === 'redeem_free_stamp_reward') {
+      const claimCode = params.claim_code || params.p_claim_code;
+      const orderId = params.order_id || params.p_order_id;
+      const claim = (db.loyalty_reward_claims || []).find((c: any) => c.claim_code === claimCode);
+      if (!claim) {
+        return { data: null, error: { message: 'Reward claim not found' } };
+      }
+      if (claim.status !== 'active') {
+        return { data: null, error: { message: `Reward claim is already ${claim.status}` } };
+      }
+      if (claim.expires_at && new Date(claim.expires_at) < new Date()) {
+        claim.status = 'expired';
+        writeDb(db);
+        return { data: null, error: { message: 'Reward claim has expired' } };
+      }
+      claim.status = 'redeemed';
+      claim.redeemed_order_id = orderId;
+      claim.redeemed_at = new Date().toISOString();
+      writeDb(db);
+      return { data: { success: true, claim }, error: null };
+    }
+
+    if (functionName === 'process_order_refund') {
+      const orderId = params.p_order_id || params.orderId;
+      const refundAmount = Number(params.p_refund_amount || params.refundAmount || 0);
+      const isFullRefund = Boolean(params.p_is_full || params.isFullRefund || false);
+
+      const order = (db.orders || []).find((o: any) => String(o.id) === String(orderId));
+      if (!order) return { data: null, error: { message: 'Order not found' } };
+
+      const originalTotal = Number(order.subtotal || order.total || 0);
+      if (isFullRefund || refundAmount >= originalTotal) {
+        // Delegate to full reversal
+        return executeServerRpc('reverse_order_loyalty', { p_order_id: orderId });
+      }
+
+      // Partial refund: recalculate earned points on remaining spend
+      const remainingSpend = Math.max(0, originalTotal - refundAmount);
+      const newPointsEarned = Math.floor(remainingSpend * 0.02);
+
+      const earnedEntry = (db.loyalty_points_ledger || []).find(
+        (l: any) => l.order_id === orderId && l.transaction_type === 'earned'
+      );
+
+      if (earnedEntry) {
+        const pointsToDeduct = Math.max(0, earnedEntry.points - newPointsEarned);
+        if (pointsToDeduct > 0) {
+          const account = (db.loyalty_accounts || []).find((a: any) => a.user_id === earnedEntry.user_id);
+          if (account) {
+            account.points_balance = Math.max(0, (account.points_balance || 0) - pointsToDeduct);
+            account.lifetime_points_earned = Math.max(0, (account.lifetime_points_earned || 0) - pointsToDeduct);
+            account.updated_at = new Date().toISOString();
+
+            db.loyalty_points_ledger.push({
+              id: generateUUID(),
+              user_id: earnedEntry.user_id,
+              order_id: orderId,
+              transaction_type: 'reversed',
+              points: -pointsToDeduct,
+              balance_after: account.points_balance,
+              rupee_equivalent: pointsToDeduct * 1.0,
+              description: `Partial refund adjustment (-₹${refundAmount}) for Order #${orderId}`,
+              created_at: new Date().toISOString()
+            });
+          }
+        }
+      }
+
+      writeDb(db);
+      return { data: { success: true, remainingSpend, newPointsEarned }, error: null };
+    }
+
+    if (functionName === 'award_order_loyalty') {
+      const orderId = params.p_order_id || params.orderId;
+      if (!orderId) return { data: null, error: { message: 'Order ID is required' } };
+
+      // Check if already awarded (idempotency)
+      const alreadyAwarded = (db.loyalty_points_ledger || []).some(
+        (l: any) => l.order_id === orderId && l.transaction_type === 'earned'
+      );
+      if (alreadyAwarded) {
+        return { data: { success: true, message: 'Points already awarded for this order' }, error: null };
+      }
+
+      const order = (db.orders || []).find((o: any) => String(o.id) === String(orderId));
+      if (!order) return { data: null, error: { message: 'Order not found' } };
+
+      const user = (db.users || []).find((u: any) => u.id === order.user_id);
+      if (user && user.user_type === 'b2b') {
+        return { data: { success: true, message: 'B2B orders are not eligible for retail loyalty' }, error: null };
+      }
+
+      // Net merchandise spend = subtotal minus discounts, excluding delivery and free rewards
+      const subtotal = Number(order.subtotal || order.total || 0);
+      const discount = Number(order.coupon_discount || order.discount_amount || order.discount || 0);
+      const loyaltyDiscount = Number(order.points_discount || order.loyalty_discount || 0);
+      const netMerchandiseSpend = Math.max(0, subtotal - discount - loyaltyDiscount);
+
+      // Points: 2 points per ₹100 spend -> 0.02
+      let pointsToAward = 0;
+      if (netMerchandiseSpend >= 100) {
+        pointsToAward = Math.floor(netMerchandiseSpend * 0.02);
+      }
+
+      let account = (db.loyalty_accounts || []).find((a: any) => a.user_id === order.user_id);
+      if (!account) {
+        account = {
+          id: generateUUID(),
+          user_id: order.user_id,
+          tier_id: 'silver',
+          points_balance: 0,
+          lifetime_points_earned: 0,
+          lifetime_points_redeemed: 0,
+          lifetime_spend: 0,
+          total_orders_completed: 0,
+          referral_code: 'MC' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        db.loyalty_accounts.push(account);
+      }
+
+      if (pointsToAward > 0) {
+        account.points_balance = (account.points_balance || 0) + pointsToAward;
+        account.lifetime_points_earned = (account.lifetime_points_earned || 0) + pointsToAward;
+        account.lifetime_spend = (account.lifetime_spend || 0) + netMerchandiseSpend;
+        account.total_orders_completed = (account.total_orders_completed || 0) + 1;
+        account.updated_at = new Date().toISOString();
+
+        db.loyalty_points_ledger.push({
+          id: generateUUID(),
+          user_id: order.user_id,
+          order_id: orderId,
+          transaction_type: 'earned',
+          points: pointsToAward,
+          balance_after: account.points_balance,
+          rupee_equivalent: pointsToAward * 1.0,
+          description: `Earned ${pointsToAward} points on completed Order #${orderId}`,
+          created_at: new Date().toISOString()
+        });
+      }
+
+      // Digital Stamp Card Award (1 stamp per qualifying completed order >= ₹400)
+      let stampsAwarded = 0;
+      if (netMerchandiseSpend >= 400 && !order.is_free_reward_only) {
+        let activeCard = (db.loyalty_stamp_cards || []).find(
+          (c: any) => c.user_id === order.user_id && c.status === 'active'
+        );
+
+        if (!activeCard) {
+          activeCard = {
+            id: generateUUID(),
+            user_id: order.user_id,
+            card_number: 1,
+            stamps_collected: 0,
+            stamps_required: 10,
+            status: 'active',
+            created_at: new Date().toISOString()
+          };
+          db.loyalty_stamp_cards.push(activeCard);
+        }
+
+        activeCard.stamps_collected = (activeCard.stamps_collected || 0) + 1;
+        stampsAwarded = 1;
+
+        // If completed 10 stamps -> unlock free Chicken Curry Cut (250g) reward
+        if (activeCard.stamps_collected >= 10) {
+          activeCard.status = 'completed';
+          activeCard.completed_at = new Date().toISOString();
+          const rewardCode = 'MC-CHICKEN-250G-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+          activeCard.reward_code = rewardCode;
+
+          db.loyalty_reward_claims.push({
+            id: generateUUID(),
+            reward_id: 'rwd-free-chicken-250g',
+            user_id: order.user_id,
+            claim_code: rewardCode,
+            points_spent: 0,
+            title: '250g Chicken Curry Cut FREE',
+            product_id: 'prod-1',
+            quantity_grams: 250,
+            status: 'active',
+            expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            created_at: new Date().toISOString()
+          });
+
+          // Start next cycle
+          db.loyalty_stamp_cards.push({
+            id: generateUUID(),
+            user_id: order.user_id,
+            card_number: (activeCard.card_number || 1) + 1,
+            stamps_collected: 0,
+            stamps_required: 10,
+            status: 'active',
+            created_at: new Date().toISOString()
+          });
+        }
+      }
+
+      writeDb(db);
+      return { data: { success: true, pointsAwarded: pointsToAward, stampsAwarded }, error: null };
+    }
+
+    if (functionName === 'reverse_order_loyalty') {
+      const orderId = params.p_order_id || params.orderId;
+      // Find earned entry and reverse it
+      const earnedEntry = (db.loyalty_points_ledger || []).find(
+        (l: any) => l.order_id === orderId && l.transaction_type === 'earned'
+      );
+
+      if (earnedEntry) {
+        const account = (db.loyalty_accounts || []).find((a: any) => a.user_id === earnedEntry.user_id);
+        if (account) {
+          account.points_balance = Math.max(0, (account.points_balance || 0) - earnedEntry.points);
+          account.lifetime_points_earned = Math.max(0, (account.lifetime_points_earned || 0) - earnedEntry.points);
+          account.updated_at = new Date().toISOString();
+
+          db.loyalty_points_ledger.push({
+            id: generateUUID(),
+            user_id: earnedEntry.user_id,
+            order_id: orderId,
+            transaction_type: 'reversed',
+            points: -earnedEntry.points,
+            balance_after: account.points_balance,
+            rupee_equivalent: earnedEntry.points * 1.0,
+            description: `Reversed points for cancelled Order #${orderId}`,
+            created_at: new Date().toISOString()
+          });
+        }
+      }
+
+      // If points were redeemed on this order, refund them!
+      const redeemedEntry = (db.loyalty_points_ledger || []).find(
+        (l: any) => l.order_id === orderId && l.transaction_type === 'redeemed'
+      );
+
+      if (redeemedEntry) {
+        const pointsToRefund = Math.abs(redeemedEntry.points);
+        const account = (db.loyalty_accounts || []).find((a: any) => a.user_id === redeemedEntry.user_id);
+        if (account) {
+          account.points_balance = (account.points_balance || 0) + pointsToRefund;
+          account.lifetime_points_redeemed = Math.max(0, (account.lifetime_points_redeemed || 0) - pointsToRefund);
+          account.updated_at = new Date().toISOString();
+
+          db.loyalty_points_ledger.push({
+            id: generateUUID(),
+            user_id: redeemedEntry.user_id,
+            order_id: orderId,
+            transaction_type: 'bonus',
+            points: pointsToRefund,
+            balance_after: account.points_balance,
+            rupee_equivalent: pointsToRefund * 1.0,
+            description: `Refunded ${pointsToRefund} points from cancelled Order #${orderId}`,
+            created_at: new Date().toISOString()
+          });
+        }
+      }
+
+      // If a stamp was awarded, decrement it
+      const order = (db.orders || []).find((o: any) => String(o.id) === String(orderId));
+      if (order) {
+        const activeCard = (db.loyalty_stamp_cards || []).find(
+          (c: any) => c.user_id === order.user_id && c.status === 'active'
+        );
+        if (activeCard && activeCard.stamps_collected > 0) {
+          activeCard.stamps_collected -= 1;
+        }
+      }
+
+      writeDb(db);
+      return { data: { success: true }, error: null };
+    }
+
+    return { data: null, error: { message: `Unknown RPC function: ${functionName}` } };
+  } catch (err: any) {
+    return { data: null, error: { message: err.message } };
   }
 }

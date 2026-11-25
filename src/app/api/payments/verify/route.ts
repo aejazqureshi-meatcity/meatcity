@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import crypto from 'crypto';
 import { sendOrderEmail } from '@/lib/email';
+import { sendTelegramOrderAlert } from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,6 +56,46 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Missing order details.' }, { status: 400 });
       }
 
+      // 1. Minimum order threshold validation
+      const subtotal = Number(orderPayload.subtotal || 0);
+      const userRole = orderPayload.user_role || orderPayload.role || 'b2c';
+      if (userRole === 'b2b' && subtotal < 1000) {
+        return NextResponse.json({ error: 'Minimum wholesale order of ₹1,000 required for B2B.' }, { status: 400 });
+      }
+      if (userRole === 'b2c' && subtotal < 200) {
+        return NextResponse.json({ error: 'Minimum retail order of ₹200 required.' }, { status: 400 });
+      }
+
+      // 2. Check duplicate order processing (idempotency)
+      const { data: existingOrder } = await supabase.from('orders').select('id, total, status').eq('id', orderPayload.id).single();
+      if (existingOrder) {
+        return NextResponse.json({ success: true, message: 'Order already verified and processed', orderId: existingOrder.id });
+      }
+
+      // 3. Stacking validation: coupons & loyalty cannot be combined
+      if (orderPayload.coupon_code && (Number(orderPayload.points_redeemed || 0) > 0 || Number(orderPayload.points_discount || 0) > 0)) {
+        return NextResponse.json({ error: 'Security policy: Coupons and loyalty points cannot be stacked.' }, { status: 400 });
+      }
+
+      // 4. Free reward claim verification
+      if (orderPayload.claimed_reward_code) {
+        const { data: claimData, error: claimErr } = await supabase
+          .from('loyalty_reward_claims')
+          .select('*')
+          .eq('claim_code', orderPayload.claimed_reward_code)
+          .single();
+
+        if (claimErr || !claimData) {
+          return NextResponse.json({ error: 'Invalid free reward claim code.' }, { status: 400 });
+        }
+        if (claimData.status !== 'active') {
+          return NextResponse.json({ error: `Reward claim code is already ${claimData.status}.` }, { status: 400 });
+        }
+        if (claimData.expires_at && new Date().toISOString() > claimData.expires_at) {
+          return NextResponse.json({ error: 'Reward claim code has expired.' }, { status: 400 });
+        }
+      }
+
       // Add payment verification details to the order payload
       const secureOrderPayload = {
         ...orderPayload,
@@ -85,7 +126,8 @@ export async function POST(request: Request) {
         points_earned: secureOrderPayload.points_earned || 0,
         points_redeemed: secureOrderPayload.points_redeemed || 0,
         points_discount: secureOrderPayload.points_discount || 0,
-        stamp_awarded: false
+        stamp_awarded: false,
+        claimed_reward_code: secureOrderPayload.claimed_reward_code || null
       };
 
       // Write order directly to database
@@ -93,6 +135,22 @@ export async function POST(request: Request) {
       if (orderError) {
         console.error('Failed to save verified order:', orderError);
         return NextResponse.json({ error: 'Failed to write order: ' + orderError.message }, { status: 500 });
+      }
+
+      // Mark claimed reward code as redeemed in database
+      if (secureOrderPayload.claimed_reward_code) {
+        try {
+          await supabase
+            .from('loyalty_reward_claims')
+            .update({
+              status: 'redeemed',
+              redeemed_order_id: secureOrderPayload.id,
+              redeemed_at: new Date().toISOString()
+            })
+            .eq('claim_code', secureOrderPayload.claimed_reward_code);
+        } catch (claimUpdateErr) {
+          console.warn('[Payments Verify] Failed to update reward claim status:', claimUpdateErr);
+        }
       }
 
       // If loyalty points were reserved for this order, commit the reservation
@@ -131,6 +189,13 @@ export async function POST(request: Request) {
         await sendOrderEmail(dbOrderPayload);
       } catch (eErr) {
         console.error('Resend email dispatch error:', eErr);
+      }
+
+      // Send Telegram real-time order alert (fail-safe, non-blocking)
+      try {
+        await sendTelegramOrderAlert(dbOrderPayload);
+      } catch (tErr) {
+        console.error('Telegram order alert dispatch error:', tErr);
       }
 
       return NextResponse.json({ success: true, orderId: secureOrderPayload.id });

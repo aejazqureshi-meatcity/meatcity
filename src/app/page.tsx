@@ -369,7 +369,12 @@ export default function Home() {
     // Fetch categories dynamically
     const { data: catData } = await supabase.from('categories').select('*');
     if (catData && catData.length > 0) {
-      setCategories(catData.map((c: any) => c.name || c.id));
+      const validCats = catData
+        .map((c: any) => c.name || c.id || '')
+        .filter((c: string) => Boolean(c && typeof c === 'string'));
+      if (validCats.length > 0) {
+        setCategories(validCats);
+      }
     }
 
     // 4. Fetch orders for B2B Dashboard
@@ -978,7 +983,6 @@ export default function Home() {
         onComplete={() => {
           localStorage.setItem('meatcity_splash_seen', 'true');
           setShowSplash(false);
-          router.push('/login');
         }}
       />
     );

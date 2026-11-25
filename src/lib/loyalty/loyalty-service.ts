@@ -11,32 +11,32 @@ import {
   LoyaltyReferral 
 } from './types';
 
-// Default fallback settings (disabled by default until owner approval)
+// Default loyalty settings matching approved local testing parameters
 export const DEFAULT_LOYALTY_SETTINGS: LoyaltySettings = {
   id: 1,
-  is_enabled: false,
-  points_per_rupee: 1.0,
-  point_rupee_value: 0.05,
-  min_order_amount_for_earn: 200,
-  min_points_for_redemption: 100,
-  max_redemption_percent_per_order: 50,
+  is_enabled: true, // Enabled for local testing (disabled in production until approved)
+  points_per_rupee: 0.02, // 2 points per ₹100 of eligible net merchandise spend
+  point_rupee_value: 1.0, // ₹1 per point
+  min_order_amount_for_earn: 100,
+  min_points_for_redemption: 50, // Minimum 50 points required to redeem
+  max_redemption_percent_per_order: 10, // Maximum 10% of eligible merchandise subtotal
   max_points_redemption_per_order: 1000,
-  points_expiry_days: 90,
-  can_combine_with_coupons: true,
+  points_expiry_days: 180, // Points valid for 180 days
+  can_combine_with_coupons: false, // Coupon & loyalty stacking disabled until owner approval
   discounted_products_earn_points: true,
-  eligible_customer_types: ['b2c'],
+  eligible_customer_types: ['b2c'], // B2C only; B2B wholesale loyalty disabled
   stamp_card_enabled: true,
-  stamps_required_per_card: 10,
-  min_order_for_stamp: 350,
-  stamp_reward_type: 'flat_discount',
-  stamp_reward_value: 100,
+  stamps_required_per_card: 10, // 10 qualifying completed orders
+  min_order_for_stamp: 400, // Minimum qualifying merchandise order value of ₹400
+  stamp_reward_type: 'free_product', // Free 250g Chicken Curry Cut
+  stamp_reward_value: 0,
   max_stamps_per_day: 1,
-  referral_enabled: true,
-  referrer_reward_points: 200,
-  referee_reward_discount: 50,
-  min_order_for_referral: 300,
-  birthday_reward_enabled: true,
-  birthday_reward_points: 300,
+  referral_enabled: false,
+  referrer_reward_points: 0,
+  referee_reward_discount: 0,
+  min_order_for_referral: 0,
+  birthday_reward_enabled: false,
+  birthday_reward_points: 0,
 };
 
 export const DEFAULT_LOYALTY_TIERS: LoyaltyTier[] = [
@@ -80,6 +80,12 @@ export const DEFAULT_LOYALTY_TIERS: LoyaltyTier[] = [
 
 // Helper to get service role client for privileged database operations
 export function getServiceClient() {
+  const useMock = process.env.NEXT_PUBLIC_USE_MOCK_DB === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (useMock) {
+    const { MockSupabaseClient } = require('../supabase-mock');
+    return new MockSupabaseClient() as any;
+  }
+
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
@@ -327,12 +333,40 @@ export async function getCustomerReferrals(userId: string): Promise<LoyaltyRefer
 }
 
 /**
+ * Fetch active claimed rewards for customer (e.g. Free Chicken Curry Cut)
+ */
+export async function getCustomerRewardClaims(userId: string): Promise<LoyaltyRewardClaim[]> {
+  try {
+    const supabase = getServiceClient();
+    const { data, error } = await supabase
+      .from('loyalty_reward_claims')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'active');
+
+    if (!error && data) {
+      return data as LoyaltyRewardClaim[];
+    }
+  } catch (err) {
+    console.warn('[Loyalty Service] Error fetching reward claims:', err);
+  }
+  return [];
+}
+
+/**
  * Estimate order points to be earned and max redeemable
  */
-export async function estimateOrderPoints(subtotal: number, userId?: string, userRole = 'b2c') {
+export async function estimateOrderPoints(
+  subtotal: number, 
+  userId?: string, 
+  userRole = 'b2c',
+  couponApplied = false
+) {
   const settings = await getLoyaltySettings();
 
-  if (!settings.is_enabled) {
+  // B2B wholesale is strictly excluded; guest and b2c retail are eligible
+  const effectiveRole = userRole === 'b2b' ? 'b2b' : 'b2c';
+  if (!settings.is_enabled || !settings.eligible_customer_types.includes(effectiveRole)) {
     return {
       isEnabled: false,
       estimatedPointsEarned: 0,
@@ -340,54 +374,53 @@ export async function estimateOrderPoints(subtotal: number, userId?: string, use
       maxRupeeDiscount: 0,
       pointRupeeValue: settings.point_rupee_value,
       availablePoints: 0,
+      stampsCollected: 0,
+      stampsRequired: 10,
+      activeRewards: [],
+      canCombineWithCoupons: settings.can_combine_with_coupons,
     };
   }
 
-  const isEligibleRole = settings.eligible_customer_types.includes(userRole);
-  if (!isEligibleRole) {
-    return {
-      isEnabled: false,
-      estimatedPointsEarned: 0,
-      maxPointsRedeemable: 0,
-      maxRupeeDiscount: 0,
-      pointRupeeValue: settings.point_rupee_value,
-      availablePoints: 0,
-    };
-  }
-
-  let multiplier = 1.0;
   let availablePoints = 0;
+  let stampsCollected = 0;
+  let activeRewards: LoyaltyRewardClaim[] = [];
 
   if (userId) {
     const account = await getOrCreateLoyaltyAccount(userId);
-    availablePoints = account.points_balance;
-    const tiers = await getLoyaltyTiers();
-    const currentTier = tiers.find((t) => t.id === account.tier_id) || tiers[0];
-    multiplier = currentTier ? currentTier.points_multiplier : 1.0;
+    availablePoints = account.points_balance || 0;
+
+    const stampCards = await getCustomerStampCards(userId);
+    const activeCard = stampCards.find((c) => c.status === 'active') || stampCards[0];
+    stampsCollected = activeCard ? activeCard.stamps_collected : 0;
+
+    activeRewards = await getCustomerRewardClaims(userId);
   }
 
-  // Points earned calculation
+  // 1. Points Earned: 2 points per ₹100 of eligible net merchandise spend (0.02)
   const eligibleAmount = Math.max(0, subtotal);
   const estimatedPointsEarned = eligibleAmount >= settings.min_order_amount_for_earn
-    ? Math.round(eligibleAmount * settings.points_per_rupee * multiplier)
+    ? Math.floor(eligibleAmount * settings.points_per_rupee)
     : 0;
 
-  // Max redemption calculation
-  // Limit 1: Max percentage of subtotal (e.g. 50%)
-  const maxRupeeByPercent = Math.round((subtotal * settings.max_redemption_percent_per_order) / 100);
-  const maxPointsByPercent = Math.floor(maxRupeeByPercent / settings.point_rupee_value);
+  // 2. Max Redemption:
+  // - Stacking rule: If coupon applied and stacking disabled, no points can be redeemed
+  // - Minimum redemption threshold: 50 points
+  // - Maximum redemption limit: 10% of eligible merchandise subtotal
+  // - Point rupee value: ₹1 per point
+  let maxPointsRedeemable = 0;
+  let maxRupeeDiscount = 0;
 
-  // Limit 2: Max points cap per order
-  const maxPointsByCap = settings.max_points_redemption_per_order;
+  const isStackingAllowed = !couponApplied || settings.can_combine_with_coupons;
+  if (isStackingAllowed && eligibleAmount > 0) {
+    const maxRupeeByPercent = Math.floor((eligibleAmount * settings.max_redemption_percent_per_order) / 100);
+    const maxPointsByPercent = Math.floor(maxRupeeByPercent / settings.point_rupee_value);
+    const maxPointsAllowed = Math.min(maxPointsByPercent, availablePoints);
 
-  // Limit 3: Customer's available balance
-  const maxPointsAllowed = Math.min(maxPointsByPercent, maxPointsByCap, availablePoints);
-
-  const maxPointsRedeemable = availablePoints >= settings.min_points_for_redemption
-    ? Math.max(0, maxPointsAllowed)
-    : 0;
-
-  const maxRupeeDiscount = Math.round(maxPointsRedeemable * settings.point_rupee_value * 100) / 100;
+    if (availablePoints >= settings.min_points_for_redemption && maxPointsAllowed >= settings.min_points_for_redemption) {
+      maxPointsRedeemable = maxPointsAllowed;
+      maxRupeeDiscount = Math.round(maxPointsRedeemable * settings.point_rupee_value);
+    }
+  }
 
   return {
     isEnabled: true,
@@ -397,6 +430,13 @@ export async function estimateOrderPoints(subtotal: number, userId?: string, use
     pointRupeeValue: settings.point_rupee_value,
     availablePoints,
     minPointsForRedemption: settings.min_points_for_redemption,
+    maxRedemptionPercent: settings.max_redemption_percent_per_order,
+    stampsCollected,
+    stampsRequired: settings.stamps_required_per_card || 10,
+    minOrderForStamp: settings.min_order_for_stamp || 400,
+    activeRewards,
+    canCombineWithCoupons: settings.can_combine_with_coupons,
+    isStackingBlocked: couponApplied && !settings.can_combine_with_coupons,
   };
 }
 

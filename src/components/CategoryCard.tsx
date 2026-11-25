@@ -11,9 +11,9 @@ interface CategoryCardProps {
 
 export default function CategoryCard({ name, isActive, onClick, imageUrl }: CategoryCardProps) {
   // Category default high-res photography matching mockup style
-  const getCategoryImage = (cat: string) => {
+  const getCategoryImage = (cat?: string) => {
     if (imageUrl) return imageUrl;
-    const norm = cat.toLowerCase();
+    const norm = (cat || '').toLowerCase();
     if (norm.includes('chicken')) {
       return "https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=240&auto=format&fit=crop&q=80";
     }

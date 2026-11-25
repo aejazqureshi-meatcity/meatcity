@@ -114,6 +114,33 @@ export class MockSupabaseClient {
     return new QueryBuilder(table);
   }
 
+  rpc(functionName: string, params: any = {}) {
+    return {
+      then: async (onfulfilled?: (value: any) => any, onrejected?: (reason: any) => any) => {
+        try {
+          if (typeof window === 'undefined') {
+            const { executeServerRpc } = require('./supabase-mock-server');
+            const res = await executeServerRpc(functionName, params);
+            if (onfulfilled) return onfulfilled(res);
+            return res;
+          } else {
+            const res = await fetch('/api/mock/rpc', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ functionName, params })
+            });
+            const json = await res.json();
+            if (onfulfilled) return onfulfilled(json);
+            return json;
+          }
+        } catch (err) {
+          if (onrejected) return onrejected(err);
+          throw err;
+        }
+      }
+    };
+  }
+
   channel(name: string) {
     return {
       on(event: string, filter: any, callback: (payload: any) => void) {
@@ -383,6 +410,16 @@ export class MockSupabaseClient {
       } catch {
         return { data: { session: null }, error: null };
       }
+    },
+
+    onAuthStateChange: (callback?: (event: string, session: any) => void) => {
+      return {
+        data: {
+          subscription: {
+            unsubscribe: () => {}
+          }
+        }
+      };
     }
   };
 }

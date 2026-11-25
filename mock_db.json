@@ -287,6 +287,57 @@
       "status": "active",
       "user_type": "delivery_partner",
       "role": "delivery_partner"
+    },
+    {
+      "id": "usr-customer-a",
+      "email": "customera@meatcity.in",
+      "mobile": "9876543211",
+      "phone": "9876543211",
+      "password": "MeatCity@123",
+      "full_name": "Customer A (9 Stamps)",
+      "user_type": "b2c",
+      "status": "active",
+      "shop_address": "Turbhe Sector 20, Navi Mumbai - 400705"
+    },
+    {
+      "id": "usr-customer-b",
+      "email": "customerb@meatcity.in",
+      "mobile": "9876543212",
+      "phone": "9876543212",
+      "password": "MeatCity@123",
+      "full_name": "Customer B (10 Stamps & Free Chicken)",
+      "user_type": "b2c",
+      "status": "active",
+      "shop_address": "Turbhe Sector 20, Navi Mumbai - 400705"
+    },
+    {
+      "id": "usr-customer-c",
+      "email": "customerc@meatcity.in",
+      "mobile": "9876543213",
+      "phone": "9876543213",
+      "password": "MeatCity@123",
+      "full_name": "Customer C (B2B Approved Wholesale)",
+      "business_name": "City Foods Wholesale",
+      "gst_number": "27AAAAA0000A1Z5",
+      "fssai_license": "21525016001365",
+      "user_type": "b2b",
+      "status": "approved",
+      "credit_limit": 50000,
+      "credit_available": 50000,
+      "credit_used": 0,
+      "outstanding_balance": 0,
+      "shop_address": "Turbhe Wholesale Market, Shop 12, Navi Mumbai"
+    },
+    {
+      "id": "usr-customer-d",
+      "email": "customerd@meatcity.in",
+      "mobile": "9876543214",
+      "phone": "9876543214",
+      "password": "MeatCity@123",
+      "full_name": "Customer D (Expired Rewards)",
+      "user_type": "b2c",
+      "status": "active",
+      "shop_address": "Turbhe Sector 20, Navi Mumbai - 400705"
     }
   ],
   "products": [
@@ -2128,6 +2179,118 @@
       "title": "New Order Received 📦",
       "message": "Order ORD-888123 placed by kadir qureshi for ₹1.",
       "type": "new_order"
+    },
+    {
+      "id": "uuid-dohkxmjp5-mwwgrvqv",
+      "created_at": "2026-11-25T18:35:37.207Z",
+      "user_id": "usr-customer-b",
+      "title": "Order Placed successfully 🎉",
+      "message": "Your order ORD-TEST-COMBINED-1795631735284 for ₹770 has been verified and placed.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-ouyjs40yi-mwwgrvr9",
+      "created_at": "2026-11-25T18:35:37.221Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Order Verified 📦",
+      "message": "Order ORD-TEST-COMBINED-1795631735284 placed by Customer B for ₹770 has been paid and verified.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-zmwmmp0u2-mwwgw8c3",
+      "created_at": "2026-11-25T18:39:00.147Z",
+      "user_id": "usr-customer-b",
+      "title": "Order Placed successfully 🎉",
+      "message": "Your order ORD-TEST-COMBINED-1795631939350 for ₹770 has been verified and placed.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-b3xte3t7g-mwwgw8ch",
+      "created_at": "2026-11-25T18:39:00.161Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Order Verified 📦",
+      "message": "Order ORD-TEST-COMBINED-1795631939350 placed by Customer B for ₹770 has been paid and verified.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-h2jscyxxo-mwwgxe1h",
+      "created_at": "2026-11-25T18:39:54.198Z",
+      "user_id": "usr-customer-b",
+      "title": "Order Placed successfully 🎉",
+      "message": "Your order ORD-TEST-COMBINED-1795631994068 for ₹770 has been verified and placed.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-h0ide19gq-mwwgxe1r",
+      "created_at": "2026-11-25T18:39:54.207Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Order Verified 📦",
+      "message": "Order ORD-TEST-COMBINED-1795631994068 placed by Customer B for ₹770 has been paid and verified.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-ln0y8gk8u-mwwgyxeg",
+      "created_at": "2026-11-25T18:41:05.944Z",
+      "user_id": "usr-customer-b",
+      "title": "Order Placed successfully 🎉",
+      "message": "Your order ORD-TEST-COMBINED-1795632065825 for ₹770 has been verified and placed.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-hjcnrcnlz-mwwgyxer",
+      "created_at": "2026-11-25T18:41:05.955Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Order Verified 📦",
+      "message": "Order ORD-TEST-COMBINED-1795632065825 placed by Customer B for ₹770 has been paid and verified.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-35r3nt8iz-mwwhha0p",
+      "created_at": "2026-11-25T18:55:22.105Z",
+      "user_id": "usr-customer-b",
+      "title": "Order Placed successfully 🎉",
+      "message": "Your order ORD-TEST-COMBINED-1795632921539 for ₹770 has been verified and placed.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-b0waysewz-mwwhha0u",
+      "created_at": "2026-11-25T18:55:22.110Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Order Verified 📦",
+      "message": "Order ORD-TEST-COMBINED-1795632921539 placed by Customer B for ₹770 has been paid and verified.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-6651ko9ua-mwwhy9dg",
+      "created_at": "2026-11-25T19:08:34.420Z",
+      "user_id": "usr-customer-b",
+      "title": "Order Placed successfully 🎉",
+      "message": "Your order ORD-TEST-COMBINED-1795633713939 for ₹770 has been verified and placed.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-uttyw6hqf-mwwhy9dm",
+      "created_at": "2026-11-25T19:08:34.426Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Order Verified 📦",
+      "message": "Order ORD-TEST-COMBINED-1795633713939 placed by Customer B for ₹770 has been paid and verified.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-n4it66fet-mwwkmk2u",
+      "created_at": "2026-11-25T20:23:27.270Z",
+      "user_id": "usr-customer-b",
+      "title": "Order Placed successfully 🎉",
+      "message": "Your order ORD-TEST-COMBINED-1795638206587 for ₹770 has been verified and placed.",
+      "type": "new_order"
+    },
+    {
+      "id": "uuid-xiop4b9um-mwwkmk2z",
+      "created_at": "2026-11-25T20:23:27.275Z",
+      "user_id": "d7b7b123-1234-5678-abcd-123456789abc",
+      "title": "New Order Verified 📦",
+      "message": "Order ORD-TEST-COMBINED-1795638206587 placed by Customer B for ₹770 has been paid and verified.",
+      "type": "new_order"
     }
   ],
   "payments": [
@@ -2293,5 +2456,284 @@
       "key": "minimum_b2b_order",
       "value": "1000"
     }
-  ]
+  ],
+  "loyalty_settings": [
+    {
+      "id": 1,
+      "is_enabled": true,
+      "points_per_rupee": 0.02,
+      "point_rupee_value": 1,
+      "min_order_amount_for_earn": 100,
+      "min_points_for_redemption": 50,
+      "max_redemption_percent_per_order": 10,
+      "max_points_redemption_per_order": 1000,
+      "points_expiry_days": 180,
+      "can_combine_with_coupons": false,
+      "discounted_products_earn_points": true,
+      "eligible_customer_types": [
+        "b2c"
+      ],
+      "stamp_card_enabled": true,
+      "stamps_required_per_card": 10,
+      "min_order_for_stamp": 400,
+      "stamp_reward_type": "free_product",
+      "stamp_reward_value": 0,
+      "max_stamps_per_day": 1,
+      "referral_enabled": false,
+      "referrer_reward_points": 0,
+      "referee_reward_discount": 0,
+      "min_order_for_referral": 0,
+      "birthday_reward_enabled": false,
+      "birthday_reward_points": 0
+    }
+  ],
+  "loyalty_tiers": [
+    {
+      "id": "silver",
+      "name": "Silver Member",
+      "min_spend": 0,
+      "min_orders": 0,
+      "points_multiplier": 1,
+      "badge_color": "#C0C0C0",
+      "icon": "🥈",
+      "priority_order": 1
+    },
+    {
+      "id": "gold",
+      "name": "Gold Member",
+      "min_spend": 2500,
+      "min_orders": 5,
+      "points_multiplier": 1,
+      "badge_color": "#D4AF37",
+      "icon": "🥇",
+      "priority_order": 2
+    },
+    {
+      "id": "platinum",
+      "name": "Platinum VIP",
+      "min_spend": 7500,
+      "min_orders": 15,
+      "points_multiplier": 1,
+      "badge_color": "#E5E4E2",
+      "icon": "💎",
+      "priority_order": 3
+    }
+  ],
+  "loyalty_accounts": [
+    {
+      "id": "acc-customer-a",
+      "user_id": "usr-customer-a",
+      "tier_id": "silver",
+      "points_balance": 100,
+      "lifetime_points_earned": 100,
+      "lifetime_points_redeemed": 0,
+      "lifetime_spend": 4500,
+      "total_orders_completed": 9,
+      "referral_code": "MC-CUST-A",
+      "created_at": "2026-11-25T20:23:43.172Z",
+      "updated_at": "2026-11-25T20:23:43.173Z"
+    },
+    {
+      "id": "acc-customer-b",
+      "user_id": "usr-customer-b",
+      "tier_id": "silver",
+      "points_balance": 100,
+      "lifetime_points_earned": 100,
+      "lifetime_points_redeemed": 0,
+      "lifetime_spend": 5000,
+      "total_orders_completed": 10,
+      "referral_code": "MC-CUST-B",
+      "created_at": "2026-11-25T20:23:43.173Z",
+      "updated_at": "2026-11-25T20:23:43.173Z"
+    },
+    {
+      "id": "acc-customer-c",
+      "user_id": "usr-customer-c",
+      "tier_id": "silver",
+      "points_balance": 0,
+      "lifetime_points_earned": 0,
+      "lifetime_points_redeemed": 0,
+      "lifetime_spend": 0,
+      "total_orders_completed": 0,
+      "referral_code": "MC-CUST-C",
+      "created_at": "2026-11-25T20:23:43.173Z",
+      "updated_at": "2026-11-25T20:23:43.173Z"
+    },
+    {
+      "id": "acc-customer-d",
+      "user_id": "usr-customer-d",
+      "tier_id": "silver",
+      "points_balance": 0,
+      "lifetime_points_earned": 100,
+      "lifetime_points_redeemed": 0,
+      "lifetime_spend": 5000,
+      "total_orders_completed": 10,
+      "referral_code": "MC-CUST-D",
+      "created_at": "2026-05-09T20:23:43.173Z",
+      "updated_at": "2026-11-25T20:23:43.173Z"
+    }
+  ],
+  "loyalty_points_ledger": [
+    {
+      "id": "ledg-cust-a-1",
+      "user_id": "usr-customer-a",
+      "transaction_type": "earned",
+      "points": 100,
+      "balance_after": 100,
+      "rupee_equivalent": 100,
+      "description": "Earned 100 points on qualifying orders",
+      "created_at": "2026-11-25T20:23:43.173Z"
+    },
+    {
+      "id": "ledg-cust-b-1",
+      "user_id": "usr-customer-b",
+      "transaction_type": "earned",
+      "points": 100,
+      "balance_after": 100,
+      "rupee_equivalent": 100,
+      "description": "Earned 100 points on qualifying orders",
+      "created_at": "2026-11-25T20:23:43.173Z"
+    },
+    {
+      "id": "ledg-cust-d-1",
+      "user_id": "usr-customer-d",
+      "transaction_type": "expired",
+      "points": -100,
+      "balance_after": 0,
+      "rupee_equivalent": 0,
+      "description": "Points expired past 180 days validity window",
+      "is_expired": true,
+      "expires_at": "2026-11-15T20:23:43.173Z",
+      "created_at": "2026-05-09T20:23:43.173Z"
+    }
+  ],
+  "loyalty_points_reservations": [],
+  "loyalty_stamp_cards": [
+    {
+      "id": "sc-customer-a",
+      "user_id": "usr-customer-a",
+      "card_number": 1,
+      "stamps_collected": 9,
+      "stamps_required": 10,
+      "status": "active",
+      "created_at": "2026-11-25T20:23:43.173Z"
+    },
+    {
+      "id": "sc-customer-b",
+      "user_id": "usr-customer-b",
+      "card_number": 1,
+      "stamps_collected": 10,
+      "stamps_required": 10,
+      "status": "completed",
+      "reward_code": "MC-FREE-CHICKEN-250G",
+      "completed_at": "2026-11-25T20:23:43.173Z",
+      "created_at": "2026-11-25T20:23:43.173Z"
+    },
+    {
+      "id": "sc-customer-d",
+      "user_id": "usr-customer-d",
+      "card_number": 1,
+      "stamps_collected": 10,
+      "stamps_required": 10,
+      "status": "expired",
+      "reward_code": "MC-EXPIRED-CHICKEN",
+      "completed_at": "2026-05-09T20:23:43.173Z",
+      "created_at": "2026-05-09T20:23:43.173Z"
+    }
+  ],
+  "loyalty_rewards": [
+    {
+      "id": "rwd-free-chicken-250g",
+      "title": "250g Chicken Curry Cut FREE",
+      "description": "10 stamps reward entitlement — 250g fresh Chicken Curry Cut free with qualifying order.",
+      "reward_type": "free_product",
+      "reward_value": 0,
+      "points_cost": 0,
+      "min_order_amount": 400,
+      "is_active": true
+    }
+  ],
+  "loyalty_reward_claims": [
+    {
+      "id": "claim-customer-b-chicken",
+      "reward_id": "rwd-free-chicken-250g",
+      "user_id": "usr-customer-b",
+      "claim_code": "MC-FREE-CHICKEN-250G",
+      "points_spent": 0,
+      "title": "250g Chicken Curry Cut FREE",
+      "product_id": "prod-1",
+      "quantity_grams": 250,
+      "status": "active",
+      "expires_at": "2026-12-25T20:23:43.173Z",
+      "created_at": "2026-11-25T20:23:43.173Z",
+      "redeemed_order_id": "ORD-TEST-COMBINED-1795638206587",
+      "redeemed_at": "2026-11-25T20:23:27.252Z"
+    },
+    {
+      "id": "claim-customer-d-expired",
+      "reward_id": "rwd-free-chicken-250g",
+      "user_id": "usr-customer-d",
+      "claim_code": "MC-EXPIRED-CHICKEN",
+      "points_spent": 0,
+      "title": "250g Chicken Curry Cut FREE",
+      "product_id": "prod-1",
+      "quantity_grams": 250,
+      "status": "expired",
+      "expires_at": "2026-11-15T20:23:43.173Z",
+      "created_at": "2026-10-16T20:23:43.173Z"
+    },
+    {
+      "id": "uuid-meep2euxa-mwwgyydi",
+      "reward_id": "rwd-free-chicken-250g",
+      "user_id": "usr-customer-a",
+      "claim_code": "MC-CHICKEN-250G-J32YN8",
+      "points_spent": 0,
+      "title": "250g Chicken Curry Cut FREE",
+      "product_id": "prod-1",
+      "quantity_grams": 250,
+      "status": "active",
+      "expires_at": "2026-12-25T18:41:07.206Z",
+      "created_at": "2026-11-25T18:41:07.206Z"
+    },
+    {
+      "id": "uuid-oyze4deve-mwwhhbt8",
+      "reward_id": "rwd-free-chicken-250g",
+      "user_id": "usr-customer-a",
+      "claim_code": "MC-CHICKEN-250G-5RO785",
+      "points_spent": 0,
+      "title": "250g Chicken Curry Cut FREE",
+      "product_id": "prod-1",
+      "quantity_grams": 250,
+      "status": "active",
+      "expires_at": "2026-12-25T18:55:24.428Z",
+      "created_at": "2026-11-25T18:55:24.428Z"
+    },
+    {
+      "id": "uuid-s13xr90he-mwwhyb44",
+      "reward_id": "rwd-free-chicken-250g",
+      "user_id": "usr-customer-a",
+      "claim_code": "MC-CHICKEN-250G-N40XXV",
+      "points_spent": 0,
+      "title": "250g Chicken Curry Cut FREE",
+      "product_id": "prod-1",
+      "quantity_grams": 250,
+      "status": "active",
+      "expires_at": "2026-12-25T19:08:36.676Z",
+      "created_at": "2026-11-25T19:08:36.676Z"
+    },
+    {
+      "id": "uuid-m0it5o4mp-mwwkmmi8",
+      "reward_id": "rwd-free-chicken-250g",
+      "user_id": "usr-customer-a",
+      "claim_code": "MC-CHICKEN-250G-G9HNZN",
+      "points_spent": 0,
+      "title": "250g Chicken Curry Cut FREE",
+      "product_id": "prod-1",
+      "quantity_grams": 250,
+      "status": "active",
+      "expires_at": "2026-12-25T20:23:30.416Z",
+      "created_at": "2026-11-25T20:23:30.416Z"
+    }
+  ],
+  "loyalty_audit_logs": []
 }

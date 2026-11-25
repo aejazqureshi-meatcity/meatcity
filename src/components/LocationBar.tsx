@@ -61,13 +61,19 @@ export default function LocationBar() {
 
     window.addEventListener('address-changed', handleAddressChange);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      loadActiveLocation();
-    });
+    let unsubscribe = () => {};
+    if (typeof supabase.auth?.onAuthStateChange === 'function') {
+      const { data } = supabase.auth.onAuthStateChange(() => {
+        loadActiveLocation();
+      });
+      if (data?.subscription?.unsubscribe) {
+        unsubscribe = () => data.subscription.unsubscribe();
+      }
+    }
 
     return () => {
       window.removeEventListener('address-changed', handleAddressChange);
-      subscription.unsubscribe();
+      unsubscribe();
     };
   }, []);
 

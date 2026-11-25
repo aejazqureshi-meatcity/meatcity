@@ -49,6 +49,8 @@ interface OrderItem {
   name: string;
   quantity: number;
   price: number;
+  total?: number;
+  unit_price?: number;
 }
 
 interface Order {
@@ -69,6 +71,7 @@ interface Order {
   delivery_partner_id?: string;
   delivery_partner_name?: string;
   delivery_otp?: string;
+  delivery_slot?: string;
   items: OrderItem[];
   created_at: string;
 }
@@ -467,10 +470,10 @@ export default function AdminDashboard() {
 
       // Check for new orders if initial fetch is complete
       if (isInitialFetchDone.current) {
-        const existingIds = new Set(currentOrdersRef.current.map(o => o.id));
-        const newIncoming = newOrders.filter(o => !existingIds.has(o.id));
+        const existingIds = new Set(currentOrdersRef.current.map((o: any) => o.id));
+        const newIncoming = newOrders.filter((o: any) => !existingIds.has(o.id));
         if (newIncoming.length > 0) {
-          newIncoming.forEach(newOrder => {
+          newIncoming.forEach((newOrder: any) => {
             triggerNewOrderNotification(newOrder);
           });
         }
@@ -2351,7 +2354,7 @@ export default function AdminDashboard() {
 
                     {/* Weight Variants Section */}
                     <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1.5rem' }}>
-                      <h4 style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--color-gold)', marginBottom: '0.75rem', textTransform: 'uppercase', tracking: '0.05em' }}>⚖️ Product Weight Variants</h4>
+                      <h4 style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--color-gold)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>⚖️ Product Weight Variants</h4>
                       
                       {productForm.variants && productForm.variants.length > 0 ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
@@ -2442,7 +2445,7 @@ export default function AdminDashboard() {
                   <button 
                     onClick={() => {
                       setEditingProduct(null);
-                      setProductForm({ name: '', description: '', category: categories[0] || 'Chicken', price_b2c: 0, price_b2b: 0, unit: 'kg', image_url: '', stock: 10, is_available: true });
+                      setProductForm({ name: '', description: '', category: categories[0] || 'Chicken', price_b2c: 0, price_b2b: 0, unit: 'kg', image_url: '', stock: 10, is_available: true, stock_status: 'In Stock', variants: [] });
                       setShowProductForm(true);
                     }} 
                     className="admin-btn admin-btn-primary"
@@ -3957,7 +3960,7 @@ export default function AdminDashboard() {
                 to { transform: translateX(0); opacity: 1; }
               }
             `}</style>
-            <div style={{ display: 'flex', justifycontent: 'space-between', alignitems: 'flex-start' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <strong style={{ fontSize: '0.95rem', color: '#D4AF37', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 🔔 New Order Received
               </strong>

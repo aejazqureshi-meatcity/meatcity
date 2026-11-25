@@ -20,14 +20,14 @@ export async function GET(request: Request) {
       .select('tier_id, points_balance, lifetime_points_earned, lifetime_points_redeemed, lifetime_spend, total_orders_completed, is_suspended');
 
     const totalEnrolled = accounts?.length || 0;
-    const totalPointsEarned = accounts?.reduce((sum, a) => sum + (a.lifetime_points_earned || 0), 0) || 0;
-    const totalPointsRedeemed = accounts?.reduce((sum, a) => sum + (a.lifetime_points_redeemed || 0), 0) || 0;
-    const activePointsBalance = accounts?.reduce((sum, a) => sum + (a.points_balance || 0), 0) || 0;
+    const totalPointsEarned = accounts?.reduce((sum: number, a: any) => sum + (a.lifetime_points_earned || 0), 0) || 0;
+    const totalPointsRedeemed = accounts?.reduce((sum: number, a: any) => sum + (a.lifetime_points_redeemed || 0), 0) || 0;
+    const activePointsBalance = accounts?.reduce((sum: number, a: any) => sum + (a.points_balance || 0), 0) || 0;
     const pointsLiabilityRupees = Math.round(activePointsBalance * settings.point_rupee_value * 100) / 100;
 
     // Tier distribution
     const tierDistribution: Record<string, number> = { silver: 0, gold: 0, platinum: 0 };
-    accounts?.forEach((a) => {
+    accounts?.forEach((a: any) => {
       const tier = a.tier_id || 'silver';
       tierDistribution[tier] = (tierDistribution[tier] || 0) + 1;
     });
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
       .eq('status', 'rewarded');
 
     // 4. Repeat purchase rate from loyalty accounts
-    const repeatCustomers = accounts?.filter((a) => (a.total_orders_completed || 0) > 1).length || 0;
+    const repeatCustomers = accounts?.filter((a: any) => (a.total_orders_completed || 0) > 1).length || 0;
     const repeatPurchaseRate = totalEnrolled > 0 ? Math.round((repeatCustomers / totalEnrolled) * 100) : 0;
 
     return NextResponse.json({
