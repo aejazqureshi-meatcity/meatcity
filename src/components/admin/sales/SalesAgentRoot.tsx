@@ -488,7 +488,7 @@ export default function SalesAgentRoot({
   const todayFollowUpsCount = followUps.filter((f) => f.due_date <= todayStr && f.status === 'Pending').length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-full min-w-0 overflow-x-hidden">
       {/* Top Banner Warning if Supabase tables are pending migration */}
       {dbStatusWarning && (
         <div className="bg-[#1C1608] border border-[#D4AF37]/50 rounded-xl p-4 text-xs text-amber-200 flex items-start gap-3 shadow-lg">
@@ -504,8 +504,8 @@ export default function SalesAgentRoot({
       )}
 
       {/* Sub-Navigation Header Bar */}
-      <div className="bg-[#111111] border border-white/5 rounded-2xl p-2.5 overflow-x-auto shadow-2xl">
-        <div className="flex items-center gap-1.5 min-w-max">
+      <div className="bg-[#111111] border border-white/5 rounded-2xl p-2.5 overflow-x-auto shadow-2xl w-full max-w-full scrollbar-none">
+        <div className="flex items-center gap-1.5 min-w-max pb-1">
           {TABS.map((tab) => {
             const isActive = activeTab === tab.id;
             const isApprovals = tab.id === 'approvals' && pendingApprovalsCount > 0;

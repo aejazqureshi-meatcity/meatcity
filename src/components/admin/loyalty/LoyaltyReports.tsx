@@ -114,7 +114,7 @@ export default function LoyaltyReports() {
         <div className="bg-neutral-900 border border-white/5 rounded-2xl p-5 flex flex-col justify-between">
           <span className="text-xs text-text-secondary font-bold uppercase tracking-wider">🔁 Repeat Purchase Rate</span>
           <div className="text-2xl font-black text-white mt-2">
-            {data.repeatOrderRate}%
+            {data.repeatOrderRate ?? 0}%
           </div>
           <span className="text-[10px] text-emerald-400 font-bold mt-1">Customers with 2+ completed orders</span>
         </div>
@@ -122,7 +122,7 @@ export default function LoyaltyReports() {
         <div className="bg-neutral-900 border border-white/5 rounded-2xl p-5 flex flex-col justify-between">
           <span className="text-xs text-text-secondary font-bold uppercase tracking-wider">⏱️ Avg Order Frequency</span>
           <div className="text-2xl font-black text-white mt-2">
-            {data.avgOrderFrequencyDays} Days
+            {data.avgOrderFrequencyDays ?? 14} Days
           </div>
           <span className="text-[10px] text-text-secondary mt-1">Average gap between repeat orders</span>
         </div>
@@ -130,7 +130,7 @@ export default function LoyaltyReports() {
         <div className="bg-neutral-900 border border-amber-500/20 rounded-2xl p-5 flex flex-col justify-between">
           <span className="text-xs text-text-secondary font-bold uppercase tracking-wider">⚖️ Total Unredeemed Liability</span>
           <div className="text-2xl font-black text-gold mt-2">
-            ₹{data.totalLiabilityRupees.toLocaleString()}
+            ₹{(data.totalLiabilityRupees ?? 0).toLocaleString()}
           </div>
           <span className="text-[10px] text-gold/80 font-bold mt-1">Financial cash obligation of unspent points</span>
         </div>
@@ -144,21 +144,21 @@ export default function LoyaltyReports() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
           <div className="bg-black/30 border border-white/5 rounded-xl p-4">
             <span className="text-xs text-gray-400 font-bold">🥈 Silver Members</span>
-            <div className="text-lg font-black text-white mt-1">₹{data.clvByTier.silver.toLocaleString()}</div>
+            <div className="text-lg font-black text-white mt-1">₹{(data.clvByTier?.silver ?? 0).toLocaleString()}</div>
             <span className="text-[10px] text-text-secondary">Average spend per account</span>
           </div>
 
           <div className="bg-black/30 border border-amber-500/20 rounded-xl p-4">
             <span className="text-xs text-amber-400 font-bold">🥇 Gold Members</span>
-            <div className="text-lg font-black text-white mt-1">₹{data.clvByTier.gold.toLocaleString()}</div>
+            <div className="text-lg font-black text-white mt-1">₹{(data.clvByTier?.gold ?? 0).toLocaleString()}</div>
             <span className="text-[10px] text-amber-400/80 font-bold">
-              {data.clvByTier.silver > 0 ? `${Math.round((data.clvByTier.gold / data.clvByTier.silver) * 100) - 100}% higher than Silver` : 'High value tier'}
+              {(data.clvByTier?.silver ?? 0) > 0 ? `${Math.round(((data.clvByTier?.gold ?? 0) / (data.clvByTier?.silver || 1)) * 100) - 100}% higher than Silver` : 'High value tier'}
             </span>
           </div>
 
           <div className="bg-black/30 border border-purple-500/20 rounded-xl p-4">
             <span className="text-xs text-purple-400 font-bold">💎 Platinum VIPs</span>
-            <div className="text-lg font-black text-white mt-1">₹{data.clvByTier.platinum.toLocaleString()}</div>
+            <div className="text-lg font-black text-white mt-1">₹{(data.clvByTier?.platinum ?? 0).toLocaleString()}</div>
             <span className="text-[10px] text-purple-400/80 font-bold">Top tier customer cohort</span>
           </div>
         </div>
@@ -171,15 +171,15 @@ export default function LoyaltyReports() {
         </h4>
         <div className="grid grid-cols-3 gap-3 pt-1 text-center">
           <div className="bg-white/5 rounded-xl p-3">
-            <div className="text-base font-black text-white">{data.retentionSummary.oneOrder}</div>
+            <div className="text-base font-black text-white">{data.retentionSummary?.oneOrder ?? 0}</div>
             <span className="text-[10px] text-text-secondary">1 Order (New)</span>
           </div>
           <div className="bg-white/5 rounded-xl p-3">
-            <div className="text-base font-black text-gold">{data.retentionSummary.twoToThreeOrders}</div>
+            <div className="text-base font-black text-gold">{data.retentionSummary?.twoToThreeOrders ?? 0}</div>
             <span className="text-[10px] text-text-secondary">2–3 Orders (Active)</span>
           </div>
           <div className="bg-white/5 rounded-xl p-3">
-            <div className="text-base font-black text-emerald-400">{data.retentionSummary.fourPlusOrders}</div>
+            <div className="text-base font-black text-emerald-400">{data.retentionSummary?.fourPlusOrders ?? 0}</div>
             <span className="text-[10px] text-text-secondary">4+ Orders (Loyal)</span>
           </div>
         </div>

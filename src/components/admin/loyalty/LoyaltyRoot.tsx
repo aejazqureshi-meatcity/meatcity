@@ -19,9 +19,9 @@ export default function LoyaltyRoot() {
   const [activeSubTab, setActiveSubTab] = useState<string>('overview');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-full min-w-0 overflow-x-hidden">
       {/* Sub-navigation tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none border-b border-white/5">
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none border-b border-white/5 w-full max-w-full">
         {SUB_TABS.map((tab) => {
           const isActive = activeSubTab === tab.id;
           return (

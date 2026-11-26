@@ -346,21 +346,25 @@ export default function AdminDashboard() {
     setReviews(reviewsData || []);
 
     // Fetch Admin Settings
-    const { data: settingsData } = await supabase.from('admin_settings').select('*');
-    if (settingsData && settingsData.length > 0) {
-      const settingsObj: any = {};
-      settingsData.forEach((s: any) => {
-        settingsObj[s.key] = s.value;
-      });
-      setShopSettings({
-        isOpen: settingsObj.is_open === 'true',
-        deliveryFee: Number(settingsObj.delivery_fee || 50),
-        freeDeliveryAbove: Number(settingsObj.free_delivery_above || 999),
-        minimumB2COrder: Number(settingsObj.minimum_b2c_order || 200),
-        minimumB2BOrder: Number(settingsObj.minimum_b2b_order || 1000),
-        whatsappNotificationsEnabled: settingsObj.whatsapp_notifications_enabled === 'true',
-        adminWhatsappNumber: settingsObj.admin_whatsapp_number || '917977630912'
-      });
+    try {
+      const { data: settingsData } = await supabase.from('admin_settings').select('*');
+      if (settingsData && settingsData.length > 0) {
+        const settingsObj: any = {};
+        settingsData.forEach((s: any) => {
+          settingsObj[s.key] = s.value;
+        });
+        setShopSettings({
+          isOpen: settingsObj.is_open === 'true',
+          deliveryFee: Number(settingsObj.delivery_fee || 50),
+          freeDeliveryAbove: Number(settingsObj.free_delivery_above || 999),
+          minimumB2COrder: Number(settingsObj.minimum_b2c_order || 200),
+          minimumB2BOrder: Number(settingsObj.minimum_b2b_order || 1000),
+          whatsappNotificationsEnabled: settingsObj.whatsapp_notifications_enabled === 'true',
+          adminWhatsappNumber: settingsObj.admin_whatsapp_number || '917977630912'
+        });
+      }
+    } catch {
+      // Fallback defaults preserved if table is uninitialized
     }
 
     // Update active user states in case limit/ledger details changed
@@ -1400,7 +1404,7 @@ export default function AdminDashboard() {
       <main className="admin-main">
         {/* Top Header */}
         <header className="admin-top-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', maxWidth: '100%', minWidth: 0 }}>
             {/* Hamburger button for mobile */}
             <button 
               onClick={() => setIsSidebarOpen(true)}

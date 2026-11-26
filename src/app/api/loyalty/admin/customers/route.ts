@@ -49,20 +49,30 @@ export async function GET(request: Request) {
       customers: filtered.map((a: any) => ({
         id: a.id,
         userId: a.user_id,
+        user_id: a.user_id,
         name: a.user?.full_name || 'Customer',
         email: a.user?.email || '',
         phone: a.user?.phone || '',
         userType: a.user?.user_type || 'b2c',
+        user_type: a.user?.user_type || 'b2c',
         status: a.user?.status || 'active',
         tierId: a.tier_id || 'silver',
+        tier_id: a.tier_id || 'silver',
         pointsBalance: a.points_balance || 0,
+        points_balance: a.points_balance || 0,
         lifetimeEarned: a.lifetime_points_earned || 0,
+        lifetime_points_earned: a.lifetime_points_earned || 0,
         lifetimeRedeemed: a.lifetime_points_redeemed || 0,
+        lifetime_points_redeemed: a.lifetime_points_redeemed || 0,
         lifetimeSpend: a.lifetime_spend || 0,
+        lifetime_spend: a.lifetime_spend || 0,
         totalOrders: a.total_orders_completed || 0,
-        referralCode: a.referral_code,
+        total_orders_completed: a.total_orders_completed || 0,
+        referralCode: a.referral_code || '',
+        referral_code: a.referral_code || '',
         birthday: a.birthday,
-        isSuspended: a.is_suspended,
+        isSuspended: !!a.is_suspended,
+        is_suspended: !!a.is_suspended,
       })),
     });
   } catch (err: any) {
@@ -80,7 +90,9 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { userId, points, reason } = body;
+    const userId = body.userId || body.user_id;
+    const points = body.points !== undefined ? body.points : (body.pointsAdjustment !== undefined ? body.pointsAdjustment : body.pointsChange);
+    const reason = body.reason || body.adjustmentReason;
 
     if (!userId || points === undefined || !reason || !String(reason).trim()) {
       return NextResponse.json({ error: 'User ID, points, and a mandatory reason are required.' }, { status: 400 });

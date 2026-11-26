@@ -52,21 +52,35 @@ export async function GET(request: Request) {
     const repeatCustomers = accounts?.filter((a: any) => (a.total_orders_completed || 0) > 1).length || 0;
     const repeatPurchaseRate = totalEnrolled > 0 ? Math.round((repeatCustomers / totalEnrolled) * 100) : 0;
 
+    const tierBreakdown = {
+      silver: tierDistribution.silver || 0,
+      gold: tierDistribution.gold || 0,
+      platinum: tierDistribution.platinum || 0,
+    };
+
+    const overviewStats = {
+      totalEnrolled,
+      activeMembers: totalEnrolled,
+      activePointsBalance,
+      totalPointsEarned,
+      totalPointsIssued: totalPointsEarned,
+      totalPointsRedeemed,
+      pointsLiabilityRupees,
+      activeLiabilityRupees: pointsLiabilityRupees,
+      tierDistribution,
+      tierBreakdown,
+      completedStampCards: completedStampCards || 0,
+      totalReferrals: totalReferrals || 0,
+      rewardedReferrals: rewardedReferrals || 0,
+      referralRevenue: 0,
+      repeatPurchaseRate,
+      isEnabled: settings.is_enabled,
+    };
+
     return NextResponse.json({
       success: true,
-      stats: {
-        totalEnrolled,
-        activePointsBalance,
-        totalPointsEarned,
-        totalPointsRedeemed,
-        pointsLiabilityRupees,
-        tierDistribution,
-        completedStampCards: completedStampCards || 0,
-        totalReferrals: totalReferrals || 0,
-        rewardedReferrals: rewardedReferrals || 0,
-        repeatPurchaseRate,
-        isEnabled: settings.is_enabled,
-      },
+      stats: overviewStats,
+      ...overviewStats,
     });
   } catch (err: any) {
     console.error('[API Admin Loyalty Overview] Error:', err);

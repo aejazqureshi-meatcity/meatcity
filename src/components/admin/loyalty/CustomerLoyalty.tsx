@@ -177,28 +177,33 @@ export default function CustomerLoyalty() {
               </thead>
               <tbody className="divide-y divide-white/5">
                 {customers.map((c) => {
+                  const tierId = c.tier_id || (c as any).tierId || 'silver';
                   const tierBadge =
-                    c.tier_id === 'platinum'
+                    tierId === 'platinum'
                       ? 'bg-purple-950/40 text-purple-300 border-purple-500/30'
-                      : c.tier_id === 'gold'
+                      : tierId === 'gold'
                       ? 'bg-amber-950/40 text-amber-300 border-amber-500/30'
                       : 'bg-gray-800 text-gray-300 border-gray-600/30';
 
-                  const rupeeValue = Math.round(c.points_balance * 1.0);
+                  const pointsBal = Number(c.points_balance ?? (c as any).pointsBalance ?? 0);
+                  const rupeeValue = Math.round(pointsBal * 1.0);
+                  const lifetimeSpend = Number(c.lifetime_spend ?? (c as any).lifetimeSpend ?? 0);
+                  const totalOrders = Number(c.total_orders_completed ?? (c as any).totalOrders ?? 0);
+                  const refCode = c.referral_code || (c as any).referralCode || '-';
 
                   return (
-                    <tr key={c.id || c.user_id} className="hover:bg-white/[0.02] transition-colors">
+                    <tr key={c.id || c.user_id || (c as any).userId} className="hover:bg-white/[0.02] transition-colors">
                       <td className="py-3 px-4">
                         <div className="font-bold text-white">{c.name || 'Anonymous Customer'}</div>
                         <div className="text-[10px] text-text-secondary font-mono mt-0.5">{c.phone || c.email || 'No phone'}</div>
                       </td>
                       <td className="py-3 px-4">
                         <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border ${tierBadge}`}>
-                          {c.tier_id === 'platinum' ? '💎 Platinum' : c.tier_id === 'gold' ? '🥇 Gold' : '🥈 Silver'}
+                          {tierId === 'platinum' ? '💎 Platinum' : tierId === 'gold' ? '🥇 Gold' : '🥈 Silver'}
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        <span className="font-black text-white">{c.points_balance} pts</span>
+                        <span className="font-black text-white">{pointsBal} pts</span>
                         <span className="block text-[10px] text-gold font-bold">≈ ₹{rupeeValue}</span>
                       </td>
                       <td className="py-3 px-4">
@@ -206,11 +211,11 @@ export default function CustomerLoyalty() {
                         <span className="block text-[10px] text-text-secondary">active card</span>
                       </td>
                       <td className="py-3 px-4">
-                        <span className="font-black text-white">₹{c.lifetime_spend.toLocaleString()}</span>
-                        <span className="block text-[10px] text-text-secondary">{c.total_orders_completed} orders</span>
+                        <span className="font-black text-white">₹{lifetimeSpend.toLocaleString()}</span>
+                        <span className="block text-[10px] text-text-secondary">{totalOrders} orders</span>
                       </td>
                       <td className="py-3 px-4 font-mono font-bold text-emerald-400 text-[11px]">
-                        {c.referral_code}
+                        {refCode}
                       </td>
                       <td className="py-3 px-4 text-right">
                         <button

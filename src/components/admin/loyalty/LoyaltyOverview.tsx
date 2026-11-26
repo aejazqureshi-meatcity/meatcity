@@ -30,7 +30,21 @@ export default function LoyaltyOverview({ onNavigateTab }: { onNavigateTab: (tab
       if (!res.ok || json.error) {
         throw new Error(json.error || 'Failed to load overview data');
       }
-      setData(json);
+      const raw = json.stats || json;
+      const tierMap = raw.tierBreakdown || raw.tierDistribution || {};
+      setData({
+        totalPointsIssued: Number(raw.totalPointsIssued ?? raw.totalPointsEarned ?? 0),
+        totalPointsRedeemed: Number(raw.totalPointsRedeemed ?? 0),
+        activeLiabilityRupees: Number(raw.activeLiabilityRupees ?? raw.pointsLiabilityRupees ?? 0),
+        activeMembers: Number(raw.activeMembers ?? raw.totalEnrolled ?? 0),
+        completedStampCards: Number(raw.completedStampCards ?? 0),
+        referralRevenue: Number(raw.referralRevenue ?? 0),
+        tierBreakdown: {
+          silver: Number(tierMap.silver ?? 0),
+          gold: Number(tierMap.gold ?? 0),
+          platinum: Number(tierMap.platinum ?? 0),
+        },
+      });
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -44,9 +58,10 @@ export default function LoyaltyOverview({ onNavigateTab }: { onNavigateTab: (tab
 
   if (isLoading) {
     return (
-      <div className="p-8 text-center text-text-secondary text-sm">
-        <div className="animate-spin text-2xl mb-2">👑</div>
-        Loading Loyalty Dashboard Overview...
+      <div className="w-full max-w-full py-16 px-4 flex flex-col items-center justify-center text-center text-text-secondary text-sm">
+        <div className="animate-spin text-3xl mb-3">👑</div>
+        <div className="font-bold text-white text-base mb-1">Loading Loyalty Dashboard</div>
+        <div className="text-xs text-text-secondary">Retrieving member statistics and points liability...</div>
       </div>
     );
   }
@@ -62,77 +77,81 @@ export default function LoyaltyOverview({ onNavigateTab }: { onNavigateTab: (tab
     );
   }
 
-  const totalMembers = (data.tierBreakdown.silver || 0) + (data.tierBreakdown.gold || 0) + (data.tierBreakdown.platinum || 0) || 1;
-  const silverPct = Math.round(((data.tierBreakdown.silver || 0) / totalMembers) * 100);
-  const goldPct = Math.round(((data.tierBreakdown.gold || 0) / totalMembers) * 100);
-  const platPct = Math.round(((data.tierBreakdown.platinum || 0) / totalMembers) * 100);
+  const tiers = data?.tierBreakdown || { silver: 0, gold: 0, platinum: 0 };
+  const silverCount = Number(tiers.silver || 0);
+  const goldCount = Number(tiers.gold || 0);
+  const platCount = Number(tiers.platinum || 0);
+  const totalMembers = (silverCount + goldCount + platCount) || 1;
+  const silverPct = Math.round((silverCount / totalMembers) * 100);
+  const goldPct = Math.round((goldCount / totalMembers) * 100);
+  const platPct = Math.round((platCount / totalMembers) * 100);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-full min-w-0">
       {/* KPI Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
-        <div className="bg-neutral-900 border border-white/5 rounded-2xl p-4 flex flex-col justify-between">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5 w-full max-w-full">
+        <div className="bg-neutral-900 border border-white/5 rounded-2xl p-4 flex flex-col justify-between min-w-0">
           <div className="flex items-center justify-between text-xs text-text-secondary">
             <span>Points Issued</span>
             <span>🪙</span>
           </div>
-          <div className="text-xl font-black text-white mt-2">
-            {data.totalPointsIssued.toLocaleString()}
+          <div className="text-xl font-black text-white mt-2 truncate">
+            {(data.totalPointsIssued ?? 0).toLocaleString()}
           </div>
           <span className="text-[10px] text-emerald-400 font-bold mt-1">Lifetime earned</span>
         </div>
 
-        <div className="bg-neutral-900 border border-white/5 rounded-2xl p-4 flex flex-col justify-between">
+        <div className="bg-neutral-900 border border-white/5 rounded-2xl p-4 flex flex-col justify-between min-w-0">
           <div className="flex items-center justify-between text-xs text-text-secondary">
             <span>Points Redeemed</span>
             <span>🎁</span>
           </div>
-          <div className="text-xl font-black text-white mt-2">
-            {data.totalPointsRedeemed.toLocaleString()}
+          <div className="text-xl font-black text-white mt-2 truncate">
+            {(data.totalPointsRedeemed ?? 0).toLocaleString()}
           </div>
           <span className="text-[10px] text-text-secondary mt-1">Claimed discounts</span>
         </div>
 
-        <div className="bg-neutral-900 border border-amber-500/20 rounded-2xl p-4 flex flex-col justify-between">
+        <div className="bg-neutral-900 border border-amber-500/20 rounded-2xl p-4 flex flex-col justify-between min-w-0">
           <div className="flex items-center justify-between text-xs text-text-secondary">
             <span>Points Liability</span>
             <span>⚖️</span>
           </div>
-          <div className="text-xl font-black text-gold mt-2">
-            ₹{data.activeLiabilityRupees.toLocaleString()}
+          <div className="text-xl font-black text-gold mt-2 truncate">
+            ₹{(data.activeLiabilityRupees ?? 0).toLocaleString()}
           </div>
           <span className="text-[10px] text-gold/80 font-bold mt-1">Outstanding cash value</span>
         </div>
 
-        <div className="bg-neutral-900 border border-white/5 rounded-2xl p-4 flex flex-col justify-between">
+        <div className="bg-neutral-900 border border-white/5 rounded-2xl p-4 flex flex-col justify-between min-w-0">
           <div className="flex items-center justify-between text-xs text-text-secondary">
             <span>Active Members</span>
             <span>👥</span>
           </div>
-          <div className="text-xl font-black text-white mt-2">
-            {data.activeMembers}
+          <div className="text-xl font-black text-white mt-2 truncate">
+            {data.activeMembers ?? 0}
           </div>
           <span className="text-[10px] text-text-secondary mt-1">Enrolled accounts</span>
         </div>
 
-        <div className="bg-neutral-900 border border-white/5 rounded-2xl p-4 flex flex-col justify-between">
+        <div className="bg-neutral-900 border border-white/5 rounded-2xl p-4 flex flex-col justify-between min-w-0">
           <div className="flex items-center justify-between text-xs text-text-secondary">
             <span>Stamp Cards Won</span>
             <span>🎫</span>
           </div>
-          <div className="text-xl font-black text-white mt-2">
-            {data.completedStampCards}
+          <div className="text-xl font-black text-white mt-2 truncate">
+            {data.completedStampCards ?? 0}
           </div>
           <span className="text-[10px] text-emerald-400 font-bold mt-1">10-stamp unlocks</span>
         </div>
 
-        <div className="bg-neutral-900 border border-white/5 rounded-2xl p-4 flex flex-col justify-between">
+        <div className="bg-neutral-900 border border-white/5 rounded-2xl p-4 flex flex-col justify-between min-w-0">
           <div className="flex items-center justify-between text-xs text-text-secondary">
             <span>Referral Sales</span>
             <span>🚀</span>
           </div>
-          <div className="text-xl font-black text-emerald-400 mt-2">
-            ₹{data.referralRevenue.toLocaleString()}
+          <div className="text-xl font-black text-emerald-400 mt-2 truncate">
+            ₹{(data.referralRevenue ?? 0).toLocaleString()}
           </div>
           <span className="text-[10px] text-text-secondary mt-1">From invited friends</span>
         </div>
@@ -162,7 +181,7 @@ export default function LoyaltyOverview({ onNavigateTab }: { onNavigateTab: (tab
                 <span className="text-gray-300 font-bold flex items-center gap-1.5">
                   <span>🥈</span> Silver Tier (1.0x Points)
                 </span>
-                <span className="text-white font-black">{data.tierBreakdown.silver} members ({silverPct}%)</span>
+                <span className="text-white font-black">{silverCount} members ({silverPct}%)</span>
               </div>
               <div className="w-full bg-white/5 h-2.5 rounded-full overflow-hidden">
                 <div className="bg-gray-400 h-full rounded-full transition-all" style={{ width: `${silverPct}%` }} />
@@ -175,7 +194,7 @@ export default function LoyaltyOverview({ onNavigateTab }: { onNavigateTab: (tab
                 <span className="text-amber-400 font-bold flex items-center gap-1.5">
                   <span>🥇</span> Gold Tier (1.25x Points + ₹5k Spend)
                 </span>
-                <span className="text-white font-black">{data.tierBreakdown.gold} members ({goldPct}%)</span>
+                <span className="text-white font-black">{goldCount} members ({goldPct}%)</span>
               </div>
               <div className="w-full bg-white/5 h-2.5 rounded-full overflow-hidden">
                 <div className="bg-amber-400 h-full rounded-full transition-all" style={{ width: `${goldPct}%` }} />
@@ -188,7 +207,7 @@ export default function LoyaltyOverview({ onNavigateTab }: { onNavigateTab: (tab
                 <span className="text-purple-400 font-bold flex items-center gap-1.5">
                   <span>💎</span> Platinum VIP (1.5x Points + ₹15k Spend)
                 </span>
-                <span className="text-white font-black">{data.tierBreakdown.platinum} members ({platPct}%)</span>
+                <span className="text-white font-black">{platCount} members ({platPct}%)</span>
               </div>
               <div className="w-full bg-white/5 h-2.5 rounded-full overflow-hidden">
                 <div className="bg-gradient-to-r from-purple-500 to-indigo-400 h-full rounded-full transition-all" style={{ width: `${platPct}%` }} />
