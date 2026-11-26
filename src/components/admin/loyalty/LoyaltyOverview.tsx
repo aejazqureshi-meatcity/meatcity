@@ -142,14 +142,14 @@ export default function LoyaltyOverview({ onNavigateTab }: { onNavigateTab: (tab
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Tier Distribution Card */}
         <div className="lg:col-span-2 bg-neutral-900 border border-white/5 rounded-2xl p-5 flex flex-col gap-4">
-          <div className="flex justify-between items-center pb-3 border-b border-white/5">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-white/5">
             <div>
               <h3 className="text-white text-sm font-black uppercase tracking-wide">🏆 Tier Membership Distribution</h3>
               <p className="text-[11px] text-text-secondary mt-0.5">Active customer progression across Silver, Gold and Platinum tiers</p>
             </div>
             <button
               onClick={() => onNavigateTab('customers')}
-              className="text-gold text-xs font-bold hover:underline"
+              className="text-gold text-xs font-bold hover:underline shrink-0"
             >
               View Customers →
             </button>

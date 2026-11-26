@@ -14,6 +14,8 @@ interface UserProfile {
   phone: string;
   user_type: 'admin' | 'b2c' | 'b2b' | 'delivery_partner';
   status: 'pending' | 'approved' | 'rejected' | 'suspended' | 'active' | 'inactive';
+  business_name?: string;
+  owner_name?: string;
 }
 
 interface Address {
@@ -356,21 +358,29 @@ export default function ProfilePage() {
     setReviewSubmitting(true);
 
     try {
-      const { error } = await supabase.from('reviews').insert({
-        user_id: user.id,
-        customer_name: profile.full_name,
-        rating,
-        comment: reviewComment,
-        status: 'pending' // Admin must moderate
+      const res = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          orderId: reviewOrder.id,
+          rating,
+          comment: reviewComment,
+          customerName: profile.full_name || profile.business_name || profile.owner_name || 'Customer'
+        })
       });
 
-      if (error) throw error;
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to submit review');
+      }
 
-      alert('Thank you! Your review has been submitted for approval.');
+      showToast('Thank you! Your review has been submitted for approval.', 'success');
       setShowReviewModal(false);
       setReviewOrder(null);
+      setReviewComment('');
     } catch (err: any) {
-      alert('Error submitting review: ' + err.message);
+      showToast(err.message || 'Error submitting review. Please try again.', 'error');
     } finally {
       setReviewSubmitting(false);
     }

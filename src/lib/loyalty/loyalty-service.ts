@@ -446,16 +446,63 @@ export async function estimateOrderPoints(
 export async function reservePoints(userId: string, points: number, cartSessionId: string) {
   const supabase = getServiceClient();
 
-  const { data, error } = await supabase.rpc('reserve_loyalty_points', {
-    p_user_id: userId,
-    p_points: points,
-    p_cart_session_id: cartSessionId,
-  });
+  try {
+    const { data, error } = await supabase.rpc('reserve_loyalty_points', {
+      p_user_id: userId,
+      p_points: points,
+      p_cart_session_id: cartSessionId,
+    });
 
-  if (error) {
-    throw new Error(error.message);
+    if (!error && data && data.success) {
+      return data;
+    }
+  } catch (e) {
+    console.warn('[Loyalty Service] RPC reserve_loyalty_points failed, running TS fallback:', e);
   }
-  return data;
+
+  // TypeScript fallback
+  const settings = await getLoyaltySettings();
+  if (!settings.is_enabled) {
+    throw new Error('Loyalty redemption is currently disabled');
+  }
+  if (points < settings.min_points_for_redemption) {
+    throw new Error(`Minimum ${settings.min_points_for_redemption} points required for redemption`);
+  }
+
+  const account = await getOrCreateLoyaltyAccount(userId);
+  if (account.is_suspended) {
+    throw new Error('Loyalty account is suspended');
+  }
+
+  // Release any prior reservation for this session
+  await supabase
+    .from('loyalty_points_reservations')
+    .update({ status: 'released' })
+    .eq('user_id', userId)
+    .eq('cart_session_id', cartSessionId)
+    .eq('status', 'reserved');
+
+  const rupeeValue = Math.round(points * settings.point_rupee_value);
+  const { data: res, error: rErr } = await supabase
+    .from('loyalty_points_reservations')
+    .insert({
+      user_id: userId,
+      points,
+      rupee_value: rupeeValue,
+      cart_session_id: cartSessionId,
+      status: 'reserved',
+    })
+    .select()
+    .single();
+
+  if (rErr) throw new Error(rErr.message);
+
+  return {
+    success: true,
+    reservation_id: res.id,
+    points,
+    rupee_value: rupeeValue,
+  };
 }
 
 /**
@@ -463,13 +510,22 @@ export async function reservePoints(userId: string, points: number, cartSessionI
  */
 export async function releasePointsReservation(reservationId: string) {
   const supabase = getServiceClient();
-  const { data, error } = await supabase.rpc('release_loyalty_points_reservation', {
-    p_reservation_id: reservationId,
-  });
-  if (error) {
-    console.error('Failed to release reservation:', error);
+  try {
+    const { data, error } = await supabase.rpc('release_loyalty_points_reservation', {
+      p_reservation_id: reservationId,
+    });
+    if (!error) return data;
+  } catch (e) {
+    // fallback
   }
-  return data;
+
+  await supabase
+    .from('loyalty_points_reservations')
+    .update({ status: 'released' })
+    .eq('id', reservationId)
+    .eq('status', 'reserved');
+
+  return { success: true };
 }
 
 /**
@@ -477,15 +533,70 @@ export async function releasePointsReservation(reservationId: string) {
  */
 export async function commitPointsRedemption(reservationId: string, orderId: string) {
   const supabase = getServiceClient();
-  const { data, error } = await supabase.rpc('commit_loyalty_redemption', {
-    p_reservation_id: reservationId,
-    p_order_id: orderId,
-  });
-  if (error) {
-    console.error('Failed to commit points redemption:', error);
-    throw new Error(error.message);
+
+  try {
+    const { data, error } = await supabase.rpc('commit_loyalty_redemption', {
+      p_reservation_id: reservationId,
+      p_order_id: orderId,
+    });
+    if (!error && data && data.success) {
+      return data;
+    }
+  } catch (e) {
+    console.warn('[Loyalty Service] RPC commit_loyalty_redemption failed, running TS fallback:', e);
   }
-  return data;
+
+  // TypeScript fallback
+  const { data: res, error: rErr } = await supabase
+    .from('loyalty_points_reservations')
+    .select('*')
+    .eq('id', reservationId)
+    .single();
+
+  if (rErr || !res) throw new Error('Reservation not found');
+  if (res.status === 'committed') return { success: true, message: 'Already committed', idempotent: true };
+
+  const account = await getOrCreateLoyaltyAccount(res.user_id);
+  const newBalance = Math.max(0, (account.points_balance || 0) - res.points);
+
+  await supabase.from('loyalty_points_ledger').insert({
+    user_id: res.user_id,
+    order_id: orderId,
+    transaction_type: 'redeemed',
+    points: -res.points,
+    balance_after: newBalance,
+    rupee_equivalent: -res.rupee_value,
+    description: `Points redeemed for discount on Order #${orderId}`,
+  });
+
+  await supabase
+    .from('loyalty_accounts')
+    .update({
+      points_balance: newBalance,
+      lifetime_points_redeemed: (account.lifetime_points_redeemed || 0) + res.points,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('user_id', res.user_id);
+
+  await supabase
+    .from('loyalty_points_reservations')
+    .update({ status: 'committed', order_id: orderId })
+    .eq('id', reservationId);
+
+  await supabase
+    .from('orders')
+    .update({
+      points_redeemed: res.points,
+      points_discount: res.rupee_value,
+    })
+    .eq('id', orderId);
+
+  return {
+    success: true,
+    points_redeemed: res.points,
+    rupee_discount: res.rupee_value,
+    new_balance: newBalance,
+  };
 }
 
 /**
@@ -493,14 +604,221 @@ export async function commitPointsRedemption(reservationId: string, orderId: str
  */
 export async function awardOrderLoyalty(orderId: string) {
   const supabase = getServiceClient();
-  const { data, error } = await supabase.rpc('award_order_loyalty', {
-    p_order_id: orderId,
-  });
-  if (error) {
-    console.error('Failed to award loyalty:', error);
-    return { success: false, error: error.message };
+
+  // Try RPC first
+  try {
+    const { data, error } = await supabase.rpc('award_order_loyalty', {
+      p_order_id: orderId,
+    });
+    if (!error && data && data.success) {
+      return data;
+    }
+    if (error) {
+      console.warn('[Loyalty Service] RPC award_order_loyalty failed, falling back to TypeScript execution:', error.message);
+    }
+  } catch (rpcErr: any) {
+    console.warn('[Loyalty Service] RPC call threw, falling back to TypeScript execution:', rpcErr);
   }
-  return data;
+
+  // TypeScript Server-side Execution Fallback
+  try {
+    // 1. Fetch order
+    const { data: order, error: oErr } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .maybeSingle();
+
+    if (oErr || !order) {
+      return { success: false, error: 'Order not found' };
+    }
+
+    // 2. Eligible state: Delivered, Completed, or Paid
+    const isEligibleStatus = ['delivered', 'completed'].includes((order.status || '').toLowerCase()) ||
+                             (order.payment_status || '').toLowerCase() === 'paid';
+    if (!isEligibleStatus) {
+      return { success: false, error: 'Order not completed or paid yet' };
+    }
+
+    // 3. Idempotency Check: Don't award twice for same order
+    const { data: existingLedger } = await supabase
+      .from('loyalty_points_ledger')
+      .select('id')
+      .eq('order_id', orderId)
+      .eq('transaction_type', 'earned')
+      .maybeSingle();
+
+    if (existingLedger) {
+      return { success: true, message: 'Loyalty already awarded for this order', idempotent: true };
+    }
+
+    // 4. Fetch loyalty settings
+    const settings = await getLoyaltySettings();
+    if (!settings.is_enabled) {
+      return { success: true, message: 'Loyalty program currently inactive' };
+    }
+
+    // Customer type check (B2C only)
+    let effectiveRole = 'b2c';
+    if (order.user_id) {
+      try {
+        const { data: u } = await supabase.from('users').select('role').eq('id', order.user_id).single();
+        if (u && u.role) effectiveRole = String(u.role).toLowerCase();
+      } catch (uErr) {
+        // default to b2c
+      }
+    }
+    if (effectiveRole === 'b2b' || !settings.eligible_customer_types.includes(effectiveRole)) {
+      return { success: true, message: 'Customer type not eligible for loyalty points' };
+    }
+
+    // 5. Calculate net eligible merchandise subtotal
+    const netAmount = Math.max(0, (order.subtotal || 0) - (order.discount || 0) - (order.points_discount || 0));
+    let pointsToAward = 0;
+    if (netAmount >= settings.min_order_amount_for_earn) {
+      // 2 points per ₹100 = 0.02
+      pointsToAward = Math.floor(netAmount * (settings.points_per_rupee || 0.02));
+    }
+
+    const rupeeEquivalent = Math.round(pointsToAward * (settings.point_rupee_value || 1.0));
+
+    // 6. Get or initialize customer loyalty account
+    const account = await getOrCreateLoyaltyAccount(order.user_id);
+    if (account.is_suspended) {
+      return { success: false, error: 'Customer loyalty account is suspended' };
+    }
+
+    const newBalance = (account.points_balance || 0) + pointsToAward;
+    const newLifetimeEarned = (account.lifetime_points_earned || 0) + pointsToAward;
+    const newLifetimeSpend = (account.lifetime_spend || 0) + (order.total || 0);
+    const newOrderCount = (account.total_orders_completed || 0) + 1;
+
+    // Expiry date (180 days default)
+    const expiresAt = new Date(Date.now() + (settings.points_expiry_days || 180) * 24 * 60 * 60 * 1000).toISOString();
+
+    // 7. Insert into ledger if points > 0
+    if (pointsToAward > 0) {
+      await supabase.from('loyalty_points_ledger').insert({
+        user_id: order.user_id,
+        order_id: orderId,
+        transaction_type: 'earned',
+        points: pointsToAward,
+        balance_after: newBalance,
+        rupee_equivalent: rupeeEquivalent,
+        description: `Points earned for Order #${orderId}`,
+        expires_at: expiresAt,
+      });
+    }
+
+    // 8. Determine Tier
+    let newTierId = account.tier_id || 'silver';
+    if (newLifetimeSpend >= 7500 || newOrderCount >= 15) {
+      newTierId = 'platinum';
+    } else if (newLifetimeSpend >= 2500 || newOrderCount >= 5) {
+      newTierId = 'gold';
+    } else {
+      newTierId = 'silver';
+    }
+
+    // Update loyalty account
+    await supabase
+      .from('loyalty_accounts')
+      .update({
+        points_balance: newBalance,
+        lifetime_points_earned: newLifetimeEarned,
+        lifetime_spend: newLifetimeSpend,
+        total_orders_completed: newOrderCount,
+        tier_id: newTierId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', order.user_id);
+
+    // 9. Digital Stamp Card (min ₹400 qualifying order)
+    let stampAwarded = false;
+    const orderTotal = Number(order.total || 0);
+    if (settings.stamp_card_enabled && orderTotal >= (settings.min_order_for_stamp || 400)) {
+      const stampCards = await getCustomerStampCards(order.user_id);
+      let activeCard = stampCards.find(c => c.status === 'active');
+
+      if (!activeCard) {
+        const { data: newCard } = await supabase
+          .from('loyalty_stamp_cards')
+          .insert({
+            user_id: order.user_id,
+            card_number: (stampCards[0]?.card_number || 0) + 1,
+            stamps_collected: 0,
+            stamps_required: settings.stamps_required_per_card || 10,
+            status: 'active',
+          })
+          .select()
+          .single();
+        activeCard = newCard || stampCards[0];
+      }
+
+      if (activeCard) {
+        const nextIndex = (activeCard.stamps_collected || 0) + 1;
+        await supabase.from('loyalty_stamps').insert({
+          stamp_card_id: activeCard.id,
+          user_id: order.user_id,
+          order_id: orderId,
+          stamp_index: nextIndex,
+        });
+
+        stampAwarded = true;
+
+        if (nextIndex >= (activeCard.stamps_required || 10)) {
+          const rewardCode = 'STAMP-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+          await supabase
+            .from('loyalty_stamp_cards')
+            .update({
+              stamps_collected: activeCard.stamps_required || 10,
+              status: 'completed',
+              completed_at: new Date().toISOString(),
+              reward_code: rewardCode,
+              reward_type: settings.stamp_reward_type || 'free_product',
+              reward_value: settings.stamp_reward_value || 280,
+            })
+            .eq('id', activeCard.id);
+
+          // Create next card
+          await supabase.from('loyalty_stamp_cards').insert({
+            user_id: order.user_id,
+            card_number: (activeCard.card_number || 1) + 1,
+            stamps_collected: 0,
+            stamps_required: settings.stamps_required_per_card || 10,
+            status: 'active',
+          });
+        } else {
+          await supabase
+            .from('loyalty_stamp_cards')
+            .update({
+              stamps_collected: nextIndex,
+            })
+            .eq('id', activeCard.id);
+        }
+      }
+    }
+
+    // 10. Update order
+    await supabase
+      .from('orders')
+      .update({
+        points_earned: pointsToAward,
+        stamp_awarded: stampAwarded,
+      })
+      .eq('id', orderId);
+
+    return {
+      success: true,
+      points_awarded: pointsToAward,
+      stamp_awarded: stampAwarded,
+      tier: newTierId,
+      new_balance: newBalance,
+    };
+  } catch (err: any) {
+    console.error('[Loyalty Service] TypeScript fallback error:', err);
+    return { success: false, error: err.message };
+  }
 }
 
 /**
@@ -508,15 +826,59 @@ export async function awardOrderLoyalty(orderId: string) {
  */
 export async function reverseOrderLoyalty(orderId: string, reason = 'Order cancelled') {
   const supabase = getServiceClient();
-  const { data, error } = await supabase.rpc('reverse_order_loyalty', {
-    p_order_id: orderId,
-    p_reason: reason,
-  });
-  if (error) {
-    console.error('Failed to reverse loyalty:', error);
-    return { success: false, error: error.message };
+  try {
+    const { data, error } = await supabase.rpc('reverse_order_loyalty', {
+      p_order_id: orderId,
+      p_reason: reason,
+    });
+    if (!error && data && data.success) {
+      return data;
+    }
+  } catch (e) {
+    console.warn('[Loyalty Service] RPC reverse_order_loyalty failed, running fallback:', e);
   }
-  return data;
+
+  // TypeScript fallback
+  try {
+    const { data: order } = await supabase.from('orders').select('*').eq('id', orderId).maybeSingle();
+    if (!order) return { success: false, error: 'Order not found' };
+
+    const { data: earnedEntry } = await supabase
+      .from('loyalty_points_ledger')
+      .select('*')
+      .eq('order_id', orderId)
+      .eq('transaction_type', 'earned')
+      .maybeSingle();
+
+    if (earnedEntry) {
+      const account = await getOrCreateLoyaltyAccount(order.user_id);
+      const newBalance = Math.max(0, (account.points_balance || 0) - earnedEntry.points);
+
+      await supabase.from('loyalty_points_ledger').insert({
+        user_id: order.user_id,
+        order_id: orderId,
+        transaction_type: 'reversed',
+        points: -earnedEntry.points,
+        balance_after: newBalance,
+        rupee_equivalent: -earnedEntry.rupee_equivalent,
+        description: `Reversal: ${reason} for Order #${orderId}`,
+      });
+
+      await supabase
+        .from('loyalty_accounts')
+        .update({
+          points_balance: newBalance,
+          lifetime_points_earned: Math.max(0, (account.lifetime_points_earned || 0) - earnedEntry.points),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', order.user_id);
+    }
+
+    await supabase.from('orders').update({ points_earned: 0, stamp_awarded: false }).eq('id', orderId);
+    return { success: true, message: 'Loyalty reversed successfully' };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
 }
 
 /**

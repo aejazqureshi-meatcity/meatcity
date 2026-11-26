@@ -109,23 +109,23 @@ export default function CustomerLoyalty() {
     <div className="space-y-5">
       {/* Search and Filters Bar */}
       <div className="flex flex-col sm:flex-row gap-3 justify-between items-stretch sm:items-center bg-neutral-900 border border-white/5 rounded-2xl p-4">
-        <form onSubmit={handleSearchSubmit} className="flex gap-2 flex-1 max-w-md">
+        <form onSubmit={handleSearchSubmit} className="flex flex-col xs:flex-row gap-2 flex-1 max-w-md">
           <input
             type="text"
             placeholder="Search by name, phone or referral code..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-text-secondary outline-none focus:border-gold/50"
+            className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-text-secondary outline-none focus:border-gold/50 min-w-0"
           />
           <button
             type="submit"
-            className="px-4 py-2 bg-neutral-800 hover:bg-neutral-750 text-white font-bold text-xs rounded-xl active:scale-95"
+            className="px-4 py-2 bg-neutral-800 hover:bg-neutral-750 text-white font-bold text-xs rounded-xl active:scale-95 shrink-0"
           >
             Search
           </button>
         </form>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs text-text-secondary font-bold">Filter Tier:</span>
           <select
             value={selectedTier}
@@ -139,7 +139,7 @@ export default function CustomerLoyalty() {
           </select>
           <button
             onClick={fetchCustomers}
-            className="p-2 bg-neutral-800 hover:bg-neutral-750 text-white rounded-xl text-xs"
+            className="p-2 bg-neutral-800 hover:bg-neutral-750 text-white rounded-xl text-xs active:scale-95"
             title="Refresh list"
           >
             🔄
@@ -184,7 +184,7 @@ export default function CustomerLoyalty() {
                       ? 'bg-amber-950/40 text-amber-300 border-amber-500/30'
                       : 'bg-gray-800 text-gray-300 border-gray-600/30';
 
-                  const rupeeValue = Math.round(c.points_balance * 0.25);
+                  const rupeeValue = Math.round(c.points_balance * 1.0);
 
                   return (
                     <tr key={c.id || c.user_id} className="hover:bg-white/[0.02] transition-colors">

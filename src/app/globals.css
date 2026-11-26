@@ -207,12 +207,21 @@ html, body {
   padding-bottom: 1.5rem;
 }
 
+.admin-header-title-block {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
 .admin-header-title-block h1 {
   font-size: 1.5rem;
   font-weight: 950;
   color: #FFFFFF;
   margin: 0;
   letter-spacing: -0.025em;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .admin-header-title-block p {
@@ -438,6 +447,10 @@ html, body {
 }
 
 @media (max-width: 639px) {
+  .admin-header-title-block h1 {
+    font-size: 1.15rem;
+    line-height: 1.35;
+  }
   .admin-cards-grid {
     grid-template-columns: minmax(0, 1fr);
   }

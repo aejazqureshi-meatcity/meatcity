@@ -1031,14 +1031,15 @@ export default function CartPage() {
     // Mark reward claim as redeemed if free reward was claimed
     if (claimedFreeRewardCode) {
       try {
-        await supabase
-          .from('loyalty_reward_claims')
-          .update({
-            status: 'redeemed',
-            redeemed_order_id: orderId,
-            redeemed_at: new Date().toISOString()
+        await fetch('/api/loyalty/rewards/redeem', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            claimCode: claimedFreeRewardCode,
+            orderId
           })
-          .eq('claim_code', claimedFreeRewardCode);
+        });
       } catch (cErr) {
         console.warn('Failed to update reward claim status:', cErr);
       }

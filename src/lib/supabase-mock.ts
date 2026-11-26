@@ -46,6 +46,11 @@ export class QueryBuilder {
     return this;
   }
 
+  maybeSingle() {
+    this.isSingle = true;
+    return this;
+  }
+
   order(column: string, options?: { ascending?: boolean }) {
     this.orderByColumn = column;
     this.orderByAsc = options?.ascending !== false;

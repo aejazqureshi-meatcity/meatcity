@@ -4,7 +4,7 @@ import { getServiceClient } from '@/lib/loyalty/loyalty-service';
 
 export const dynamic = 'force-dynamic';
 
-// GET: Fetch active rewards catalog
+// GET: Fetch active rewards catalog (excluding stamp-card specific products)
 export async function GET() {
   try {
     const supabase = getServiceClient();
@@ -12,6 +12,8 @@ export async function GET() {
       .from('loyalty_rewards')
       .select('*')
       .eq('is_active', true)
+      .gt('points_cost', 0)
+      .neq('reward_type', 'free_product')
       .order('points_cost', { ascending: true });
 
     if (error) throw error;
@@ -27,6 +29,12 @@ export async function POST(request: Request) {
     const auth = await verifyUserSession(request);
     if (!auth.authorized || !auth.user) {
       return NextResponse.json({ error: 'Please log in to claim rewards.' }, { status: 401 });
+    }
+
+    // Strictly enforce B2C only (B2B wholesale users cannot claim loyalty rewards)
+    const userRole = auth.user.role || (auth.user as any).user_metadata?.role;
+    if (userRole === 'b2b') {
+      return NextResponse.json({ error: 'Loyalty rewards are only available for retail customers.' }, { status: 403 });
     }
 
     const body = await request.json();
@@ -46,6 +54,11 @@ export async function POST(request: Request) {
 
     if (rErr || !reward || !reward.is_active) {
       return NextResponse.json({ error: 'Reward is no longer active or available' }, { status: 400 });
+    }
+
+    // Stamp card rewards cannot be claimed with points
+    if (reward.points_cost <= 0 || reward.reward_type === 'free_product') {
+      return NextResponse.json({ error: 'This reward can only be earned by completing 10 orders on your digital stamp card.' }, { status: 400 });
     }
 
     // 2. Fetch customer account
