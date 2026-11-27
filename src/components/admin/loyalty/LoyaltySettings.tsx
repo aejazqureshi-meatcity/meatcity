@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
 
 interface LoyaltySettingsState {
   is_enabled: boolean;
@@ -31,7 +32,13 @@ export default function LoyaltySettings() {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/loyalty/admin/settings');
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+      const res = await fetch('/api/loyalty/admin/settings', { headers });
       const json = await res.json();
       if (!res.ok || json.error) {
         throw new Error(json.error || 'Failed to fetch loyalty settings');
@@ -55,9 +62,15 @@ export default function LoyaltySettings() {
     setFeedback(null);
 
     try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
       const res = await fetch('/api/loyalty/admin/settings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(settings),
       });
 

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
 
 interface LoyaltyOverviewData {
   totalPointsIssued: number;
@@ -25,7 +26,13 @@ export default function LoyaltyOverview({ onNavigateTab }: { onNavigateTab: (tab
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/loyalty/admin/overview');
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+      const res = await fetch('/api/loyalty/admin/overview', { headers });
       const json = await res.json();
       if (!res.ok || json.error) {
         throw new Error(json.error || 'Failed to load overview data');
@@ -58,7 +65,7 @@ export default function LoyaltyOverview({ onNavigateTab }: { onNavigateTab: (tab
 
   if (isLoading) {
     return (
-      <div className="w-full max-w-full py-16 px-4 flex flex-col items-center justify-center text-center text-text-secondary text-sm">
+      <div className="w-full max-w-full min-w-0 py-16 px-4 flex flex-col items-center justify-center text-center text-text-secondary text-sm">
         <div className="animate-spin text-3xl mb-3">👑</div>
         <div className="font-bold text-white text-base mb-1">Loading Loyalty Dashboard</div>
         <div className="text-xs text-text-secondary">Retrieving member statistics and points liability...</div>
@@ -87,9 +94,9 @@ export default function LoyaltyOverview({ onNavigateTab }: { onNavigateTab: (tab
   const platPct = Math.round((platCount / totalMembers) * 100);
 
   return (
-    <div className="space-y-6 w-full max-w-full min-w-0">
+    <div className="space-y-6 w-full max-w-full min-w-0 overflow-x-hidden">
       {/* KPI Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5 w-full max-w-full">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3.5 w-full max-w-full min-w-0">
         <div className="bg-neutral-900 border border-white/5 rounded-2xl p-4 flex flex-col justify-between min-w-0">
           <div className="flex items-center justify-between text-xs text-text-secondary">
             <span>Points Issued</span>

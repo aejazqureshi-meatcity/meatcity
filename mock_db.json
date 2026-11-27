@@ -3,23 +3,29 @@
     {
       "id": "admin-uuid",
       "email": "admin@meatcity.com",
-      "password": "password123",
-      "full_name": "Aejaz Qureshi",
+      "password": "AdminPassword123!",
+      "full_name": "aejaz qureshi",
       "phone": "7977630912",
       "user_type": "admin",
       "status": "active",
       "shop_address": "Turbhe Sector 20 A/2 Shop No 2, Navi Mumbai",
-      "created_at": "2026-06-08T22:56:00Z"
+      "created_at": "2026-06-08T22:56:00Z",
+      "name": "aejaz qureshi",
+      "mobile": "7977630912",
+      "role": "admin"
     },
     {
       "id": "b2c-demo-uuid",
       "email": "customer@gmail.com",
-      "password": "password123",
-      "full_name": "Rahul Sharma",
+      "password": "RiderPassword123!",
+      "full_name": "Audit Test Rider",
       "phone": "9876543210",
-      "user_type": "b2c",
+      "user_type": "delivery_partner",
       "status": "active",
-      "created_at": "2026-06-08T22:57:00Z"
+      "created_at": "2026-06-08T22:57:00Z",
+      "name": "Audit Test Rider",
+      "mobile": "9876543210",
+      "role": "delivery_partner"
     },
     {
       "id": "b2b-demo-uuid",
@@ -347,7 +353,7 @@
       "description": "Fresh, halal, skinless chicken cut into curry-sized pieces. Juicy & tender.",
       "category": "Chicken",
       "price_b2c": 260,
-      "price_b2b": 220,
+      "price_b2b": 224,
       "unit": "kg",
       "stock": 50,
       "is_available": true,
@@ -361,7 +367,7 @@
       "description": "Tender and juicy boneless chicken breast. Cleaned and trimmed of fat.",
       "category": "Chicken",
       "price_b2c": 320,
-      "price_b2b": 280,
+      "price_b2b": 322,
       "unit": "kg",
       "stock": 40,
       "is_available": true,
@@ -1486,9 +1492,9 @@
       "total": 1,
       "grand_total": 1,
       "payment_method": "UPI",
-      "payment_status": "Pending Verification",
+      "payment_status": "Payment Rejected",
       "payment_ref": "123123123123",
-      "status": "New",
+      "status": "Cancelled",
       "items": [
         {
           "product_id": "prod-wq838neqs",
@@ -2307,6 +2313,14 @@
       "title": "New Order Verified 📦",
       "message": "Order ORD-TEST-COMBINED-1795640109093 placed by Customer B for ₹770 has been paid and verified.",
       "type": "new_order"
+    },
+    {
+      "id": "uuid-r7nh4yux3-mwzfq09s",
+      "created_at": "2026-11-27T20:29:28.672Z",
+      "user_id": "usr-4813exriz",
+      "title": "Payment Payment Rejected 💳",
+      "message": "Your payment of ₹1 for Order ORD-888123 has been payment rejected.",
+      "type": "payment_verification"
     }
   ],
   "payments": [
@@ -2764,5 +2778,510 @@
       "created_at": "2026-11-25T20:55:12.993Z"
     }
   ],
-  "loyalty_audit_logs": []
+  "loyalty_audit_logs": [],
+  "loyalty_referrals": [],
+  "b2b_paper_rates": [
+    {
+      "id": "rate-chicken-current",
+      "rate_type": "chicken",
+      "current_rate": 140,
+      "previous_rate": 140,
+      "effective_date": "2026-11-27",
+      "published_at": "2026-11-27T21:24:51.846Z",
+      "published_by": "aejaz qureshi",
+      "status": "published",
+      "created_at": "2026-11-27T20:39:53.350Z",
+      "updated_at": "2026-11-27T21:24:51.877Z"
+    }
+  ],
+  "b2b_product_pricing_rules": [
+    {
+      "id": "rule-prod-1",
+      "product_id": "prod-1",
+      "product_name": "Chicken Curry Cut",
+      "pricing_mode": "multiplier",
+      "paper_rate_source": "chicken",
+      "multiplier": 1.6,
+      "fixed_addition": 0,
+      "manual_price": null,
+      "rounding_method": "nearest_1",
+      "min_selling_price": null,
+      "is_dynamic_enabled": true,
+      "is_confirmed_by_owner": false,
+      "manual_override_price": null,
+      "manual_override_reason": null,
+      "manual_override_expires_at": null,
+      "manual_override_enabled": false,
+      "updated_at": "2026-11-27T21:24:51.198Z",
+      "updated_by": "aejaz qureshi"
+    },
+    {
+      "id": "rule-prod-2",
+      "product_id": "prod-2",
+      "product_name": "Chicken Breast Boneless",
+      "pricing_mode": "multiplier",
+      "paper_rate_source": "chicken",
+      "multiplier": 2.3,
+      "fixed_addition": 0,
+      "manual_price": 280,
+      "rounding_method": "nearest_1",
+      "min_selling_price": null,
+      "is_dynamic_enabled": true,
+      "is_confirmed_by_owner": true,
+      "manual_override_price": null,
+      "manual_override_reason": null,
+      "manual_override_expires_at": null,
+      "manual_override_enabled": false,
+      "updated_at": "2026-11-27T20:39:53.350Z",
+      "updated_by": "Super Admin"
+    }
+  ],
+  "b2b_rate_history": [
+    {
+      "id": "hist-init-001",
+      "paper_rate": 140,
+      "previous_paper_rate": 135,
+      "effective_date": "2026-11-27",
+      "published_at": "2026-11-27T20:39:53.350Z",
+      "published_by": "Aejaz Qureshi (Super Admin)",
+      "products_updated_count": 2,
+      "snapshot": [
+        {
+          "product_id": "prod-1",
+          "product_name": "Chicken Curry Cut",
+          "old_price": 220,
+          "new_price": 224,
+          "multiplier": 1.6,
+          "pricing_mode": "multiplier",
+          "override_active": false
+        },
+        {
+          "product_id": "prod-2",
+          "product_name": "Chicken Breast Boneless",
+          "old_price": 280,
+          "new_price": 322,
+          "multiplier": 2.3,
+          "pricing_mode": "multiplier",
+          "override_active": false
+        }
+      ],
+      "restored_from_id": null,
+      "created_at": "2026-11-27T20:39:53.350Z"
+    },
+    {
+      "id": "hist-mwzg9ddv-8qr3h",
+      "created_at": "2026-11-27T20:44:32.104Z",
+      "paper_rate": 145,
+      "previous_paper_rate": 140,
+      "effective_date": "2026-11-27",
+      "published_at": "2026-11-27T20:44:32.104Z",
+      "published_by": "aejaz qureshi",
+      "products_updated_count": 2,
+      "snapshot": [
+        {
+          "product_id": "prod-1",
+          "product_name": "Chicken Curry Cut",
+          "old_price": 220,
+          "new_price": 232,
+          "multiplier": 1.6,
+          "pricing_mode": "multiplier",
+          "override_active": false
+        },
+        {
+          "product_id": "prod-2",
+          "product_name": "Chicken Breast Boneless",
+          "old_price": 280,
+          "new_price": 334,
+          "multiplier": 2.3,
+          "pricing_mode": "multiplier",
+          "override_active": false
+        }
+      ]
+    },
+    {
+      "id": "hist-mwzgbe4t-4dgv7",
+      "created_at": "2026-11-27T20:46:06.388Z",
+      "paper_rate": 145,
+      "previous_paper_rate": 140,
+      "effective_date": "2026-11-27",
+      "published_at": "2026-11-27T20:46:06.388Z",
+      "published_by": "aejaz qureshi",
+      "products_updated_count": 2,
+      "snapshot": [
+        {
+          "product_id": "prod-1",
+          "product_name": "Chicken Curry Cut",
+          "old_price": 224,
+          "new_price": 232,
+          "multiplier": 1.6,
+          "pricing_mode": "multiplier",
+          "override_active": false
+        },
+        {
+          "product_id": "prod-2",
+          "product_name": "Chicken Breast Boneless",
+          "old_price": 322,
+          "new_price": 334,
+          "multiplier": 2.3,
+          "pricing_mode": "multiplier",
+          "override_active": false
+        }
+      ]
+    },
+    {
+      "id": "hist-mwzgjp5k-ldpv6",
+      "created_at": "2026-11-27T20:52:33.918Z",
+      "paper_rate": 140,
+      "previous_paper_rate": 145,
+      "effective_date": "2026-11-27",
+      "published_at": "2026-11-27T20:52:33.918Z",
+      "published_by": "aejaz qureshi",
+      "products_updated_count": 2,
+      "snapshot": [
+        {
+          "product_id": "prod-1",
+          "product_name": "Chicken Curry Cut",
+          "old_price": 232,
+          "new_price": 224,
+          "multiplier": 1.6,
+          "pricing_mode": "multiplier",
+          "override_active": false
+        },
+        {
+          "product_id": "prod-2",
+          "product_name": "Chicken Breast Boneless",
+          "old_price": 334,
+          "new_price": 322,
+          "multiplier": 2.3,
+          "pricing_mode": "multiplier",
+          "override_active": false
+        }
+      ]
+    },
+    {
+      "id": "hist-mwzgjqbr-ds7v9",
+      "created_at": "2026-11-27T20:52:35.440Z",
+      "paper_rate": 140,
+      "previous_paper_rate": 145,
+      "effective_date": "2026-11-27",
+      "published_at": "2026-11-27T20:52:35.440Z",
+      "published_by": "aejaz qureshi",
+      "products_updated_count": 2,
+      "snapshot": [
+        {
+          "product_id": "prod-1",
+          "product_name": "Chicken Curry Cut",
+          "old_price": 232,
+          "new_price": 224,
+          "multiplier": 1.6,
+          "pricing_mode": "multiplier",
+          "override_active": false
+        },
+        {
+          "product_id": "prod-2",
+          "product_name": "Chicken Breast Boneless",
+          "old_price": 334,
+          "new_price": 322,
+          "multiplier": 2.3,
+          "pricing_mode": "multiplier",
+          "override_active": false
+        }
+      ]
+    },
+    {
+      "id": "hist-mwzhp7cq-lkn9s",
+      "created_at": "2026-11-27T21:24:50.397Z",
+      "paper_rate": 140,
+      "previous_paper_rate": 140,
+      "effective_date": "2026-11-27",
+      "published_at": "2026-11-27T21:24:50.397Z",
+      "published_by": "aejaz qureshi",
+      "products_updated_count": 2,
+      "snapshot": [
+        {
+          "product_id": "prod-1",
+          "product_name": "Chicken Curry Cut",
+          "old_price": 224,
+          "new_price": 224,
+          "multiplier": 1.6,
+          "pricing_mode": "multiplier",
+          "override_active": false
+        },
+        {
+          "product_id": "prod-2",
+          "product_name": "Chicken Breast Boneless",
+          "old_price": 322,
+          "new_price": 322,
+          "multiplier": 2.3,
+          "pricing_mode": "multiplier",
+          "override_active": false
+        }
+      ]
+    },
+    {
+      "id": "hist-mwzhp8gq-vkozv",
+      "created_at": "2026-11-27T21:24:51.846Z",
+      "paper_rate": 140,
+      "previous_paper_rate": 140,
+      "effective_date": "2026-11-27",
+      "published_at": "2026-11-27T21:24:51.846Z",
+      "published_by": "aejaz qureshi",
+      "products_updated_count": 2,
+      "snapshot": [
+        {
+          "product_id": "prod-1",
+          "product_name": "Chicken Curry Cut",
+          "old_price": 224,
+          "new_price": 224,
+          "multiplier": 1.6,
+          "pricing_mode": "multiplier",
+          "override_active": false
+        },
+        {
+          "product_id": "prod-2",
+          "product_name": "Chicken Breast Boneless",
+          "old_price": 322,
+          "new_price": 322,
+          "multiplier": 2.3,
+          "pricing_mode": "multiplier",
+          "override_active": false
+        }
+      ]
+    }
+  ],
+  "b2b_pricing_audit_logs": [
+    {
+      "id": "audit-init-001",
+      "action": "publish_daily_rates",
+      "details": {
+        "paper_rate": 140,
+        "previous_rate": 135,
+        "products_updated": 2,
+        "effective_date": "2026-11-27"
+      },
+      "admin_id": "admin-uuid-001",
+      "created_at": "2026-11-27T20:39:53.350Z"
+    },
+    {
+      "id": "audit-mwzgbe56",
+      "created_at": "2026-11-27T20:46:06.388Z",
+      "action": "publish_daily_rates",
+      "details": {
+        "newPaperRate": 145,
+        "previousRate": 140,
+        "effectiveDate": "2026-11-27",
+        "productsUpdated": 2,
+        "adminName": "aejaz qureshi"
+      },
+      "admin_id": "admin-uuid"
+    },
+    {
+      "id": "audit-mwzgbf4c",
+      "created_at": "2026-11-27T20:46:07.685Z",
+      "action": "restore_previous_rates",
+      "details": {
+        "restoredFromHistoryId": "hist-mwzg9ddv-8qr3h",
+        "paperRate": 145,
+        "productsRestored": 2,
+        "adminName": "aejaz qureshi"
+      },
+      "admin_id": "admin-uuid"
+    },
+    {
+      "id": "audit-mwzgjp60",
+      "created_at": "2026-11-27T20:52:33.918Z",
+      "action": "publish_daily_rates",
+      "details": {
+        "newPaperRate": 140,
+        "previousRate": 145,
+        "effectiveDate": "2026-11-27",
+        "productsUpdated": 2,
+        "adminName": "aejaz qureshi"
+      },
+      "admin_id": "admin-uuid"
+    },
+    {
+      "id": "audit-mwzgjpoa",
+      "created_at": "2026-11-27T20:52:34.595Z",
+      "action": "update_rule",
+      "details": {
+        "productId": "prod-1",
+        "ruleRecord": {
+          "id": "rule-prod-1",
+          "product_id": "prod-1",
+          "product_name": "Chicken Curry Cut",
+          "pricing_mode": "multiplier",
+          "paper_rate_source": "chicken",
+          "multiplier": 1.6,
+          "fixed_addition": 0,
+          "manual_price": null,
+          "rounding_method": "nearest_1",
+          "min_selling_price": null,
+          "is_dynamic_enabled": true,
+          "is_confirmed_by_owner": false,
+          "manual_override_price": 215,
+          "manual_override_reason": "Hotels promo discount",
+          "manual_override_expires_at": null,
+          "manual_override_enabled": true,
+          "updated_at": "2026-11-27T20:52:34.595Z",
+          "updated_by": "aejaz qureshi"
+        },
+        "adminName": "aejaz qureshi"
+      },
+      "admin_id": "admin-uuid"
+    },
+    {
+      "id": "audit-mwzgjpt6",
+      "created_at": "2026-11-27T20:52:34.785Z",
+      "action": "update_rule",
+      "details": {
+        "productId": "prod-1",
+        "ruleRecord": {
+          "id": "rule-prod-1",
+          "product_id": "prod-1",
+          "product_name": "Chicken Curry Cut",
+          "pricing_mode": "multiplier",
+          "paper_rate_source": "chicken",
+          "multiplier": 1.6,
+          "fixed_addition": 0,
+          "manual_price": null,
+          "rounding_method": "nearest_1",
+          "min_selling_price": null,
+          "is_dynamic_enabled": true,
+          "is_confirmed_by_owner": false,
+          "manual_override_price": null,
+          "manual_override_reason": null,
+          "manual_override_expires_at": null,
+          "manual_override_enabled": false,
+          "updated_at": "2026-11-27T20:52:34.785Z",
+          "updated_by": "aejaz qureshi"
+        },
+        "adminName": "aejaz qureshi"
+      },
+      "admin_id": "admin-uuid"
+    },
+    {
+      "id": "audit-mwzgjq8v",
+      "created_at": "2026-11-27T20:52:35.351Z",
+      "action": "restore_previous_rates",
+      "details": {
+        "restoredFromHistoryId": "hist-mwzgbe4t-4dgv7",
+        "paperRate": 145,
+        "productsRestored": 2,
+        "adminName": "aejaz qureshi"
+      },
+      "admin_id": "admin-uuid"
+    },
+    {
+      "id": "audit-mwzgjqc4",
+      "created_at": "2026-11-27T20:52:35.440Z",
+      "action": "publish_daily_rates",
+      "details": {
+        "newPaperRate": 140,
+        "previousRate": 145,
+        "effectiveDate": "2026-11-27",
+        "productsUpdated": 2,
+        "adminName": "aejaz qureshi"
+      },
+      "admin_id": "admin-uuid"
+    },
+    {
+      "id": "audit-mwzhp7d3",
+      "created_at": "2026-11-27T21:24:50.397Z",
+      "action": "publish_daily_rates",
+      "details": {
+        "newPaperRate": 140,
+        "previousRate": 140,
+        "effectiveDate": "2026-11-27",
+        "productsUpdated": 2,
+        "adminName": "aejaz qureshi"
+      },
+      "admin_id": "admin-uuid"
+    },
+    {
+      "id": "audit-mwzhp7u0",
+      "created_at": "2026-11-27T21:24:51.041Z",
+      "action": "update_rule",
+      "details": {
+        "productId": "prod-1",
+        "ruleRecord": {
+          "id": "rule-prod-1",
+          "product_id": "prod-1",
+          "product_name": "Chicken Curry Cut",
+          "pricing_mode": "multiplier",
+          "paper_rate_source": "chicken",
+          "multiplier": 1.6,
+          "fixed_addition": 0,
+          "manual_price": null,
+          "rounding_method": "nearest_1",
+          "min_selling_price": null,
+          "is_dynamic_enabled": true,
+          "is_confirmed_by_owner": false,
+          "manual_override_price": 215,
+          "manual_override_reason": "Hotels promo discount",
+          "manual_override_expires_at": null,
+          "manual_override_enabled": true,
+          "updated_at": "2026-11-27T21:24:51.041Z",
+          "updated_by": "aejaz qureshi"
+        },
+        "adminName": "aejaz qureshi"
+      },
+      "admin_id": "admin-uuid"
+    },
+    {
+      "id": "audit-mwzhp7y8",
+      "created_at": "2026-11-27T21:24:51.196Z",
+      "action": "update_rule",
+      "details": {
+        "productId": "prod-1",
+        "ruleRecord": {
+          "id": "rule-prod-1",
+          "product_id": "prod-1",
+          "product_name": "Chicken Curry Cut",
+          "pricing_mode": "multiplier",
+          "paper_rate_source": "chicken",
+          "multiplier": 1.6,
+          "fixed_addition": 0,
+          "manual_price": null,
+          "rounding_method": "nearest_1",
+          "min_selling_price": null,
+          "is_dynamic_enabled": true,
+          "is_confirmed_by_owner": false,
+          "manual_override_price": null,
+          "manual_override_reason": null,
+          "manual_override_expires_at": null,
+          "manual_override_enabled": false,
+          "updated_at": "2026-11-27T21:24:51.196Z",
+          "updated_by": "aejaz qureshi"
+        },
+        "adminName": "aejaz qureshi"
+      },
+      "admin_id": "admin-uuid"
+    },
+    {
+      "id": "audit-mwzhp8d0",
+      "created_at": "2026-11-27T21:24:51.728Z",
+      "action": "restore_previous_rates",
+      "details": {
+        "restoredFromHistoryId": "hist-mwzgjqbr-ds7v9",
+        "paperRate": 140,
+        "productsRestored": 2,
+        "adminName": "aejaz qureshi"
+      },
+      "admin_id": "admin-uuid"
+    },
+    {
+      "id": "audit-mwzhp8h3",
+      "created_at": "2026-11-27T21:24:51.846Z",
+      "action": "publish_daily_rates",
+      "details": {
+        "newPaperRate": 140,
+        "previousRate": 140,
+        "effectiveDate": "2026-11-27",
+        "productsUpdated": 2,
+        "adminName": "aejaz qureshi"
+      },
+      "admin_id": "admin-uuid"
+    }
+  ]
 }

@@ -43,13 +43,13 @@ export default function QuotationsManager({
   const [deliverySlot, setDeliverySlot] = useState('Morning 6:00 AM - 8:00 AM (Turbhe Sector 20 Hub)');
   const [notes, setNotes] = useState('Prices valid for 7 days. FSSAI certified fresh daily dressing.');
 
-  const initialRate = typeof products[0]?.price_b2b === 'number' && products[0]?.price_b2b > 0 ? products[0].price_b2b : 0;
+  const initialRate = typeof products?.[0]?.price_b2b === 'number' && products[0]?.price_b2b > 0 ? products[0].price_b2b : 0;
   const [items, setItems] = useState<QuotationItem[]>([
     {
-      product_id: products[0]?.id || 'prod-1',
-      name: products[0]?.name || 'Fresh Chicken Curry Cut',
+      product_id: products?.[0]?.id || 'prod-1',
+      name: products?.[0]?.name || 'Fresh Chicken Curry Cut',
       quantity: 15,
-      unit: products[0]?.unit || 'kg',
+      unit: products?.[0]?.unit || 'kg',
       price: initialRate,
       total: initialRate * 15,
     },
@@ -198,12 +198,32 @@ MeatCity Wholesale Supply Team
             Build customized commercial supply proposals with real B2B slab rates, daily morning slots, and payment terms.
           </p>
         </div>
-        <button
-          onClick={() => setShowBuilder(!showBuilder)}
-          className="px-4 py-2 bg-[#D4AF37] hover:bg-[#b5952f] text-black font-extrabold text-xs rounded-lg transition-colors whitespace-nowrap"
-        >
-          {showBuilder ? '✕ Close Builder' : '+ Create Wholesale Quote'}
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                const res = await fetch('/api/b2b/rate-list');
+                const json = await res.json();
+                if (json.plainText) {
+                  navigator.clipboard.writeText(json.plainText);
+                  alert('Copied today\'s wholesale rate list to clipboard!');
+                }
+              } catch (e) {
+                alert('Failed to generate rate list');
+              }
+            }}
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-lg transition-colors flex items-center gap-1.5"
+          >
+            <span>💬</span> Copy Daily Rate List
+          </button>
+          <button
+            onClick={() => setShowBuilder(!showBuilder)}
+            className="px-4 py-2 bg-[#D4AF37] hover:bg-[#b5952f] text-black font-extrabold text-xs rounded-lg transition-colors whitespace-nowrap"
+          >
+            {showBuilder ? '✕ Close Builder' : '+ Create Wholesale Quote'}
+          </button>
+        </div>
       </div>
 
       {/* Builder Form Accordion */}

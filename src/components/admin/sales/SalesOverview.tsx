@@ -27,15 +27,15 @@ export default function SalesOverview({
   const quotedLeads = leads.filter((l) => l.status === 'Quoted');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-full min-w-0 overflow-x-hidden">
       {/* Top Banner Alert if pending approvals exist */}
       {pendingApprovals.length > 0 && (
         <div className="bg-[#1A1810] border border-[#D4AF37]/40 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
           <div className="flex items-center gap-3">
-            <span className="w-10 h-10 rounded-full bg-[#D4AF37]/20 text-[#D4AF37] flex items-center justify-center text-xl font-bold">
+            <span className="w-10 h-10 rounded-full bg-[#D4AF37]/20 text-[#D4AF37] flex items-center justify-center text-xl font-bold shrink-0">
               🔔
             </span>
-            <div>
+            <div className="min-w-0">
               <h4 className="text-white font-bold text-sm sm:text-base">
                 {pendingApprovals.length} Outbound Message{pendingApprovals.length > 1 ? 's' : ''} Awaiting Owner Approval
               </h4>
@@ -46,56 +46,56 @@ export default function SalesOverview({
           </div>
           <button
             onClick={() => onNavigateTab('approvals')}
-            className="px-4 py-2 bg-[#D4AF37] hover:bg-[#b5952f] text-black font-extrabold text-xs rounded-lg transition-colors shadow-md whitespace-nowrap"
+            className="px-4 py-2 bg-[#D4AF37] hover:bg-[#b5952f] text-black font-extrabold text-xs rounded-lg transition-colors shadow-md whitespace-nowrap shrink-0"
           >
             Review Queue ({pendingApprovals.length})
           </button>
         </div>
       )}
 
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-        <div className="bg-[#111111] border border-white/5 p-4 rounded-xl">
-          <div className="text-gray-400 text-xs font-semibold uppercase">Total Leads</div>
-          <div className="text-2xl font-black text-white mt-1">{leads.length}</div>
-          <div className="text-[11px] text-[#D4AF37] mt-1 font-medium">Navi Mumbai B2B</div>
+      {/* KPI Cards Grid - Responsive side-by-side on mobile without horizontal clipping */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-3 w-full max-w-full min-w-0">
+        <div className="bg-[#111111] border border-white/5 p-3 sm:p-4 rounded-xl min-w-0 flex flex-col justify-between overflow-hidden">
+          <div className="text-gray-400 text-[10px] sm:text-xs font-semibold uppercase truncate">Total Leads</div>
+          <div className="text-xl sm:text-2xl font-black text-white mt-1">{leads.length}</div>
+          <div className="text-[10px] sm:text-[11px] text-[#D4AF37] mt-1 font-medium truncate">Navi Mumbai B2B</div>
         </div>
 
-        <div className="bg-[#111111] border border-white/5 p-4 rounded-xl">
-          <div className="text-gray-400 text-xs font-semibold uppercase">Pending Approvals</div>
-          <div className="text-2xl font-black text-amber-400 mt-1">{pendingApprovals.length}</div>
-          <div className="text-[11px] text-gray-400 mt-1">Requires manual review</div>
+        <div className="bg-[#111111] border border-white/5 p-3 sm:p-4 rounded-xl min-w-0 flex flex-col justify-between overflow-hidden">
+          <div className="text-gray-400 text-[10px] sm:text-xs font-semibold uppercase truncate">Pending Approvals</div>
+          <div className="text-xl sm:text-2xl font-black text-amber-400 mt-1">{pendingApprovals.length}</div>
+          <div className="text-[10px] sm:text-[11px] text-gray-400 mt-1 truncate">Requires review</div>
         </div>
 
-        <div className="bg-[#111111] border border-white/5 p-4 rounded-xl">
-          <div className="text-gray-400 text-xs font-semibold uppercase">Follow-ups Today</div>
-          <div className="text-2xl font-black text-rose-400 mt-1">{todayFollowUps.length}</div>
-          <div className="text-[11px] text-gray-400 mt-1">High-priority touchpoints</div>
+        <div className="bg-[#111111] border border-white/5 p-3 sm:p-4 rounded-xl min-w-0 flex flex-col justify-between overflow-hidden">
+          <div className="text-gray-400 text-[10px] sm:text-xs font-semibold uppercase truncate">Follow-ups Today</div>
+          <div className="text-xl sm:text-2xl font-black text-rose-400 mt-1">{todayFollowUps.length}</div>
+          <div className="text-[10px] sm:text-[11px] text-gray-400 mt-1 truncate">High-priority</div>
         </div>
 
-        <div className="bg-[#111111] border border-white/5 p-4 rounded-xl">
-          <div className="text-gray-400 text-xs font-semibold uppercase">Quotations Sent</div>
-          <div className="text-2xl font-black text-blue-400 mt-1">{quotations.length}</div>
-          <div className="text-[11px] text-gray-400 mt-1">{quotedLeads.length} leads in review</div>
+        <div className="bg-[#111111] border border-white/5 p-3 sm:p-4 rounded-xl min-w-0 flex flex-col justify-between overflow-hidden">
+          <div className="text-gray-400 text-[10px] sm:text-xs font-semibold uppercase truncate">Quotations Sent</div>
+          <div className="text-xl sm:text-2xl font-black text-blue-400 mt-1">{quotations.length}</div>
+          <div className="text-[10px] sm:text-[11px] text-gray-400 mt-1 truncate">{quotedLeads.length} leads in review</div>
         </div>
 
-        <div className="bg-[#111111] border border-white/5 p-4 rounded-xl">
-          <div className="text-gray-400 text-xs font-semibold uppercase">Converted Accounts</div>
-          <div className="text-2xl font-black text-emerald-400 mt-1">{activeCustomers.length}</div>
-          <div className="text-[11px] text-emerald-500 mt-1">Wholesale & Trial</div>
+        <div className="bg-[#111111] border border-white/5 p-3 sm:p-4 rounded-xl min-w-0 flex flex-col justify-between overflow-hidden">
+          <div className="text-gray-400 text-[10px] sm:text-xs font-semibold uppercase truncate">Converted Accounts</div>
+          <div className="text-xl sm:text-2xl font-black text-emerald-400 mt-1">{activeCustomers.length}</div>
+          <div className="text-[10px] sm:text-[11px] text-emerald-500 mt-1 truncate">Wholesale & Trial</div>
         </div>
 
-        <div className="bg-[#111111] border border-white/5 p-4 rounded-xl">
-          <div className="text-gray-400 text-xs font-semibold uppercase">AI Messages Sent</div>
-          <div className="text-2xl font-black text-purple-400 mt-1">
+        <div className="bg-[#111111] border border-white/5 p-3 sm:p-4 rounded-xl min-w-0 flex flex-col justify-between overflow-hidden">
+          <div className="text-gray-400 text-[10px] sm:text-xs font-semibold uppercase truncate">AI Messages Sent</div>
+          <div className="text-xl sm:text-2xl font-black text-purple-400 mt-1">
             {messages.filter((m) => m.status === 'SENT_MANUALLY').length}
           </div>
-          <div className="text-[11px] text-gray-400 mt-1">Confirmed by Owner</div>
+          <div className="text-[10px] sm:text-[11px] text-gray-400 mt-1 truncate">Confirmed by Owner</div>
         </div>
       </div>
 
       {/* Two Column Layout: Urgent Follow-ups & Recent Leads */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full max-w-full min-w-0">
         {/* Left: Follow-ups Due Today */}
         <div className="bg-[#111111] border border-white/5 rounded-xl p-5 flex flex-col justify-between">
           <div>
@@ -120,18 +120,18 @@ export default function SalesOverview({
                 {todayFollowUps.slice(0, 4).map((fu) => (
                   <div
                     key={fu.id}
-                    className="p-3 bg-white/5 border border-white/5 rounded-lg flex items-center justify-between gap-3"
+                    className="p-3 bg-white/5 border border-white/5 rounded-lg flex items-center justify-between gap-3 min-w-0"
                   >
-                    <div>
-                      <div className="text-white font-bold text-xs">{fu.title}</div>
-                      <div className="text-gray-400 text-[11px] mt-0.5">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-white font-bold text-xs truncate">{fu.title}</div>
+                      <div className="text-gray-400 text-[11px] mt-0.5 truncate">
                         Due: <span className="text-rose-400 font-semibold">{fu.due_date}</span> • Priority: {fu.priority}
                       </div>
-                      {fu.notes && <div className="text-gray-500 text-[11px] mt-0.5 line-clamp-1">{fu.notes}</div>}
+                      {fu.notes && <div className="text-gray-500 text-[11px] mt-0.5 truncate">{fu.notes}</div>}
                     </div>
                     <button
                       onClick={() => onNavigateTab('follow-ups')}
-                      className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded text-xs font-bold whitespace-nowrap"
+                      className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded text-xs font-bold whitespace-nowrap shrink-0"
                     >
                       Action
                     </button>
@@ -170,16 +170,16 @@ export default function SalesOverview({
               {leads.slice(0, 4).map((lead) => (
                 <div
                   key={lead.id}
-                  className="p-3 bg-white/5 border border-white/5 rounded-lg flex items-center justify-between gap-3"
+                  className="p-3 bg-white/5 border border-white/5 rounded-lg flex items-center justify-between gap-3 min-w-0"
                 >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-bold text-xs">{lead.business_name}</span>
-                      <span className="px-1.5 py-0.5 rounded text-[10px] bg-[#D4AF37]/20 text-[#D4AF37] font-semibold">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-white font-bold text-xs truncate">{lead.business_name}</span>
+                      <span className="px-1.5 py-0.5 rounded text-[10px] bg-[#D4AF37]/20 text-[#D4AF37] font-semibold shrink-0">
                         {lead.area}
                       </span>
                     </div>
-                    <div className="text-gray-400 text-[11px] mt-0.5">
+                    <div className="text-gray-400 text-[11px] mt-0.5 truncate">
                       {lead.category} • Est. {lead.estimated_daily_kg || 25}kg/day • Status: <span className="text-gray-300 font-semibold">{lead.status}</span>
                     </div>
                   </div>
@@ -187,7 +187,7 @@ export default function SalesOverview({
                     <button
                       disabled
                       title="Recipient has opted out of communications"
-                      className="px-3 py-1.5 bg-gray-800 text-gray-500 cursor-not-allowed rounded text-xs font-bold whitespace-nowrap"
+                      className="px-3 py-1.5 bg-gray-800 text-gray-500 cursor-not-allowed rounded text-xs font-bold whitespace-nowrap shrink-0"
                     >
                       ⛔ Opted Out
                     </button>
@@ -195,7 +195,7 @@ export default function SalesOverview({
                     <button
                       disabled
                       title="Contact phone number is unverified (less than 10 digits)"
-                      className="px-3 py-1.5 bg-gray-800 text-gray-500 cursor-not-allowed rounded text-xs font-bold whitespace-nowrap"
+                      className="px-3 py-1.5 bg-gray-800 text-gray-500 cursor-not-allowed rounded text-xs font-bold whitespace-nowrap shrink-0"
                     >
                       🚫 Unverified
                     </button>
@@ -205,7 +205,7 @@ export default function SalesOverview({
                         if (onSelectLeadForMessage) onSelectLeadForMessage(lead);
                         onNavigateTab('generator');
                       }}
-                      className="px-3 py-1.5 bg-[#D4AF37]/20 hover:bg-[#D4AF37] text-[#D4AF37] hover:text-black rounded text-xs font-bold transition-colors whitespace-nowrap"
+                      className="px-3 py-1.5 bg-[#D4AF37]/20 hover:bg-[#D4AF37] text-[#D4AF37] hover:text-black rounded text-xs font-bold transition-colors whitespace-nowrap shrink-0"
                     >
                       Draft AI Message
                     </button>
@@ -215,7 +215,7 @@ export default function SalesOverview({
             </div>
           </div>
 
-          <div className="pt-4 border-t border-white/5 mt-4 flex gap-2">
+          <div className="pt-4 border-t border-white/5 mt-4 flex flex-col sm:flex-row gap-2">
             <button
               onClick={() => onNavigateTab('lead-finder')}
               className="flex-1 py-2 bg-[#D4AF37] hover:bg-[#b5952f] text-black font-extrabold text-xs rounded-lg transition-colors text-center"

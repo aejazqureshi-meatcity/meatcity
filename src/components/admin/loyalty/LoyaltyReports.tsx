@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
 
 interface LoyaltyReportsData {
   repeatOrderRate: number;
@@ -27,7 +28,13 @@ export default function LoyaltyReports() {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/loyalty/admin/reports');
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+      const res = await fetch('/api/loyalty/admin/reports', { headers });
       const json = await res.json();
       if (!res.ok || json.error) {
         throw new Error(json.error || 'Failed to fetch reports');
@@ -46,8 +53,13 @@ export default function LoyaltyReports() {
 
   const handleExportCSV = async () => {
     try {
-      // Fetch customer list
-      const res = await fetch('/api/loyalty/admin/customers');
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const reqHeaders: Record<string, string> = {};
+      if (session?.access_token) {
+        reqHeaders['Authorization'] = `Bearer ${session.access_token}`;
+      }
+      const res = await fetch('/api/loyalty/admin/customers', { headers: reqHeaders });
       const json = await res.json();
       const customers = json.customers || [];
 
@@ -57,7 +69,7 @@ export default function LoyaltyReports() {
       }
 
       // Convert to CSV
-      const headers = ['User ID', 'Customer Name', 'Phone', 'Tier', 'Points Balance', 'Lifetime Points', 'Lifetime Spend (INR)', 'Orders Count', 'Referral Code'];
+      const csvHeaders = ['User ID', 'Customer Name', 'Phone', 'Tier', 'Points Balance', 'Lifetime Points', 'Lifetime Spend (INR)', 'Orders Count', 'Referral Code'];
       const rows = customers.map((c: any) => [
         `"${c.user_id}"`,
         `"${c.name || 'N/A'}"`,
@@ -70,7 +82,8 @@ export default function LoyaltyReports() {
         `"${c.referral_code}"`
       ]);
 
-      const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e: any[]) => e.join(','))].join('\n');
+      const csvLines = [csvHeaders.join(','), ...rows.map((row: any[]) => row.join(','))];
+      const csvContent = 'data:text/csv;charset=utf-8,' + csvLines.join('\n');
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement('a');
       link.setAttribute('href', encodedUri);

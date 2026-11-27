@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
 
 interface LoyaltyCustomer {
   id: string;
@@ -37,7 +38,13 @@ export default function CustomerLoyalty() {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/loyalty/admin/customers?search=${encodeURIComponent(search)}&tier=${selectedTier}`);
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+      const res = await fetch(`/api/loyalty/admin/customers?search=${encodeURIComponent(search)}&tier=${selectedTier}`, { headers });
       const json = await res.json();
       if (!res.ok || json.error) {
         throw new Error(json.error || 'Failed to fetch loyalty customers');
@@ -75,9 +82,15 @@ export default function CustomerLoyalty() {
     setModalFeedback(null);
 
     try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
       const res = await fetch('/api/loyalty/admin/customers', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           userId: adjustingCustomer.user_id,
           pointsAdjustment: pointsChange,

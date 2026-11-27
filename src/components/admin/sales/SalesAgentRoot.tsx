@@ -41,9 +41,9 @@ const TABS = [
 ];
 
 export default function SalesAgentRoot({
-  users,
-  orders,
-  products,
+  users = [],
+  orders = [],
+  products = [],
 }: SalesAgentRootProps) {
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -504,7 +504,7 @@ export default function SalesAgentRoot({
       )}
 
       {/* Sub-Navigation Header Bar */}
-      <div className="bg-[#111111] border border-white/5 rounded-2xl p-2.5 overflow-x-auto shadow-2xl w-full max-w-full scrollbar-none">
+      <div className="bg-[#111111] border border-white/5 rounded-2xl p-2.5 overflow-x-auto shadow-2xl w-full max-w-full min-w-0 scrollbar-none" style={{ WebkitOverflowScrolling: 'touch' }}>
         <div className="flex items-center gap-1.5 min-w-max pb-1">
           {TABS.map((tab) => {
             const isActive = activeTab === tab.id;
@@ -550,7 +550,7 @@ export default function SalesAgentRoot({
       </div>
 
       {/* Sub-view Content Router */}
-      <div className="transition-opacity duration-200">
+      <div className="transition-opacity duration-200 w-full max-w-full min-w-0 overflow-x-hidden">
         {activeTab === 'overview' && (
           <SalesOverview
             leads={leads}

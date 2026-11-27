@@ -1636,7 +1636,7 @@ export default function CartPage() {
                       MeatCity B2B Wholesale
                     </h2>
                     <span className="text-[10px] text-gray-600 dark:text-gray-400 font-bold block">
-                      Direct Wholesale Pricing Applied • Free Commercial Delivery
+                      Direct Wholesale Pricing Applied • Synchronized with Daily Paper Rates • Free Commercial Delivery
                     </span>
                   </div>
                 </div>

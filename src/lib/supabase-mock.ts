@@ -8,8 +8,10 @@ export class QueryBuilder {
   isSingle: boolean = false;
   isInsert: boolean = false;
   isUpdate: boolean = false;
+  isUpsert: boolean = false;
   isDelete: boolean = false;
   payload: any = null;
+  options: any = null;
 
   constructor(table: string) {
     this.table = table;
@@ -22,6 +24,13 @@ export class QueryBuilder {
   insert(values: any) {
     this.isInsert = true;
     this.payload = values;
+    return this;
+  }
+
+  upsert(values: any, options?: any) {
+    this.isUpsert = true;
+    this.payload = values;
+    this.options = options;
     return this;
   }
 

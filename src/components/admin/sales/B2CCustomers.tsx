@@ -51,9 +51,18 @@ export default function B2CCustomers({
     let lastOrderDate: Date | null = null;
     let daysSinceLastOrder = 999;
     if (userOrders.length > 0) {
-      const sorted = [...userOrders].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      lastOrderDate = new Date(sorted[0].created_at);
-      daysSinceLastOrder = Math.floor((now.getTime() - lastOrderDate.getTime()) / (1000 * 60 * 60 * 24));
+      const sorted = [...userOrders].sort((a, b) => {
+        const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return timeB - timeA;
+      });
+      if (sorted[0]?.created_at) {
+        const parsed = new Date(sorted[0].created_at);
+        if (!isNaN(parsed.getTime())) {
+          lastOrderDate = parsed;
+          daysSinceLastOrder = Math.max(0, Math.floor((now.getTime() - parsed.getTime()) / (1000 * 60 * 60 * 24)));
+        }
+      }
     }
 
     const loyalty = loyaltyAccounts[user.id] || {};
@@ -266,7 +275,7 @@ export default function B2CCustomers({
                       {cust.lastOrderDate ? (
                         <div>
                           <div className="text-gray-300 font-medium">
-                            {cust.lastOrderDate.toISOString().split('T')[0]}
+                            {cust.lastOrderDate && !isNaN(cust.lastOrderDate.getTime()) ? cust.lastOrderDate.toISOString().split('T')[0] : 'Recent'}
                           </div>
                           <div className="text-gray-500 text-[10px]">
                             {cust.daysSinceLastOrder} day{cust.daysSinceLastOrder === 1 ? '' : 's'} ago

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
 
 interface LoyaltyReward {
   id: string;
@@ -29,7 +30,13 @@ export default function RewardManager() {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/loyalty/admin/rewards');
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+      const res = await fetch('/api/loyalty/admin/rewards', { headers });
       const json = await res.json();
       if (!res.ok || json.error) {
         throw new Error(json.error || 'Failed to fetch rewards catalog');
@@ -74,9 +81,15 @@ export default function RewardManager() {
     setFeedback(null);
 
     try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
       const res = await fetch('/api/loyalty/admin/rewards', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(editingReward),
       });
 

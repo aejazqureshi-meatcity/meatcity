@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import SalesAgentRoot from '@/components/admin/sales/SalesAgentRoot';
 import LoyaltyRoot from '@/components/admin/loyalty/LoyaltyRoot';
+import DailyRateManager from '@/components/admin/pricing/DailyRateManager';
+import AdminErrorBoundary from '@/components/admin/AdminErrorBoundary';
 
 interface Product {
   id: string;
@@ -77,8 +79,32 @@ interface Order {
 }
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'approvals' | 'customers' | 'products' | 'categories' | 'orders' | 'deliveries' | 'analytics' | 'settings' | 'payments' | 'pincodes' | 'coupons' | 'reviews' | 'ai-sales' | 'loyalty'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'approvals' | 'customers' | 'products' | 'categories' | 'orders' | 'deliveries' | 'analytics' | 'settings' | 'payments' | 'pincodes' | 'coupons' | 'reviews' | 'ai-sales' | 'loyalty' | 'daily-rates'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const isMountedRef = useRef(false);
+
+  // Sync activeTab from URL search param on client mount (avoids SSR hydration mismatch)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    const validTabs = ['dashboard', 'approvals', 'customers', 'products', 'categories', 'orders', 'deliveries', 'analytics', 'settings', 'payments', 'pincodes', 'coupons', 'reviews', 'ai-sales', 'loyalty', 'daily-rates'];
+    if (tabParam && validTabs.includes(tabParam)) {
+      setActiveTab(tabParam as any);
+    }
+  }, []);
+
+  // Sync URL search param when activeTab changes after initial mount
+  useEffect(() => {
+    if (!isMountedRef.current) {
+      isMountedRef.current = true;
+      return;
+    }
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('tab') !== activeTab) {
+      url.searchParams.set('tab', activeTab);
+      window.history.replaceState(null, '', url.toString());
+    }
+  }, [activeTab]);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
@@ -95,6 +121,7 @@ export default function AdminDashboard() {
     password: 'password123',
     status: 'active'
   });
+  const [showPartnerPassword, setShowPartnerPassword] = useState(false);
   
   // Database States
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -307,8 +334,12 @@ export default function AdminDashboard() {
     const rawCategories = catData || [];
     setCategories(
       rawCategories
-        .filter((c: any) => !c.name.startsWith('COUPON_') && !c.id.startsWith('COUPON_'))
-        .map((c: any) => c.name || c.id)
+        .filter((c: any) => {
+          if (!c) return false;
+          const val = typeof c === 'string' ? c : (c.name || c.id || '');
+          return typeof val === 'string' && !val.startsWith('COUPON_');
+        })
+        .map((c: any) => (typeof c === 'string' ? c : (c.name || c.id || '')))
     );
 
     // 4. Fetch Orders
@@ -798,6 +829,83 @@ export default function AdminDashboard() {
     loadData();
   };
 
+  // Courier Assignment Action Handler
+  const handleAssignCourier = async (orderId: string, partnerId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+
+    if (['Delivered', 'Cancelled'].includes(order.status)) {
+      showToast('Cannot reassign completed or cancelled orders.', 'error');
+      return;
+    }
+
+    const partnerUser = users.find(u => u.id === partnerId);
+    const randomOtp = order.delivery_otp || Math.floor(1000 + Math.random() * 9000).toString();
+
+    const updatePayload = partnerId ? {
+      delivery_partner_id: partnerId,
+      delivery_partner_name: partnerUser ? (partnerUser.full_name || partnerUser.name || 'Delivery Partner') : 'Delivery Partner',
+      delivery_status: 'assigned',
+      delivery_otp: randomOtp
+    } : {
+      delivery_partner_id: null,
+      delivery_partner_name: null,
+      delivery_status: null,
+      delivery_otp: null
+    };
+
+    const { error: updErr } = await supabase.from('orders').update(updatePayload).eq('id', orderId);
+    if (updErr) {
+      showToast('Failed to assign courier: ' + updErr.message, 'error');
+      return;
+    }
+
+    if (partnerId) {
+      try {
+        await supabase.from('notifications').insert({
+          user_id: partnerId,
+          title: 'New Delivery Assigned 🛵',
+          message: `You have been assigned Order ${orderId} for delivery to ${order.customer_name || 'Customer'}.`,
+          type: 'delivery_assigned'
+        });
+        if (order.user_id) {
+          await supabase.from('notifications').insert({
+            user_id: order.user_id,
+            title: 'Delivery Partner Assigned 🛵',
+            message: `Your order ${orderId} has been assigned to ${partnerUser?.full_name || partnerUser?.name || 'Delivery Partner'} (OTP: ${randomOtp}).`,
+            type: 'delivery_assigned'
+          });
+        }
+      } catch (nErr) {
+        console.error('Failed to trigger assignment notifications:', nErr);
+      }
+      showToast(`Order assigned to ${partnerUser?.full_name || 'Partner'} successfully!`, 'success');
+    } else {
+      showToast('Order unassigned from courier.', 'success');
+    }
+
+    loadData();
+  };
+
+  // COD Cash Settlement Action Handler
+  const handleSettleCod = async (orderId: string, amount: number) => {
+    if (!confirm(`Confirm receipt and settlement of ₹${amount} cash for Order ${orderId}?`)) return;
+
+    const { error: updErr } = await supabase.from('orders').update({
+      payment_status: 'Paid',
+      cod_settled: true,
+      cod_settled_at: new Date().toISOString()
+    }).eq('id', orderId);
+
+    if (updErr) {
+      showToast('Failed to settle COD cash: ' + updErr.message, 'error');
+      return;
+    }
+
+    showToast(`COD cash of ₹${amount} settled successfully!`, 'success');
+    loadData();
+  };
+
   const handleSaveSystemSettings = async () => {
     try {
       const settingsList = [
@@ -1232,6 +1340,21 @@ export default function AdminDashboard() {
 
           <li className="admin-sidebar-menu-item">
             <div 
+              className={`admin-sidebar-link ${activeTab === 'daily-rates' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('daily-rates'); setIsSidebarOpen(false); }}
+            >
+              <span className="admin-sidebar-link-left">
+                <span style={{ fontSize: '16px', marginRight: '4px' }}>📈</span>
+                Daily Paper Rates
+              </span>
+              <span className="badge-count" style={{ backgroundColor: '#10B981', color: 'black', fontWeight: 'bold' }}>
+                B2B
+              </span>
+            </div>
+          </li>
+
+          <li className="admin-sidebar-menu-item">
+            <div 
               className={`admin-sidebar-link ${activeTab === 'approvals' ? 'active' : ''}`}
               onClick={() => { setActiveTab('approvals'); setIsSidebarOpen(false); }}
             >
@@ -1404,11 +1527,11 @@ export default function AdminDashboard() {
       <main className="admin-main">
         {/* Top Header */}
         <header className="admin-top-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', maxWidth: '100%', minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', maxWidth: '100%', minWidth: 0, overflow: 'hidden' }}>
             {/* Hamburger button for mobile */}
             <button 
               onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden p-2 -ml-2 text-white hover:text-gold transition-colors"
+              className="lg:hidden p-2 -ml-2 text-white hover:text-gold transition-colors flex-shrink-0"
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
               aria-label="Open sidebar"
             >
@@ -1416,9 +1539,10 @@ export default function AdminDashboard() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <div className="admin-header-title-block">
-               <h1>
+            <div className="admin-header-title-block" style={{ minWidth: 0, flex: 1, maxWidth: '100%' }}>
+               <h1 style={{ wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal' }}>
                 {activeTab === 'dashboard' && 'Welcome, Admin Dashboard'}
+                {activeTab === 'daily-rates' && 'B2B Daily Paper Rate Manager'}
                 {activeTab === 'ai-sales' && 'MeatCity AI Sales Agent & B2B Growth Engine'}
                 {activeTab === 'loyalty' && 'MeatCity Customer Loyalty, Rewards & Retention'}
                 {activeTab === 'approvals' && 'B2B Approvals Queue'}
@@ -1431,8 +1555,9 @@ export default function AdminDashboard() {
                 {activeTab === 'settings' && 'System Parameters'}
                 {activeTab === 'payments' && 'B2B Credit Repayments'}
               </h1>
-              <p>
+              <p style={{ wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal' }}>
                 {activeTab === 'dashboard' && 'Visual overview of Meat City Turbhe sales performance.'}
+                {activeTab === 'daily-rates' && 'Central chicken wholesale paper rate engine. Enter today’s rate to automatically calculate and publish B2B prices.'}
                 {activeTab === 'ai-sales' && 'Discover Navi Mumbai food businesses, draft grounded wholesale proposals, and manage customer approvals.'}
                 {activeTab === 'loyalty' && 'Configure points earn & burn rates, 10-stamp digital cards, tier levels, reward vouchers, and customer retention.'}
                 {activeTab === 'approvals' && 'Review and approve wholesale partner credentials.'}
@@ -1457,14 +1582,19 @@ export default function AdminDashboard() {
         </header>
 
         {/* Content area */}
-        <div className="admin-content">
+        <div className="admin-content" style={{ width: '100%', maxWidth: '100%', minWidth: 0, overflowX: 'hidden', boxSizing: 'border-box' }}>
+          <AdminErrorBoundary fallbackTitle="Admin Section Error">
 
           {/* Tab 1: Dashboard */}
+          {activeTab === 'daily-rates' && (
+            <DailyRateManager onNotify={showToast} />
+          )}
+
           {activeTab === 'ai-sales' && (
             <SalesAgentRoot
-              users={users}
-              orders={orders}
-              products={products}
+              users={users || []}
+              orders={orders || []}
+              products={products || []}
             />
           )}
 
@@ -1510,6 +1640,19 @@ export default function AdminDashboard() {
                   </div>
                   <div className="admin-card-value">{stats.pendingB2B}</div>
                   <div className="admin-card-change down">Needs review</div>
+                </div>
+
+                <div 
+                  onClick={() => setActiveTab('daily-rates')}
+                  className="admin-card"
+                  style={{ cursor: 'pointer', borderColor: 'rgba(212, 175, 55, 0.3)' }}
+                >
+                  <div className="admin-card-header">
+                    Daily Chicken Rate
+                    <div className="admin-card-icon gold">📈</div>
+                  </div>
+                  <div className="admin-card-value">₹140<span style={{ fontSize: '0.8rem', color: '#888' }}>/kg</span></div>
+                  <div className="admin-card-change up">Live Dynamic Pricing</div>
                 </div>
 
                 <div className="admin-card">
@@ -2716,52 +2859,50 @@ export default function AdminDashboard() {
                                 </div>
                               )}
 
+                              {/* COD Settlement Button for Delivered COD Orders */}
+                              {order.payment_method?.toUpperCase().includes('COD') && order.status === 'Delivered' && (
+                                <div style={{ marginTop: '0.3rem' }}>
+                                  {order.payment_status === 'Paid' ? (
+                                    <span style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 800 }}>
+                                      💵 COD Cash Settled ✓
+                                    </span>
+                                  ) : (
+                                    <button
+                                      onClick={() => handleSettleCod(order.id, order.total)}
+                                      className="admin-btn admin-btn-sm admin-btn-success"
+                                      style={{ width: '100%', padding: '0.25rem 0.5rem', fontSize: '0.72rem', fontWeight: 800 }}
+                                    >
+                                      💵 Settle COD Cash (₹{order.total})
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+
                               {/* Delivery Partner Dropdown Selector */}
                               <div style={{ marginTop: '0.4rem', display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
                                 <span style={{ fontSize: '0.72rem', color: '#B8B8B8', fontWeight: 700 }}>Courier Assignment:</span>
-                                <select 
-                                  className="admin-form-select"
-                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', width: '100%', borderColor: order.delivery_partner_id ? '#10b981' : 'rgba(255,255,255,0.08)' }}
-                                  value={order.delivery_partner_id || ''}
-                                  onChange={async (e) => {
-                                    const partnerId = e.target.value;
-                                    const partnerUser = users.find(u => u.id === partnerId);
-                                    const randomOtp = Math.floor(1000 + Math.random() * 9000).toString();
-                                    
-                                    await supabase.from('orders').update({
-                                      delivery_partner_id: partnerId,
-                                      delivery_partner_name: partnerUser ? (partnerUser.full_name || partnerUser.name) : '',
-                                      delivery_status: partnerId ? 'assigned' : '',
-                                      delivery_otp: partnerId ? randomOtp : ''
-                                    }).eq('id', order.id);
-
-                                    if (partnerId) {
-                                      try {
-                                        await supabase.from('notifications').insert({
-                                          user_id: partnerId,
-                                          title: 'New Delivery Assigned 🛵',
-                                          message: `You have been assigned Order ${order.id} for delivery to ${order.customer_name || 'Customer'}.`,
-                                          type: 'delivery_assigned'
-                                        });
-                                        await supabase.from('notifications').insert({
-                                          user_id: order.user_id,
-                                          title: 'Delivery Partner Assigned 🛵',
-                                          message: `Your order ${order.id} has been assigned to ${partnerUser?.full_name || partnerUser?.name || 'Delivery Partner'} (OTP: ${randomOtp}).`,
-                                          type: 'delivery_assigned'
-                                        });
-                                      } catch (nErr) {
-                                        console.error('Failed to trigger assignment notifications:', nErr);
-                                      }
-                                    }
-
-                                    loadData();
-                                  }}
-                                >
-                                  <option value="">Unassigned</option>
-                                  {users.filter(u => u.user_type === 'delivery_partner' && u.status === 'active').map(u => (
-                                    <option key={u.id} value={u.id}>{u.full_name || u.name}</option>
-                                  ))}
-                                </select>
+                                {['Delivered', 'Cancelled'].includes(order.status) ? (
+                                  <div style={{ fontSize: '0.75rem', color: '#e5e7eb', padding: '0.2rem 0', fontWeight: 600 }}>
+                                    🛵 {order.delivery_partner_name || 'Unassigned'}
+                                  </div>
+                                ) : (
+                                  <select 
+                                    className="admin-form-select"
+                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', width: '100%', borderColor: order.delivery_partner_id ? '#10b981' : 'rgba(255,255,255,0.08)' }}
+                                    value={order.delivery_partner_id || ''}
+                                    onChange={(e) => handleAssignCourier(order.id, e.target.value)}
+                                  >
+                                    <option value="">Unassigned</option>
+                                    {users.filter(u => u.user_type === 'delivery_partner' && u.status === 'active').map(u => {
+                                      const activeCount = orders.filter(o => o.delivery_partner_id === u.id && !['Delivered', 'Cancelled'].includes(o.status)).length;
+                                      return (
+                                        <option key={u.id} value={u.id}>
+                                          {u.full_name || u.name} ({activeCount} active)
+                                        </option>
+                                      );
+                                    })}
+                                  </select>
+                                )}
                                 {order.delivery_partner_id && (
                                   <div style={{ fontSize: '0.72rem', color: order.delivery_status === 'delivered' ? '#10b981' : '#D4AF37', marginTop: '0.15rem' }}>
                                     Status: <span style={{ textTransform: 'capitalize', fontWeight: 800 }}>{order.delivery_status || 'assigned'}</span>
@@ -2918,50 +3059,49 @@ export default function AdminDashboard() {
                         </div>
                       )}
 
+                      {/* COD Settlement Button for Delivered COD Orders */}
+                      {order.payment_method?.toUpperCase().includes('COD') && order.status === 'Delivered' && (
+                        <div style={{ marginTop: '0.2rem' }}>
+                          {order.payment_status === 'Paid' ? (
+                            <span style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 800 }}>
+                              💵 COD Cash Settled ✓
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleSettleCod(order.id, order.total)}
+                              className="admin-btn admin-btn-sm admin-btn-success"
+                              style={{ width: '100%', padding: '0.35rem 0.5rem', fontSize: '0.7rem', fontWeight: 800 }}
+                            >
+                              💵 Settle COD Cash (₹{order.total})
+                            </button>
+                          )}
+                        </div>
+                      )}
+
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
                         <span style={{ fontSize: '0.65rem', color: '#B8B8B8', fontWeight: 700 }}>COURIER ASSIGNMENT:</span>
-                        <select 
-                          className="admin-form-select"
-                          style={{ padding: '0.35rem 0.5rem', fontSize: '0.75rem', width: '100%', borderColor: order.delivery_partner_id ? '#10b981' : 'rgba(255,255,255,0.08)' }}
-                          value={order.delivery_partner_id || ''}
-                          onChange={async (e) => {
-                            const partnerId = e.target.value;
-                            const partnerUser = users.find(u => u.id === partnerId);
-                            const randomOtp = Math.floor(1000 + Math.random() * 9000).toString();
-                            
-                            await supabase.from('orders').update({
-                              delivery_partner_id: partnerId,
-                              delivery_partner_name: partnerUser ? (partnerUser.full_name || partnerUser.name) : '',
-                              delivery_status: partnerId ? 'assigned' : '',
-                              delivery_otp: partnerId ? randomOtp : ''
-                            }).eq('id', order.id);
-
-                            if (partnerId) {
-                              try {
-                                await supabase.from('notifications').insert({
-                                  user_id: partnerId,
-                                  title: 'New Delivery Assigned 🛵',
-                                  message: `You have been assigned Order ${order.id} for delivery to ${order.customer_name || 'Customer'}.`,
-                                  type: 'delivery_assigned'
-                                });
-                                await supabase.from('notifications').insert({
-                                  user_id: order.user_id,
-                                  title: 'Delivery Partner Assigned 🛵',
-                                  message: `Your order ${order.id} has been assigned to ${partnerUser?.full_name || partnerUser?.name || 'Delivery Partner'} (OTP: ${randomOtp}).`,
-                                  type: 'delivery_assigned'
-                                });
-                              } catch (nErr) {
-                                console.error('Failed to trigger assignment notifications:', nErr);
-                              }
-                            }
-                            loadData();
-                          }}
-                        >
-                          <option value="">Unassigned</option>
-                          {users.filter(u => u.user_type === 'delivery_partner' && u.status === 'active').map(u => (
-                            <option key={u.id} value={u.id}>{u.full_name || u.name}</option>
-                          ))}
-                        </select>
+                        {['Delivered', 'Cancelled'].includes(order.status) ? (
+                          <div style={{ fontSize: '0.75rem', color: '#e5e7eb', padding: '0.2rem 0', fontWeight: 600 }}>
+                            🛵 {order.delivery_partner_name || 'Unassigned'}
+                          </div>
+                        ) : (
+                          <select 
+                            className="admin-form-select"
+                            style={{ padding: '0.35rem 0.5rem', fontSize: '0.75rem', width: '100%', borderColor: order.delivery_partner_id ? '#10b981' : 'rgba(255,255,255,0.08)' }}
+                            value={order.delivery_partner_id || ''}
+                            onChange={(e) => handleAssignCourier(order.id, e.target.value)}
+                          >
+                            <option value="">Unassigned</option>
+                            {users.filter(u => u.user_type === 'delivery_partner' && u.status === 'active').map(u => {
+                              const activeCount = orders.filter(o => o.delivery_partner_id === u.id && !['Delivered', 'Cancelled'].includes(o.status)).length;
+                              return (
+                                <option key={u.id} value={u.id}>
+                                  {u.full_name || u.name} ({activeCount} active)
+                                </option>
+                              );
+                            })}
+                          </select>
+                        )}
                         {order.delivery_partner_id && (
                           <div style={{ fontSize: '0.65rem', color: order.delivery_status === 'delivered' ? '#10b981' : '#D4AF37', marginTop: '0.15rem' }}>
                             Status: <span style={{ textTransform: 'capitalize', fontWeight: 800 }}>{order.delivery_status || 'assigned'}</span>
@@ -3678,14 +3818,23 @@ export default function AdminDashboard() {
                     };
 
                     if (editingPartner) {
-                      await supabase.from('users').update({
-                        name: partnerForm.name,
-                        full_name: partnerForm.name,
-                        email: partnerForm.email,
-                        mobile: partnerForm.mobile,
-                        phone: partnerForm.mobile,
-                        status: partnerForm.status
-                      }).eq('id', editingPartner.id);
+                      const res = await fetch('/api/admin/create-partner', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          id: editingPartner.id,
+                          name: partnerForm.name,
+                          email: partnerForm.email,
+                          mobile: partnerForm.mobile,
+                          password: partnerForm.password,
+                          status: partnerForm.status
+                        })
+                      });
+                      const resData = await res.json();
+                      if (resData.error) {
+                        alert('Error updating delivery partner: ' + resData.error);
+                        return;
+                      }
                     } else {
                       const res = await fetch('/api/admin/create-partner', {
                         method: 'POST',
@@ -3749,13 +3898,37 @@ export default function AdminDashboard() {
 
                       <div className="admin-form-group">
                         <label className="admin-form-label">Password</label>
-                        <input 
-                          type="password" 
-                          className="admin-form-input" 
-                          required 
-                          value={partnerForm.password} 
-                          onChange={e => setPartnerForm({...partnerForm, password: e.target.value})} 
-                        />
+                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                          <input 
+                            type={showPartnerPassword ? "text" : "password"} 
+                            className="admin-form-input" 
+                            style={{ paddingRight: '48px', width: '100%' }}
+                            required 
+                            value={partnerForm.password} 
+                            onChange={e => setPartnerForm({...partnerForm, password: e.target.value})} 
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPartnerPassword(!showPartnerPassword)}
+                            aria-label={showPartnerPassword ? "Hide password" : "Show password"}
+                            style={{
+                              position: 'absolute',
+                              right: '4px',
+                              width: '40px',
+                              height: '40px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              background: 'transparent',
+                              border: 'none',
+                              color: '#888',
+                              cursor: 'pointer',
+                              borderRadius: '8px'
+                            }}
+                          >
+                            {showPartnerPassword ? '👁️' : '🔒'}
+                          </button>
+                        </div>
                       </div>
 
                       <div className="admin-form-group">
@@ -3861,7 +4034,16 @@ export default function AdminDashboard() {
                                 <button 
                                   onClick={async () => {
                                     const nextStatus = p.status === 'active' ? 'inactive' : 'active';
-                                    await supabase.from('users').update({ status: nextStatus }).eq('id', p.id);
+                                    const res = await fetch('/api/admin/create-partner', {
+                                      method: 'PUT',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ id: p.id, status: nextStatus })
+                                    });
+                                    const resData = await res.json();
+                                    if (resData.error) {
+                                      alert('Error updating status: ' + resData.error);
+                                      return;
+                                    }
                                     loadData();
                                   }} 
                                   className={`admin-btn admin-btn-sm ${p.status === 'active' ? 'admin-btn-secondary' : 'admin-btn-success'}`}
@@ -3870,8 +4052,15 @@ export default function AdminDashboard() {
                                 </button>
                                 <button 
                                   onClick={async () => {
-                                    if (confirm('Delete this delivery partner account?')) {
-                                      await supabase.from('users').delete().eq('id', p.id);
+                                    if (confirm('Delete this delivery partner account? This removes login access and profile.')) {
+                                      const res = await fetch(`/api/admin/create-partner?id=${p.id}`, {
+                                        method: 'DELETE'
+                                      });
+                                      const resData = await res.json();
+                                      if (resData.error) {
+                                        alert('Error deleting delivery partner: ' + resData.error);
+                                        return;
+                                      }
                                       loadData();
                                     }
                                   }} 
@@ -3901,6 +4090,7 @@ export default function AdminDashboard() {
 
           <div style={{ height: '40px' }} />
 
+          </AdminErrorBoundary>
         </div>
       </main>
       

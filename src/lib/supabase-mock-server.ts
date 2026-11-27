@@ -101,7 +101,111 @@ export function readDb() {
         }
       ],
       loyalty_reward_claims: [],
-      loyalty_audit_logs: []
+      loyalty_referrals: [],
+      loyalty_audit_logs: [],
+      b2b_paper_rates: [
+        {
+          id: 'rate-chicken-current',
+          rate_type: 'chicken',
+          current_rate: 140,
+          previous_rate: 135,
+          effective_date: new Date().toISOString().split('T')[0],
+          published_at: new Date().toISOString(),
+          published_by: 'Aejaz Qureshi (Super Admin)',
+          status: 'published',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      ],
+      b2b_product_pricing_rules: [
+        {
+          id: 'rule-prod-1',
+          product_id: 'prod-1',
+          product_name: 'Chicken Curry Cut',
+          pricing_mode: 'multiplier',
+          paper_rate_source: 'chicken',
+          multiplier: 1.60,
+          fixed_addition: 0,
+          manual_price: 220,
+          rounding_method: 'nearest_1',
+          min_selling_price: null,
+          is_dynamic_enabled: true,
+          is_confirmed_by_owner: true,
+          manual_override_price: null,
+          manual_override_reason: null,
+          manual_override_expires_at: null,
+          manual_override_enabled: false,
+          updated_at: new Date().toISOString(),
+          updated_by: 'Super Admin'
+        },
+        {
+          id: 'rule-prod-2',
+          product_id: 'prod-2',
+          product_name: 'Chicken Breast Boneless',
+          pricing_mode: 'multiplier',
+          paper_rate_source: 'chicken',
+          multiplier: 2.30,
+          fixed_addition: 0,
+          manual_price: 280,
+          rounding_method: 'nearest_1',
+          min_selling_price: null,
+          is_dynamic_enabled: true,
+          is_confirmed_by_owner: true,
+          manual_override_price: null,
+          manual_override_reason: null,
+          manual_override_expires_at: null,
+          manual_override_enabled: false,
+          updated_at: new Date().toISOString(),
+          updated_by: 'Super Admin'
+        }
+      ],
+      b2b_rate_history: [
+        {
+          id: 'hist-init-001',
+          paper_rate: 140,
+          previous_paper_rate: 135,
+          effective_date: new Date().toISOString().split('T')[0],
+          published_at: new Date().toISOString(),
+          published_by: 'Aejaz Qureshi (Super Admin)',
+          products_updated_count: 2,
+          snapshot: [
+            {
+              product_id: 'prod-1',
+              product_name: 'Chicken Curry Cut',
+              old_price: 220,
+              new_price: 224,
+              multiplier: 1.60,
+              pricing_mode: 'multiplier',
+              override_active: false
+            },
+            {
+              product_id: 'prod-2',
+              product_name: 'Chicken Breast Boneless',
+              old_price: 280,
+              new_price: 322,
+              multiplier: 2.30,
+              pricing_mode: 'multiplier',
+              override_active: false
+            }
+          ],
+          restored_from_id: null,
+          created_at: new Date().toISOString()
+        }
+      ],
+      b2b_pricing_audit_logs: [
+        {
+          id: 'audit-init-001',
+          action: 'publish_daily_rates',
+          details: {
+            paper_rate: 140,
+            previous_rate: 135,
+            products_updated: 2,
+            effective_date: new Date().toISOString().split('T')[0]
+          },
+          admin_id: 'admin-uuid-001',
+          created_at: new Date().toISOString()
+        }
+      ]
     };
 
     if (!fs.existsSync(dbPath)) {
@@ -136,7 +240,12 @@ export function readDb() {
     if (!parsed.loyalty_stamp_cards) { parsed.loyalty_stamp_cards = []; changed = true; }
     if (!parsed.loyalty_rewards) { parsed.loyalty_rewards = defaultDb.loyalty_rewards; changed = true; }
     if (!parsed.loyalty_reward_claims) { parsed.loyalty_reward_claims = []; changed = true; }
+    if (!parsed.loyalty_referrals) { parsed.loyalty_referrals = []; changed = true; }
     if (!parsed.loyalty_audit_logs) { parsed.loyalty_audit_logs = []; changed = true; }
+    if (!parsed.b2b_paper_rates) { parsed.b2b_paper_rates = defaultDb.b2b_paper_rates; changed = true; }
+    if (!parsed.b2b_product_pricing_rules) { parsed.b2b_product_pricing_rules = defaultDb.b2b_product_pricing_rules; changed = true; }
+    if (!parsed.b2b_rate_history) { parsed.b2b_rate_history = defaultDb.b2b_rate_history; changed = true; }
+    if (!parsed.b2b_pricing_audit_logs) { parsed.b2b_pricing_audit_logs = defaultDb.b2b_pricing_audit_logs; changed = true; }
 
     if (changed) {
       fs.writeFileSync(dbPath, JSON.stringify(parsed, null, 2), 'utf8');
@@ -188,6 +297,33 @@ export function executeServerQuery(query: any) {
       writeDb(db);
 
       return { data: Array.isArray(query.payload) ? insertedRows : insertedRows[0], error: null };
+    }
+
+    // 1b. Handle UPSERT
+    if (query.isUpsert) {
+      const payloads = Array.isArray(query.payload) ? query.payload : [query.payload];
+      const conflictKey = query.options?.onConflict || 'id';
+      const resultRows: any[] = [];
+
+      for (const item of payloads) {
+        const existingIdx = data.findIndex((row: any) => 
+          (item[conflictKey] && row[conflictKey] === item[conflictKey]) || 
+          (item.id && row.id === item.id) || 
+          (item.product_id && row.product_id === item.product_id)
+        );
+        if (existingIdx >= 0) {
+          data[existingIdx] = { ...data[existingIdx], ...item, updated_at: new Date().toISOString() };
+          resultRows.push(data[existingIdx]);
+        } else {
+          const newRow = { id: item.id || generateUUID(), created_at: new Date().toISOString(), ...item };
+          data.push(newRow);
+          resultRows.push(newRow);
+        }
+      }
+
+      db[table] = data;
+      writeDb(db);
+      return { data: Array.isArray(query.payload) ? resultRows : resultRows[0], error: null };
     }
 
     // 2. Handle UPDATE
@@ -275,10 +411,10 @@ export function executeServerQuery(query: any) {
 
     // Apply single
     if (query.isSingle) {
-      return { data: filteredData[0] || null, error: filteredData[0] ? null : { message: 'Row not found' } };
+      return { data: filteredData[0] || null, count: filteredData.length ? 1 : 0, error: filteredData[0] ? null : { message: 'Row not found' } };
     }
 
-    return { data: filteredData, error: null };
+    return { data: filteredData, count: filteredData.length, error: null };
   } catch (err: any) {
     console.error('Error executing mock query:', err);
     return { data: null, error: { message: err.message || 'Database error' } };

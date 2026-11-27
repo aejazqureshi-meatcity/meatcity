@@ -221,7 +221,7 @@ export default function LeadFinder({
     }
     const headers = ['Business Name', 'Category', 'Area', 'Contact Person', 'Phone', 'Email', 'Estimated Daily Kg', 'Status', 'Notes'];
     const rows = existingLeads.map((l) => [
-      `"${l.business_name.replace(/"/g, '""')}"`,
+      `"${(l.business_name || '').replace(/"/g, '""')}"`,
       `"${l.category}"`,
       `"${l.area}"`,
       `"${l.contact_person || ''}"`,
@@ -352,7 +352,7 @@ export default function LeadFinder({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {searchResults.map((item, idx) => {
               const alreadyExists = existingLeads.some(
-                (l) => l.business_name.toLowerCase() === item.business_name.toLowerCase()
+                (l) => (l.business_name || '').toLowerCase() === (item.business_name || '').toLowerCase()
               );
 
               return (

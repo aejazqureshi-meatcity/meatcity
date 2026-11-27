@@ -41,7 +41,7 @@ export async function middleware(request: NextRequest) {
 
     // Protect Delivery Route
     if (request.nextUrl.pathname.startsWith('/delivery') && request.nextUrl.pathname !== '/delivery/login') {
-      if (userRole !== 'delivery_partner') {
+      if (userRole !== 'delivery_partner' || userStatus !== 'active') {
         return NextResponse.redirect(new URL('/delivery/login', request.url))
       }
     }
@@ -120,7 +120,7 @@ export async function middleware(request: NextRequest) {
 
   // Protect Delivery Route
   if (request.nextUrl.pathname.startsWith('/delivery') && request.nextUrl.pathname !== '/delivery/login') {
-    if (userRole !== 'delivery_partner') {
+    if (userRole !== 'delivery_partner' || userStatus !== 'active') {
       return NextResponse.redirect(new URL('/delivery/login', request.url))
     }
   }

@@ -22,15 +22,38 @@ export default function Login() {
     setError('');
 
     try {
-      console.log(`[AUTH LOG] Client-side form submit. Email: ${email}`);
+      let loginEmail = email.trim().toLowerCase();
+
+      // If user entered a phone number instead of an email, resolve it
+      if (!loginEmail.includes('@')) {
+        console.log(`[AUTH LOG] Client-side: Resolving phone number to email: ${email}`);
+        const res = await fetch('/api/auth/resolve-identifier', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier: email.trim() }),
+        });
+        const resData = await res.json();
+        if (!res.ok || resData.error) {
+          setError(resData.error || 'No account found with this mobile number.');
+          setLoading(false);
+          return;
+        }
+        loginEmail = resData.email;
+      }
+
+      console.log(`[AUTH LOG] Client-side form submit. Email: ${loginEmail}`);
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: loginEmail,
         password,
       });
 
       if (error) {
         console.log(`[AUTH LOG] Client-side: sign in failed. Error message: ${error.message}`);
-        setError(error.message);
+        if (error.message.toLowerCase().includes('invalid login credentials')) {
+          setError('Incorrect password or email. Please double-check your credentials.');
+        } else {
+          setError(error.message);
+        }
         setLoading(false);
         return;
       }
@@ -54,9 +77,19 @@ export default function Login() {
         return;
       }
 
+      if (role === 'delivery_partner' && status !== 'active') {
+        await supabase.auth.signOut();
+        setError('This delivery partner account is currently inactive. Please contact MeatCity Admin.');
+        setLoading(false);
+        return;
+      }
+
       if (role === 'admin') {
         console.log(`[AUTH LOG] Client-side: Executing redirect to /admin`);
         router.push('/admin');
+      } else if (role === 'delivery_partner') {
+        console.log(`[AUTH LOG] Client-side: Executing redirect to /delivery`);
+        router.push('/delivery');
       } else {
         console.log(`[AUTH LOG] Client-side: Executing redirect to /`);
         router.push('/');

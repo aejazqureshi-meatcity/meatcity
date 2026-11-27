@@ -63,8 +63,8 @@ export default function B2BLeads({
   const filtered = leads.filter((lead) => {
     const matchSearch =
       !search ||
-      lead.business_name.toLowerCase().includes(search.toLowerCase()) ||
-      (lead.contact_person && lead.contact_person.toLowerCase().includes(search.toLowerCase())) ||
+      (lead.business_name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (lead.contact_person && (lead.contact_person || '').toLowerCase().includes(search.toLowerCase())) ||
       (lead.phone && lead.phone.includes(search));
     const matchArea = filterArea === 'All' || lead.area === filterArea;
     const matchCategory = filterCategory === 'All' || lead.category === filterCategory;
