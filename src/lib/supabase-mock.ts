@@ -50,6 +50,11 @@ export class QueryBuilder {
     return this;
   }
 
+  in(column: string, values: any[]) {
+    this.filters.push({ type: 'in', column, value: values });
+    return this;
+  }
+
   single() {
     this.isSingle = true;
     return this;

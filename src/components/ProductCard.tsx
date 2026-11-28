@@ -78,8 +78,13 @@ export default function ProductCard({
     if (desc.includes('•')) {
       return desc.split('\n')[0];
     }
+    const nameLower = product.name.toLowerCase();
     const cat = product.category.toLowerCase();
-    if (cat.includes('chicken')) return 'Skinless • Bone-in';
+    if (nameLower.includes('boneless')) return 'Tender Cut • 100% Boneless';
+    if (nameLower.includes('keema') || nameLower.includes('mince')) return 'Fine Minced • Boneless';
+    if (nameLower.includes('lollipop') || nameLower.includes('wing')) return 'Crispy Ready • Bone-in';
+    if (nameLower.includes('drumstick')) return 'Juicy Cut • Bone-in';
+    if (cat.includes('chicken')) return 'Fresh Cut • Skinless';
     if (cat.includes('mutton')) return 'Tender • Curry Cut';
     if (cat.includes('seafood')) return 'Cleaned • Descaled';
     if (cat.includes('egg')) return 'Farm Fresh • Graded';
@@ -99,19 +104,6 @@ export default function ProductCard({
     >
       {/* Product Image and Tray Container */}
       <div className="relative aspect-square w-full bg-neutral-100 dark:bg-neutral-900 overflow-hidden flex items-center justify-center p-2.5">
-        {/* Wishlist Button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleWishlist();
-          }}
-          disabled={isOutOfStock}
-          className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full flex items-center justify-center bg-white/80 dark:bg-black/60 backdrop-blur-md border border-black/5 dark:border-white/10 text-xs z-10 transition-transform active:scale-90 hover:scale-105"
-          aria-label="Toggle Wishlist"
-        >
-          {isWishlisted ? '❤️' : '🤍'}
-        </button>
-
         {/* Status Badges */}
         <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">
           <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-full w-max flex items-center gap-1 backdrop-blur-md">
@@ -161,14 +153,27 @@ export default function ProductCard({
       {/* Info & Action Row */}
       <div className="p-3.5 flex flex-col justify-between flex-1 gap-2.5">
         <div className="flex flex-col gap-0.5">
-          <h4 className="text-text-primary font-black text-sm tracking-tight leading-snug line-clamp-1 group-hover:text-primary transition-colors">
-            {product.name}
-          </h4>
+          <div className="flex items-start justify-between gap-2">
+            <h4 className="text-text-primary font-black text-sm tracking-tight leading-snug line-clamp-2 group-hover:text-primary transition-colors flex-1">
+              {product.name}
+            </h4>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleWishlist();
+              }}
+              disabled={isOutOfStock}
+              className="w-7 h-7 rounded-full flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 text-xs transition-transform active:scale-90 hover:scale-110 shrink-0 -mt-0.5"
+              aria-label="Toggle Wishlist"
+            >
+              {isWishlisted ? '❤️' : '🤍'}
+            </button>
+          </div>
           <p className="text-text-secondary text-xs font-medium line-clamp-1">
             {getSubtitle()}
           </p>
           <span className="text-[11px] text-text-secondary font-semibold mt-0.5">
-            {selectedVariant || product.unit || '1 kg'}
+            {product.category.toLowerCase().includes('egg') ? (product.unit || 'Pack of 30') : (selectedVariant || product.unit || '1 kg')}
           </span>
 
           {/* Variants Selector */}
@@ -198,10 +203,13 @@ export default function ProductCard({
           <div className="flex flex-col">
             <span className="text-text-primary text-base sm:text-lg font-black tracking-tight leading-none">
               ₹{price}
+              <span className="text-[10px] text-text-secondary font-semibold ml-1">
+                {product.category.toLowerCase().includes('egg') ? '/pack' : userRole === 'b2b' ? '/kg' : ''}
+              </span>
             </span>
             {userRole === 'b2b' && (
               <span className="text-[9px] text-gold font-bold uppercase mt-0.5">
-                Wholesale /kg
+                Wholesale Price
               </span>
             )}
           </div>

@@ -17,6 +17,7 @@ export default function RegisterB2B() {
     hotelName: '',
     gstNumber: '',
     businessAddress: '',
+    pincode: '',
     monthlyEstimate: ''
   });
   
@@ -33,8 +34,33 @@ export default function RegisterB2B() {
       return;
     }
 
+    const cleanPincode = (formData.pincode || '').trim();
+    if (!/^\d{6}$/.test(cleanPincode)) {
+      setError('Please enter a valid 6-digit Indian PIN code (e.g. 400705).');
+      return;
+    }
+
     setLoading(true);
     setError('');
+
+    // Validate against serviceable PIN codes
+    try {
+      const { data: pinRecord } = await supabase
+        .from('serviceable_pincodes')
+        .select('*')
+        .eq('pincode', cleanPincode)
+        .maybeSingle();
+
+      if (pinRecord && pinRecord.is_serviceable === false) {
+        setError(`PIN code ${cleanPincode} is currently outside MeatCity delivery zones.`);
+        setLoading(false);
+        return;
+      }
+    } catch {
+      // Table check fallback
+    }
+
+    const fullAddress = `${formData.businessAddress.trim()}, PIN: ${cleanPincode}`;
 
     const { data, error } = await supabase.auth.signUp({
       email: formData.email,
@@ -48,7 +74,9 @@ export default function RegisterB2B() {
           business_name: formData.businessName,
           hotel_name: formData.hotelName,
           gst_number: formData.gstNumber || null,
-          address: formData.businessAddress,
+          pincode: cleanPincode,
+          address: fullAddress,
+          shop_address: fullAddress,
           expected_monthly_volume: formData.monthlyEstimate,
           credit_limit: 50000,
           outstanding_balance: 0,
@@ -154,6 +182,17 @@ export default function RegisterB2B() {
             className="w-full bg-surface border border-border rounded-[12px] px-4 py-3 text-text-primary text-sm placeholder:text-text-secondary outline-none transition-all duration-200 focus:border-primary/60 focus:ring-2 focus:ring-primary/10"
           />
         </div>
+
+        <TextInput 
+          label="Delivery PIN Code *"
+          type="text"
+          name="pincode"
+          required
+          maxLength={6}
+          value={formData.pincode}
+          onChange={handleChange}
+          placeholder="6-digit Indian PIN Code (e.g. 400705)"
+        />
 
         <TextInput 
           label="Contact Number *"

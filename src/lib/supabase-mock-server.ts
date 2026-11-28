@@ -381,10 +381,12 @@ export function executeServerQuery(query: any) {
     // 4. Handle SELECT (Filter operations)
     let filteredData = [...data];
 
-    // Apply eq filters
+    // Apply filters
     for (const filter of query.filters || []) {
       if (filter.type === 'eq') {
         filteredData = filteredData.filter((row: any) => row[filter.column] === filter.value);
+      } else if (filter.type === 'in' && Array.isArray(filter.value)) {
+        filteredData = filteredData.filter((row: any) => filter.value.includes(row[filter.column]));
       }
     }
 

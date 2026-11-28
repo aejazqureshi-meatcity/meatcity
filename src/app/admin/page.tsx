@@ -1540,7 +1540,7 @@ export default function AdminDashboard() {
               </svg>
             </button>
             <div className="admin-header-title-block" style={{ minWidth: 0, flex: 1, maxWidth: '100%' }}>
-               <h1 style={{ wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal' }}>
+               <h1 className="text-sm sm:text-lg md:text-xl font-black text-white leading-tight break-words">
                 {activeTab === 'dashboard' && 'Welcome, Admin Dashboard'}
                 {activeTab === 'daily-rates' && 'B2B Daily Paper Rate Manager'}
                 {activeTab === 'ai-sales' && 'MeatCity AI Sales Agent & B2B Growth Engine'}
@@ -1554,8 +1554,11 @@ export default function AdminDashboard() {
                 {activeTab === 'analytics' && 'Branch Analytics Summary'}
                 {activeTab === 'settings' && 'System Parameters'}
                 {activeTab === 'payments' && 'B2B Credit Repayments'}
+                {activeTab === 'pincodes' && 'Serviceable Pincodes & Delivery Charges'}
+                {activeTab === 'coupons' && 'Promotions & Discount Coupons'}
+                {activeTab === 'reviews' && 'Customer Product Reviews Moderation'}
               </h1>
-              <p style={{ wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal' }}>
+              <p className="text-[11px] sm:text-xs text-neutral-400 mt-1 leading-normal line-clamp-2 sm:line-clamp-none break-words">
                 {activeTab === 'dashboard' && 'Visual overview of Meat City Turbhe sales performance.'}
                 {activeTab === 'daily-rates' && 'Central chicken wholesale paper rate engine. Enter today’s rate to automatically calculate and publish B2B prices.'}
                 {activeTab === 'ai-sales' && 'Discover Navi Mumbai food businesses, draft grounded wholesale proposals, and manage customer approvals.'}
@@ -1569,6 +1572,9 @@ export default function AdminDashboard() {
                 {activeTab === 'analytics' && 'Detailed financial insights, metrics, and top products.'}
                 {activeTab === 'settings' && 'Toggle store operational states and standard delivery variables.'}
                 {activeTab === 'payments' && 'Verify and manually approve B2B credit repayment records.'}
+                {activeTab === 'pincodes' && 'Manage delivery zones, serviceable PIN codes and area fees.'}
+                {activeTab === 'coupons' && 'Create and manage discount codes for retail and wholesale customers.'}
+                {activeTab === 'reviews' && 'Inspect verified customer ratings and manage live testimonials.'}
               </p>
             </div>
           </div>
@@ -4137,6 +4143,12 @@ export default function AdminDashboard() {
         maxWidth: '320px',
         width: '100%'
       }}>
+        <style dangerouslySetInnerHTML={{ __html: `
+          @keyframes slideInAlert {
+            from { transform: translateX(120%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+          }
+        `}} />
         {newOrderAlerts.map(alert => (
           <div key={alert.id} className="new-order-toast" style={{
             backgroundColor: '#1E2020',
@@ -4146,14 +4158,8 @@ export default function AdminDashboard() {
             boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
             color: '#fff',
             fontFamily: 'system-ui, -apple-system, sans-serif',
-            animation: 'slideIn 0.3s ease-out'
+            animation: 'slideInAlert 0.3s ease-out'
           }}>
-            <style jsx>{`
-              @keyframes slideIn {
-                from { transform: translateX(120%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-              }
-            `}</style>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <strong style={{ fontSize: '0.95rem', color: '#D4AF37', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 🔔 New Order Received

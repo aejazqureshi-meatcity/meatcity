@@ -33,6 +33,9 @@ export default function DailyRateManager({ onNotify }: DailyRateManagerProps) {
   const [inputRate, setInputRate] = useState<number | ''>('');
   const [previews, setPreviews] = useState<ProductPricePreview[]>([]);
   const [customMultipliers, setCustomMultipliers] = useState<Record<string, number>>({});
+  const [dirtyMultipliers, setDirtyMultipliers] = useState<Record<string, number>>({});
+  const [savingProductId, setSavingProductId] = useState<string | null>(null);
+  const [isSavingAll, setIsSavingAll] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isPublishing, setIsPublishing] = useState<boolean>(false);
   const [isRollingBack, setIsRollingBack] = useState<boolean>(false);
@@ -127,10 +130,118 @@ export default function DailyRateManager({ onNotify }: DailyRateManagerProps) {
     if (!isNaN(num) && num > 0) {
       const updated = { ...customMultipliers, [productId]: num };
       setCustomMultipliers(updated);
+
+      const existingRule = rules.find((r) => r.product_id === productId);
+      const originalMult = existingRule ? Number(existingRule.multiplier) : 1.6;
+
+      if (Math.abs(num - originalMult) > 0.001) {
+        setDirtyMultipliers((prev) => ({ ...prev, [productId]: num }));
+      } else {
+        setDirtyMultipliers((prev) => {
+          const next = { ...prev };
+          delete next[productId];
+          return next;
+        });
+      }
+
       if (typeof inputRate === 'number' && inputRate > 0) {
         fetchPreview(inputRate, updated);
       }
     }
+  };
+
+  // Save Single Multiplier to Database (without publishing live selling price)
+  const handleSaveSingleMultiplier = async (productId: string) => {
+    const mult = customMultipliers[productId];
+    if (mult === undefined) return;
+    setSavingProductId(productId);
+    try {
+      const existingRule = rules.find((r) => r.product_id === productId);
+      const res = await fetch('/api/admin/b2b-rates/rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId,
+          rule: {
+            multiplier: mult,
+            product_name: existingRule?.product_name,
+            pricing_mode: existingRule?.pricing_mode || 'multiplier',
+          },
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) throw new Error(json.error || 'Failed to save multiplier');
+
+      // Update rules state so DB value is reflected
+      setRules((prev) =>
+        prev.map((r) => (r.product_id === productId ? { ...r, multiplier: mult } : r))
+      );
+
+      // Clear from dirty
+      setDirtyMultipliers((prev) => {
+        const next = { ...prev };
+        delete next[productId];
+        return next;
+      });
+
+      const prodName = existingRule?.product_name || 'Product';
+      notify(`Saved multiplier ${mult}x for ${prodName} to database!`);
+    } catch (err: any) {
+      notify(err.message || 'Failed to save multiplier', 'error');
+    } finally {
+      setSavingProductId(null);
+    }
+  };
+
+  // Save All Unsaved Multipliers in Bulk (without publishing live prices)
+  const handleSaveAllMultipliers = async () => {
+    const entries = Object.entries(dirtyMultipliers);
+    if (entries.length === 0) return;
+    setIsSavingAll(true);
+    try {
+      const bulkRules = entries.map(([pId, mult]) => {
+        const existingRule = rules.find((r) => r.product_id === pId);
+        return {
+          productId: pId,
+          multiplier: mult,
+          product_name: existingRule?.product_name,
+          pricing_mode: existingRule?.pricing_mode || 'multiplier',
+        };
+      });
+
+      const res = await fetch('/api/admin/b2b-rates/rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bulkRules }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) throw new Error(json.error || 'Failed to save multipliers');
+
+      // Update rules state
+      const updatedMap = new Map(entries);
+      setRules((prev) =>
+        prev.map((r) =>
+          updatedMap.has(r.product_id) ? { ...r, multiplier: updatedMap.get(r.product_id)! } : r
+        )
+      );
+
+      setDirtyMultipliers({});
+      notify(`Successfully saved ${entries.length} product multipliers to database!`);
+    } catch (err: any) {
+      notify(err.message || 'Failed to save multipliers', 'error');
+    } finally {
+      setIsSavingAll(false);
+    }
+  };
+
+  // Discard Unsaved Multiplier Changes
+  const handleDiscardChanges = () => {
+    setCustomMultipliers({});
+    setDirtyMultipliers({});
+    if (typeof inputRate === 'number' && inputRate > 0) {
+      fetchPreview(inputRate, {});
+    }
+    notify('Discarded unsaved multiplier changes.');
   };
 
   // Publish Rates
@@ -276,6 +387,8 @@ export default function DailyRateManager({ onNotify }: DailyRateManagerProps) {
     return matchesSearch && matchesMode;
   });
 
+  const dirtyCount = Object.keys(dirtyMultipliers).length;
+
   return (
     <div className="space-y-6 w-full max-w-full min-w-0 overflow-x-hidden text-white">
       {/* 1. Header Banner & Status Cards */}
@@ -398,7 +511,30 @@ export default function DailyRateManager({ onNotify }: DailyRateManagerProps) {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row items-center gap-2.5 shrink-0 w-full sm:w-auto">
+            {dirtyCount > 0 && (
+              <button
+                onClick={handleDiscardChanges}
+                className="w-full sm:w-auto px-3.5 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold text-xs rounded-xl border border-white/10 transition-colors flex items-center justify-center gap-1.5 active:scale-95"
+                title="Discard unsaved multiplier edits"
+              >
+                <span>🔄</span> Discard ({dirtyCount})
+              </button>
+            )}
+
+            <button
+              onClick={handleSaveAllMultipliers}
+              disabled={isSavingAll || dirtyCount === 0}
+              className={`w-full sm:w-auto px-4 sm:px-5 py-3 sm:py-3.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                dirtyCount > 0
+                  ? 'bg-neutral-100 hover:bg-white text-black shadow-lg shadow-white/10 cursor-pointer active:scale-95'
+                  : 'bg-neutral-800/60 text-neutral-500 cursor-not-allowed border border-white/5'
+              }`}
+              title="Save all modified multipliers to database without publishing live prices"
+            >
+              <span>💾</span> {isSavingAll ? 'Saving Multipliers...' : `Save All Multipliers ${dirtyCount > 0 ? `(${dirtyCount})` : ''}`}
+            </button>
+
             <button
               onClick={() => setShowPublishModal(true)}
               disabled={isPublishing || !inputRate || Number(inputRate) <= 0}
@@ -588,12 +724,24 @@ export default function DailyRateManager({ onNotify }: DailyRateManagerProps) {
                     </td>
 
                     <td className="py-3.5 px-4 text-center">
-                      <button
-                        onClick={() => rule && setEditingRule(rule)}
-                        className="px-2.5 py-1 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-bold text-neutral-200 transition-colors"
-                      >
-                        ⚙️ Configure
-                      </button>
+                      <div className="flex items-center justify-center gap-1.5">
+                        {dirtyMultipliers[p.productId] !== undefined && (
+                          <button
+                            onClick={() => handleSaveSingleMultiplier(p.productId)}
+                            disabled={savingProductId === p.productId}
+                            className="px-2.5 py-1 bg-[#D4AF37] hover:bg-[#bfa035] text-black font-black rounded-lg text-xs transition-all flex items-center gap-1 shadow-md shadow-gold/20 active:scale-95"
+                            title="Save this product multiplier to database without publishing prices"
+                          >
+                            <span>{savingProductId === p.productId ? '⏳' : '💾'}</span> Save
+                          </button>
+                        )}
+                        <button
+                          onClick={() => rule && setEditingRule(rule)}
+                          className="px-2.5 py-1 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-bold text-neutral-200 transition-colors"
+                        >
+                          ⚙️ Configure
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -659,12 +807,24 @@ export default function DailyRateManager({ onNotify }: DailyRateManagerProps) {
                     )}
                   </div>
 
-                  <button
-                    onClick={() => rule && setEditingRule(rule)}
-                    className="px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-[10px] sm:text-[11px] font-bold text-white shrink-0"
-                  >
-                    ⚙️ Edit
-                  </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {dirtyMultipliers[p.productId] !== undefined && (
+                      <button
+                        onClick={() => handleSaveSingleMultiplier(p.productId)}
+                        disabled={savingProductId === p.productId}
+                        className="px-2 py-1 bg-[#D4AF37] hover:bg-[#bfa035] text-black font-black rounded text-[11px] transition-all flex items-center gap-0.5 shadow-sm active:scale-95"
+                        title="Save multiplier to database"
+                      >
+                        <span>{savingProductId === p.productId ? '⏳' : '💾'}</span> Save
+                      </button>
+                    )}
+                    <button
+                      onClick={() => rule && setEditingRule(rule)}
+                      className="px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-[10px] sm:text-[11px] font-bold text-white shrink-0"
+                    >
+                      ⚙️ Edit
+                    </button>
+                  </div>
                 </div>
               </div>
             );

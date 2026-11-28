@@ -2834,6 +2834,48 @@
       "manual_override_enabled": false,
       "updated_at": "2026-11-27T20:39:53.350Z",
       "updated_by": "Super Admin"
+    },
+    {
+      "id": "rule-chicken-curry-cut-skinless",
+      "created_at": "2026-11-28T10:02:07.182Z",
+      "product_id": "chicken-curry-cut-skinless",
+      "product_name": "Chicken Curry Cut – Skinless",
+      "pricing_mode": "multiplier",
+      "paper_rate_source": "chicken",
+      "multiplier": 1.85,
+      "fixed_addition": 0,
+      "manual_price": null,
+      "rounding_method": "nearest_1",
+      "min_selling_price": null,
+      "is_dynamic_enabled": true,
+      "is_confirmed_by_owner": false,
+      "manual_override_price": null,
+      "manual_override_reason": null,
+      "manual_override_expires_at": null,
+      "manual_override_enabled": false,
+      "updated_at": "2026-11-28T10:02:07.176Z",
+      "updated_by": "aejaz qureshi"
+    },
+    {
+      "id": "rule-chicken-breast-boneless",
+      "created_at": "2026-11-28T10:02:07.183Z",
+      "product_id": "chicken-breast-boneless",
+      "product_name": "Chicken Breast Boneless",
+      "pricing_mode": "multiplier",
+      "paper_rate_source": "chicken",
+      "multiplier": 2.45,
+      "fixed_addition": 0,
+      "manual_price": null,
+      "rounding_method": "nearest_1",
+      "min_selling_price": null,
+      "is_dynamic_enabled": true,
+      "is_confirmed_by_owner": false,
+      "manual_override_price": null,
+      "manual_override_reason": null,
+      "manual_override_expires_at": null,
+      "manual_override_enabled": false,
+      "updated_at": "2026-11-28T10:02:07.176Z",
+      "updated_by": "aejaz qureshi"
     }
   ],
   "b2b_rate_history": [
@@ -3279,6 +3321,20 @@
         "previousRate": 140,
         "effectiveDate": "2026-11-27",
         "productsUpdated": 2,
+        "adminName": "aejaz qureshi"
+      },
+      "admin_id": "admin-uuid"
+    },
+    {
+      "id": "audit-mx08r2l0",
+      "created_at": "2026-11-28T10:02:07.176Z",
+      "action": "bulk_update_rules",
+      "details": {
+        "count": 2,
+        "updatedProductIds": [
+          "chicken-curry-cut-skinless",
+          "chicken-breast-boneless"
+        ],
         "adminName": "aejaz qureshi"
       },
       "admin_id": "admin-uuid"
